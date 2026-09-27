@@ -56,6 +56,13 @@ class SelectedProductIds extends Notifier<Set<String>> {
 
   void replaceAll(Iterable<String> ids) => state = ids.toSet();
 
+  void setMany(Iterable<String> ids, {required bool selected}) {
+    final values = ids.toSet();
+    state = selected
+        ? {...state, ...values}
+        : state.where((id) => !values.contains(id)).toSet();
+  }
+
   void clear() => state = <String>{};
 }
 

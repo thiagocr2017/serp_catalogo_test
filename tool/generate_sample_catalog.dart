@@ -49,6 +49,10 @@ Future<void> main() async {
       agentPhone: '+506 8888 8888',
       cardsPerPage: 4,
       categoryNames: {'1': 'Organización', '2': 'Cocina'},
+      backgroundColor: '#F5F5F5',
+      cardColor: '#FFFFFF',
+      accentColor: '#1565C0',
+      textColor: '#111111',
     ),
   );
   final output = File('output/pdf/catalogo_serp_muestra.pdf');

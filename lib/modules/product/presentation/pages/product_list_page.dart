@@ -150,10 +150,9 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
                         selectedIds: selectedIds,
                         onSelectAll: (selected) => ref
                             .read(selectedProductIdsProvider.notifier)
-                            .replaceAll(
-                              selected
-                                  ? items.map((product) => product.id)
-                                  : [],
+                            .setMany(
+                              items.map((product) => product.id),
+                              selected: selected,
                             ),
                         onSelected: (id, selected) => ref
                             .read(selectedProductIdsProvider.notifier)
@@ -224,9 +223,20 @@ class _Toolbar extends StatelessWidget {
             decoration: InputDecoration(
               hintText: 'Buscar por nombre, SKU o descripción',
               prefixIcon: const Icon(Icons.search),
-              suffixIcon: IconButton(
-                onPressed: onSearch,
-                icon: const Icon(Icons.arrow_forward),
+              suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: searchController,
+                builder: (context, value, _) => IconButton(
+                  tooltip: value.text.isEmpty ? 'Buscar' : 'Limpiar búsqueda',
+                  onPressed: value.text.isEmpty
+                      ? onSearch
+                      : () {
+                          searchController.clear();
+                          onSearch();
+                        },
+                  icon: Icon(
+                    value.text.isEmpty ? Icons.arrow_forward : Icons.close,
+                  ),
+                ),
               ),
               border: const OutlineInputBorder(),
               isDense: true,
@@ -341,6 +351,7 @@ class _ProductTable extends StatelessWidget {
               ),
               tooltip: 'Seleccionar todos los productos visibles',
             ),
+            const DataColumn(label: Text('Imagen')),
             const DataColumn(label: Text('SKU')),
             const DataColumn(label: Text('Producto')),
             const DataColumn(label: Text('Precio'), numeric: true),
@@ -359,6 +370,10 @@ class _ProductTable extends StatelessWidget {
                       onChanged: (selected) =>
                           onSelected(product.id, selected ?? false),
                     ),
+                  ),
+                  DataCell(
+                    _ProductThumbnail(product: product, size: 52),
+                    onTap: () => context.go('/products/${product.id}'),
                   ),
                   DataCell(
                     Text(product.sku),
@@ -409,8 +424,8 @@ class _ProductGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 330,
-        mainAxisExtent: 270,
+        maxCrossAxisExtent: 360,
+        mainAxisExtent: 390,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
@@ -418,70 +433,111 @@ class _ProductGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         final product = products[index];
         return Card(
+          clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: () => context.go('/products/${product.id}'),
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (product.imageUrl != null)
-                    SizedBox(
-                      height: 72,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Stack(
+                  children: [
+                    Container(
+                      height: 185,
                       width: double.infinity,
-                      child: Image.network(
-                        product.imageUrl!,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) =>
-                            const Icon(Icons.broken_image),
-                      ),
-                    )
-                  else
-                    const SizedBox(
-                      height: 72,
-                      child: Center(child: Icon(Icons.inventory_2_outlined)),
+                      padding: const EdgeInsets.all(16),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest,
+                      child: _ProductThumbnail(product: product, size: 160),
                     ),
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: selectedIds.contains(product.id),
-                        onChanged: (value) =>
-                            onSelected(product.id, value ?? false),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Material(
+                        color: Theme.of(context).colorScheme.surface,
+                        shape: const CircleBorder(),
+                        elevation: 2,
+                        child: Checkbox(
+                          value: selectedIds.contains(product.id),
+                          onChanged: (value) =>
+                              onSelected(product.id, value ?? false),
+                        ),
                       ),
-                      Expanded(child: Text(product.sku)),
-                      _StockBadge(product: product),
-                    ],
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                product.sku,
+                                style: Theme.of(context).textTheme.labelLarge,
+                              ),
+                            ),
+                            _StockBadge(product: product),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          product.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          product.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const Spacer(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Venta mín. ${product.minimumSaleQuantity}'),
+                            Text(
+                              '\$${(product.unitPriceInCents / 100).toStringAsFixed(2)}',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    product.name,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    product.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Stock ${product.currentStock}'),
-                      Text(
-                        '\$${(product.unitPriceInCents / 100).toStringAsFixed(2)}',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
       },
     );
   }
+}
+
+class _ProductThumbnail extends StatelessWidget {
+  const _ProductThumbnail({required this.product, required this.size});
+  final Product product;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: size,
+    height: size,
+    child: product.imageUrl == null
+        ? Icon(Icons.inventory_2_outlined, size: size * .45)
+        : Image.network(
+            product.imageUrl!,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) =>
+                Icon(Icons.broken_image_outlined, size: size * .45),
+          ),
+  );
 }
 
 class _StockBadge extends StatelessWidget {

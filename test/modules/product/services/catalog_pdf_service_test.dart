@@ -30,6 +30,10 @@ void main() {
         agentPhone: '+506 8888 8888',
         cardsPerPage: 0,
         categoryNames: {'category-id': 'Categoría'},
+        backgroundColor: '#F5F5F5',
+        cardColor: '#FFFFFF',
+        accentColor: '#1565C0',
+        textColor: '#111111',
       ),
     );
 

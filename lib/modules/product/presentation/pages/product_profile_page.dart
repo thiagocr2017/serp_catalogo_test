@@ -61,6 +61,58 @@ class _Profile extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(28),
         children: [
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 320,
+                    height: 260,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: product.imageUrl == null
+                        ? const Icon(Icons.inventory_2_outlined, size: 80)
+                        : Image.network(
+                            product.imageUrl!,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, _, _) => const Icon(
+                              Icons.broken_image_outlined,
+                              size: 80,
+                            ),
+                          ),
+                  ),
+                  const SizedBox(width: 28),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          product.sku,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(product.description),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
           Wrap(
             spacing: 16,
             runSpacing: 16,
@@ -393,29 +445,65 @@ class _PricingCalculatorState extends State<_PricingCalculator> {
         (1 + (double.tryParse(margin.text) ?? 0) / 100);
     return _Section(
       title: 'Herramienta de precios',
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: TextField(
-              controller: expenses,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Gastos de importación por unidad',
+          const Text(
+            'El precio recomendado suma el costo de fábrica y los gastos de '
+            'importación por unidad. Después aplica el margen deseado sobre '
+            'ese costo total.',
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Text(
+              'Fórmula: (costo de fábrica + importación por unidad) × '
+              '(1 + margen ÷ 100)',
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: expenses,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    labelText: 'Gastos de importación por unidad',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: TextField(
-              controller: margin,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Margen deseado %'),
-            ),
-          ),
-          const SizedBox(width: 24),
-          Text(
-            'Sugerido: USD ${result.toStringAsFixed(2)}',
-            style: Theme.of(context).textTheme.titleLarge,
+              const SizedBox(width: 16),
+              Expanded(
+                child: TextField(
+                  controller: margin,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    labelText: 'Margen deseado %',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 24),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Costo base: USD ${cost.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    'Recomendado: USD ${result.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),

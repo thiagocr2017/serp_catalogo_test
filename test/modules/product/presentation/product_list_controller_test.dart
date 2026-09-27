@@ -20,6 +20,24 @@ void main() {
     expect(products, hasLength(1));
     expect(products.single.sku, 'SKU-001');
   });
+
+  test('keeps selections when products from another category are added', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final selection = container.read(selectedProductIdsProvider.notifier);
+
+    selection.setMany(['category-a-1', 'category-a-2'], selected: true);
+    selection.setMany(['category-b-1'], selected: true);
+
+    expect(container.read(selectedProductIdsProvider), {
+      'category-a-1',
+      'category-a-2',
+      'category-b-1',
+    });
+
+    selection.setMany(['category-a-1', 'category-a-2'], selected: false);
+    expect(container.read(selectedProductIdsProvider), {'category-b-1'});
+  });
 }
 
 class _InMemoryProductRepository implements ProductRepository {

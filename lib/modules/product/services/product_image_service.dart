@@ -28,8 +28,25 @@ class ProductImageService {
     return Uint8List.fromList(image.encodeJpg(resized, quality: 82));
   }
 
-  Future<String> upload(String productId, Uint8List bytes) async {
-    final path = '$productId.jpg';
+  Future<String> replace({
+    required String sku,
+    required Uint8List bytes,
+    String? previousUrl,
+  }) async {
+    final safeSku = sku
+        .trim()
+        .replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+    if (safeSku.isEmpty) {
+      throw const FormatException(
+        'El SKU no permite crear un nombre de imagen.',
+      );
+    }
+    final path = '$safeSku.JPG';
+    final previousPath = _storagePath(previousUrl);
+    if (previousPath != null) {
+      await _client.storage.from('product-images').remove([previousPath]);
+    }
     await _client.storage
         .from('product-images')
         .uploadBinary(
@@ -40,6 +57,17 @@ class ProductImageService {
             upsert: true,
           ),
         );
-    return _client.storage.from('product-images').getPublicUrl(path);
+    final publicUrl = _client.storage.from('product-images').getPublicUrl(path);
+    return '$publicUrl?v=${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  String? _storagePath(String? publicUrl) {
+    if (publicUrl == null || publicUrl.isEmpty) return null;
+    final uri = Uri.tryParse(publicUrl);
+    if (uri == null) return null;
+    const marker = '/product-images/';
+    final index = uri.path.indexOf(marker);
+    if (index < 0) return null;
+    return Uri.decodeComponent(uri.path.substring(index + marker.length));
   }
 }

@@ -199,6 +199,7 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 - MOQ de recompra, CBM y costo de fábrica como información interna de abastecimiento.
 - Precio unitario, precio por paquete y gestión de márgenes.
 - Compresión local de imágenes antes de subirlas.
+- La imagen se almacena como `<SKU>.JPG`; al reemplazarla se elimina el objeto anterior y la nueva URL incorpora una versión para evitar caché obsoleta.
 - El stock inicial genera una transacción `INITIAL_STOCK`; nunca escribe directamente en `current_stock`.
 
 ### Pantalla C: ficha técnica
@@ -214,6 +215,8 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 
 - Diseños de 1, 2, 3, 4 o 6 tarjetas por página y lista compacta.
 - Portada con logo, nombre de empresa y métodos de pago.
+- Empresa y métodos de pago provienen exclusivamente de Configuración; el generador mantiene sólo datos propios del documento, selección, diseño y colores.
+- Colores configurables de fondo, tarjeta, destaque y fuente.
 - Datos del agente y QR de WhatsApp generado localmente.
 - Portadas o separadores por categoría según el diseño.
 - SKU, descripción, precio unitario, empaque y MOQ.

@@ -118,7 +118,11 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
           ? _existing?.imageUrl
           : await ref
                 .read(productImageServiceProvider)
-                .upload(productId, _imageBytes!);
+                .replace(
+                  sku: _sku.text,
+                  bytes: _imageBytes!,
+                  previousUrl: _existing?.imageUrl,
+                );
       final product = Product(
         id: productId,
         sku: _sku.text.trim(),
@@ -220,19 +224,35 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                           : 'Imagen lista (${(_imageBytes!.length / 1024).round()} KB)',
                     ),
                   ),
-                  if (_imageBytes != null)
-                    SizedBox(
-                      width: 160,
-                      height: 120,
-                      child: Image.memory(_imageBytes!, fit: BoxFit.cover),
-                    ),
-                  if (_imageBytes == null && _existing?.imageUrl != null)
-                    SizedBox(
-                      width: 160,
-                      height: 120,
-                      child: Image.network(
-                        _existing!.imageUrl!,
-                        fit: BoxFit.contain,
+                  if (_imageBytes != null || _existing?.imageUrl != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 280,
+                        height: 220,
+                        margin: const EdgeInsets.only(top: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: _imageBytes != null
+                              ? Image.memory(_imageBytes!, fit: BoxFit.contain)
+                              : Image.network(
+                                  _existing!.imageUrl!,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, _, _) => const Center(
+                                    child: Icon(Icons.broken_image_outlined),
+                                  ),
+                                ),
+                        ),
                       ),
                     ),
                   _section(
