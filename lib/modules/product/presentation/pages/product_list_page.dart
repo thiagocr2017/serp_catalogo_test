@@ -215,6 +215,7 @@ class _ProductTable extends StatelessWidget {
           rows: [
             for (final product in products)
               DataRow(
+                onSelectChanged: (_) => context.go('/products/${product.id}'),
                 cells: [
                   DataCell(Text(product.sku)),
                   DataCell(Text(product.name)),
@@ -252,40 +253,43 @@ class _ProductGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         final product = products[index];
         return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: Text(product.sku)),
-                    _StockBadge(product: product),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  product.name,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  product.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const Spacer(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Stock ${product.currentStock}'),
-                    Text(
-                      '\$${(product.unitPriceInCents / 100).toStringAsFixed(2)}',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ],
-                ),
-              ],
+          child: InkWell(
+            onTap: () => context.go('/products/${product.id}'),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(product.sku)),
+                      _StockBadge(product: product),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    product.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    product.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const Spacer(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Stock ${product.currentStock}'),
+                      Text(
+                        '\$${(product.unitPriceInCents / 100).toStringAsFixed(2)}',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );

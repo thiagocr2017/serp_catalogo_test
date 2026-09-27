@@ -24,6 +24,10 @@ final getProductByIdProvider = Provider<GetProductById>((ref) {
   return GetProductById(ref.watch(productRepositoryProvider));
 });
 
+final productByIdProvider = FutureProvider.family<Product?, String>((ref, id) {
+  return ref.watch(getProductByIdProvider)(id);
+});
+
 final saveProductProvider = Provider<SaveProduct>((ref) {
   return SaveProduct(ref.watch(productRepositoryProvider));
 });

@@ -8,6 +8,7 @@ import '../../modules/inventory/presentation/pages/inventory_page.dart';
 import '../../modules/inventory/presentation/pages/audit_page.dart';
 import '../../modules/product/presentation/pages/promotion_page.dart';
 import '../../modules/product/presentation/pages/catalog_pdf_page.dart';
+import '../../modules/product/presentation/pages/product_profile_page.dart';
 import '../../shared/widgets/desktop_shell_widget.dart';
 
 final appRouter = GoRouter(
@@ -24,6 +25,12 @@ final appRouter = GoRouter(
             GoRoute(
               path: 'new',
               builder: (context, state) => const ProductFormPage(),
+            ),
+            GoRoute(
+              path: ':productId',
+              builder: (context, state) => ProductProfilePage(
+                productId: state.pathParameters['productId']!,
+              ),
             ),
           ],
         ),

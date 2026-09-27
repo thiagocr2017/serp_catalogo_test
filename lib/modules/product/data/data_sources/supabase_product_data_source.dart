@@ -96,6 +96,11 @@ class SupabaseProductDataSource {
     String id,
     Map<String, dynamic> values,
   ) async {
+    values.addAll({
+      'updated_by': 'Desktop local',
+      'updated_device_name': 'SERP Desktop',
+      'updated_device_identifier': 'local-device',
+    });
     final row = await _client
         .from('products')
         .update(values)
@@ -111,6 +116,10 @@ class SupabaseProductDataSource {
         .update({
           'is_active': false,
           'deleted_at': DateTime.now().toUtc().toIso8601String(),
+          'deleted_by': 'Desktop local',
+          'updated_by': 'Desktop local',
+          'updated_device_name': 'SERP Desktop',
+          'updated_device_identifier': 'local-device',
         })
         .eq('id', id);
   }
