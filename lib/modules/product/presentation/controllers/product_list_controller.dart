@@ -1,0 +1,30 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../di/product_providers.dart';
+import '../../domain/entities/product.dart';
+import '../../domain/entities/product_query.dart';
+
+final productListControllerProvider =
+    AsyncNotifierProvider<ProductListController, List<Product>>(
+      ProductListController.new,
+    );
+
+class ProductListController extends AsyncNotifier<List<Product>> {
+  ProductQuery _query = const ProductQuery();
+
+  @override
+  Future<List<Product>> build() {
+    return ref.watch(getProductsProvider)(_query);
+  }
+
+  Future<void> applyQuery(ProductQuery query) async {
+    _query = query;
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => ref.read(getProductsProvider)(query));
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => ref.read(getProductsProvider)(_query));
+  }
+}
