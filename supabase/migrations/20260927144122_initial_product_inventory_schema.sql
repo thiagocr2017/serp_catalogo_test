@@ -33,6 +33,8 @@ create table public.products (
   unit_price numeric(18, 2) not null check (unit_price >= 0),
   package_price numeric(18, 2) check (package_price is null or package_price >= 0),
   min_order_quantity integer not null default 1 check (min_order_quantity > 0),
+  minimum_sale_quantity integer not null default 1
+    check (minimum_sale_quantity > 0),
   packaging_type public.packaging_type not null default 'UNIT',
   cbm_per_moq numeric(18, 6) not null default 0 check (cbm_per_moq >= 0),
   factory_cost numeric(18, 2) not null default 0 check (factory_cost >= 0),

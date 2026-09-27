@@ -39,6 +39,7 @@ select
     when active_bulk.discount_percentage is not null then 'bulk'
     else null
   end as promotion_type
+  , p.minimum_sale_quantity
 from public.products p
 left join lateral (
   select bp.name, bp.discount_percentage

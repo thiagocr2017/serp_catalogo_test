@@ -15,7 +15,7 @@ declare
 begin
   insert into public.products (
     id, sku, barcode, name, description, category_id, currency_code,
-    unit_price, package_price, min_order_quantity, packaging_type,
+    unit_price, package_price, min_order_quantity, minimum_sale_quantity, packaging_type,
     cbm_per_moq, factory_cost, image_url, reorder_point, promo_price,
     promo_text, is_active, created_by, created_device_name,
     created_device_identifier
@@ -28,6 +28,7 @@ begin
     (p_product ->> 'unit_price')::numeric,
     nullif(p_product ->> 'package_price', '')::numeric,
     (p_product ->> 'min_order_quantity')::integer,
+    coalesce((p_product ->> 'minimum_sale_quantity')::integer, 1),
     (p_product ->> 'packaging_type')::public.packaging_type,
     (p_product ->> 'cbm_per_moq')::numeric,
     (p_product ->> 'factory_cost')::numeric,

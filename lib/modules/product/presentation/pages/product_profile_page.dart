@@ -44,7 +44,7 @@ class _Profile extends ConsumerWidget {
         title: Text('${product.sku} · ${product.name}'),
         actions: [
           TextButton.icon(
-            onPressed: () => _edit(context, ref),
+            onPressed: () => context.go('/products/${product.id}/edit'),
             icon: const Icon(Icons.edit),
             label: const Text('Editar'),
           ),
@@ -77,9 +77,9 @@ class _Profile extends ConsumerWidget {
                 icon: Icons.inventory_2,
               ),
               _Metric(
-                label: 'MOQ',
+                label: 'Venta mínima',
                 value:
-                    '${product.minimumOrderQuantity} ${product.packagingType.name}',
+                    '${product.minimumSaleQuantity} ${product.packagingType.name}',
                 icon: Icons.all_inbox,
               ),
               _Metric(
@@ -92,6 +92,11 @@ class _Profile extends ConsumerWidget {
                 value:
                     'USD ${(product.factoryCostInCents / 100).toStringAsFixed(2)}',
                 icon: Icons.factory,
+              ),
+              _Metric(
+                label: 'MOQ de recompra',
+                value: '${product.minimumOrderQuantity}',
+                icon: Icons.shopping_cart_checkout,
               ),
             ],
           ),
@@ -174,6 +179,8 @@ class _Profile extends ConsumerWidget {
     );
   }
 
+  // TODO: Remove after the full-page editor has completed its transition period.
+  // ignore: unused_element
   Future<void> _edit(BuildContext context, WidgetRef ref) async {
     final name = TextEditingController(text: product.name);
     final description = TextEditingController(text: product.description);

@@ -11,6 +11,7 @@ class Product {
     required this.categoryId,
     required this.unitPriceInCents,
     required this.minimumOrderQuantity,
+    this.minimumSaleQuantity = 1,
     required this.packagingType,
     required this.cbmPerMoq,
     required this.factoryCostInCents,
@@ -37,6 +38,7 @@ class Product {
   final int unitPriceInCents;
   final int? packagePriceInCents;
   final int minimumOrderQuantity;
+  final int minimumSaleQuantity;
   final PackagingType packagingType;
   final double cbmPerMoq;
   final int factoryCostInCents;

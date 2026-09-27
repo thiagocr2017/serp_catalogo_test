@@ -148,6 +148,13 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
                     ? _ProductTable(
                         products: items,
                         selectedIds: selectedIds,
+                        onSelectAll: (selected) => ref
+                            .read(selectedProductIdsProvider.notifier)
+                            .replaceAll(
+                              selected
+                                  ? items.map((product) => product.id)
+                                  : [],
+                            ),
                         onSelected: (id, selected) => ref
                             .read(selectedProductIdsProvider.notifier)
                             .toggle(id, selected: selected),
@@ -210,6 +217,9 @@ class _Toolbar extends StatelessWidget {
           width: 360,
           child: TextField(
             controller: searchController,
+            onChanged: (value) {
+              if (value.isEmpty) onSearch();
+            },
             onSubmitted: (_) => onSearch(),
             decoration: InputDecoration(
               hintText: 'Buscar por nombre, SKU o descripción',
@@ -306,10 +316,12 @@ class _ProductTable extends StatelessWidget {
     required this.products,
     required this.selectedIds,
     required this.onSelected,
+    required this.onSelectAll,
   });
   final List<Product> products;
   final Set<String> selectedIds;
   final void Function(String id, bool selected) onSelected;
+  final ValueChanged<bool> onSelectAll;
 
   @override
   Widget build(BuildContext context) {
@@ -317,14 +329,24 @@ class _ProductTable extends StatelessWidget {
       child: SizedBox(
         width: double.infinity,
         child: DataTable(
-          columns: const [
-            DataColumn(label: Text('Seleccionar')),
-            DataColumn(label: Text('SKU')),
-            DataColumn(label: Text('Producto')),
-            DataColumn(label: Text('Precio'), numeric: true),
-            DataColumn(label: Text('Stock'), numeric: true),
-            DataColumn(label: Text('MOQ'), numeric: true),
-            DataColumn(label: Text('Estado')),
+          columns: [
+            DataColumn(
+              label: Checkbox(
+                value:
+                    products.isNotEmpty &&
+                    products.every(
+                      (product) => selectedIds.contains(product.id),
+                    ),
+                onChanged: (selected) => onSelectAll(selected ?? false),
+              ),
+              tooltip: 'Seleccionar todos los productos visibles',
+            ),
+            const DataColumn(label: Text('SKU')),
+            const DataColumn(label: Text('Producto')),
+            const DataColumn(label: Text('Precio'), numeric: true),
+            const DataColumn(label: Text('Stock'), numeric: true),
+            const DataColumn(label: Text('Venta mín.'), numeric: true),
+            const DataColumn(label: Text('Estado')),
           ],
           rows: [
             for (final product in products)
@@ -357,7 +379,7 @@ class _ProductTable extends StatelessWidget {
                     onTap: () => context.go('/products/${product.id}'),
                   ),
                   DataCell(
-                    Text('${product.minimumOrderQuantity}'),
+                    Text('${product.minimumSaleQuantity}'),
                     onTap: () => context.go('/products/${product.id}'),
                   ),
                   DataCell(

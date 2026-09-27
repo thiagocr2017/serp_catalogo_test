@@ -83,6 +83,7 @@ La configuración futura debe contemplar, como mínimo: `default_currency`, `dec
 | `unit_price` | Numeric(18,2) | Precio por unidad en la moneda configurada. |
 | `package_price` | Numeric(18,2), nullable | Precio por paquete o caja. |
 | `min_order_quantity` | Integer | Cantidad mínima de compra. |
+| `minimum_sale_quantity` | Integer | Cantidad mínima que se vende al cliente; es independiente del MOQ de recompra. |
 | `packaging_type` | String | Tipo de empaque: caja, set o unidad. |
 | `cbm_per_moq` | Decimal | Volumen correspondiente al MOQ. |
 | `factory_cost` | Numeric(18,2) | Costo de fábrica antes de importación. |
@@ -194,7 +195,8 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 ### Pantalla B: formulario de producto
 
 - Código de barras, SKU, nombre, categoría y descripción.
-- Tipo de empaque, MOQ, CBM y costo de fábrica.
+- Tipo de empaque y cantidad mínima de venta para el catálogo.
+- MOQ de recompra, CBM y costo de fábrica como información interna de abastecimiento.
 - Precio unitario, precio por paquete y gestión de márgenes.
 - Compresión local de imágenes antes de subirlas.
 - El stock inicial genera una transacción `INITIAL_STOCK`; nunca escribe directamente en `current_stock`.

@@ -27,6 +27,12 @@ final appRouter = GoRouter(
               builder: (context, state) => const ProductFormPage(),
             ),
             GoRoute(
+              path: ':productId/edit',
+              builder: (context, state) => ProductFormPage(
+                productId: state.pathParameters['productId']!,
+              ),
+            ),
+            GoRoute(
               path: ':productId',
               builder: (context, state) => ProductProfilePage(
                 productId: state.pathParameters['productId']!,

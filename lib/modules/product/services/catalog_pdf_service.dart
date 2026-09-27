@@ -109,8 +109,60 @@ class CatalogPdfService {
         ),
       ),
     );
+    if (options.cardsPerPage == 1) {
+      for (final product in products) {
+        document.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(28),
+            build: (_) => pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      options.companyName,
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    ),
+                    pw.Text('Catálogo'),
+                  ],
+                ),
+                pw.SizedBox(height: 18),
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  color: PdfColors.indigo700,
+                  child: pw.Text(
+                    options.categoryNames[product.categoryId] ??
+                        'Sin categoría',
+                    style: pw.TextStyle(
+                      color: PdfColors.white,
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ),
+                pw.SizedBox(height: 14),
+                pw.Expanded(
+                  child: _card(
+                    product,
+                    image: images[product.id],
+                    compact: false,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+      return document.save();
+    }
     final compact = options.cardsPerPage == 0;
-    final columns = compact || options.cardsPerPage == 1
+    final columns = compact
         ? 1
         : options.cardsPerPage <= 4
         ? 2
@@ -272,7 +324,7 @@ class CatalogPdfService {
           ),
           if (compact) pw.SizedBox(height: 6) else pw.Spacer(),
           pw.Text(
-            'Se vende en ${product.packagingType.name.toUpperCase()} - MOQ ${product.minimumOrderQuantity}',
+            'Presentación ${product.packagingType.name.toUpperCase()} - Venta mínima ${product.minimumSaleQuantity}',
             style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
           ),
           if (hasPromotion)

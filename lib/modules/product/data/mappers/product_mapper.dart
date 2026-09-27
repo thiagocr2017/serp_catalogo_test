@@ -13,6 +13,7 @@ extension ProductModelMapper on ProductModel {
       unitPriceInCents: unitPriceInCents,
       packagePriceInCents: packagePriceInCents,
       minimumOrderQuantity: minimumOrderQuantity,
+      minimumSaleQuantity: minimumSaleQuantity,
       packagingType: PackagingType.values.byName(packagingType.toLowerCase()),
       cbmPerMoq: cbmPerMoq,
       factoryCostInCents: factoryCostInCents,
@@ -46,6 +47,7 @@ extension ProductToDataMapper on Product {
           ? null
           : packagePriceInCents! / 100,
       'min_order_quantity': minimumOrderQuantity,
+      'minimum_sale_quantity': minimumSaleQuantity,
       'packaging_type': packagingType.name.toUpperCase(),
       'cbm_per_moq': cbmPerMoq,
       'factory_cost': factoryCostInCents / 100,

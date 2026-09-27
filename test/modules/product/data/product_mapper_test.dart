@@ -15,6 +15,7 @@ void main() {
       'unit_price': '10.25',
       'package_price': 20.5,
       'min_order_quantity': 2,
+      'minimum_sale_quantity': 5,
       'packaging_type': 'BOX',
       'cbm_per_moq': '0.125',
       'factory_cost': '4.10',
@@ -35,6 +36,8 @@ void main() {
     expect(product.factoryCostInCents, 410);
     expect(product.promotionPriceInCents, 899);
     expect(product.promotionType, PromotionType.bulk);
+    expect(product.minimumOrderQuantity, 2);
+    expect(product.minimumSaleQuantity, 5);
 
     final persistence = product.toPersistence();
     expect(persistence['promo_price'], isNull);
