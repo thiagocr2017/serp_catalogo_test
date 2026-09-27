@@ -213,10 +213,10 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 
 ### Pantalla D: generador avanzado de PDF
 
-- Diseños de 1, 2, 3, 4 o 6 tarjetas por página y lista compacta.
+- Diseños de 1, 2, 4 o 6 tarjetas por página y lista compacta. La cuadrícula reserva automáticamente una página completa, media página, un cuarto o un sexto para cada producto, y escala la fotografía según ese espacio.
 - Portada con logo, nombre de empresa y métodos de pago.
 - Empresa y métodos de pago provienen exclusivamente de Configuración; el generador mantiene sólo datos propios del documento, selección, diseño y colores.
-- Colores configurables de fondo, tarjeta, destaque y fuente.
+- Colores configurables de fondo, tarjeta, destaque y fuente mediante selector RGB o código hexadecimal `#RRGGBB`.
 - Datos del agente y QR de WhatsApp generado localmente.
 - Portadas o separadores por categoría según el diseño.
 - SKU, descripción, precio unitario, empaque y MOQ.

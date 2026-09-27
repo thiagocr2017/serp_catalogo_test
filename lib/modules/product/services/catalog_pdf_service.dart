@@ -137,84 +137,27 @@ class CatalogPdfService {
         ),
       ),
     );
-    if (options.cardsPerPage == 1) {
-      for (final product in products) {
+    final compact = options.cardsPerPage == 0;
+    if (!compact) {
+      final perPage = options.cardsPerPage;
+      for (var start = 0; start < products.length; start += perPage) {
+        final end = (start + perPage).clamp(0, products.length);
+        final pageProducts = products.sublist(start, end);
         document.addPage(
-          pw.Page(
-            pageTheme: pw.PageTheme(
-              pageFormat: PdfPageFormat.a4,
-              margin: const pw.EdgeInsets.all(28),
-              theme: pw.ThemeData(
-                defaultTextStyle: pw.TextStyle(color: textColor),
-              ),
-              buildBackground: (_) => pw.FullPage(
-                ignoreMargins: true,
-                child: pw.Container(color: background),
-              ),
-            ),
-            build: (_) => pw.Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: background,
-              child: pw.DefaultTextStyle(
-                style: pw.TextStyle(color: textColor),
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text(
-                          options.companyName,
-                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                        ),
-                        pw.Text('Catálogo'),
-                      ],
-                    ),
-                    pw.SizedBox(height: 18),
-                    pw.Container(
-                      width: double.infinity,
-                      padding: const pw.EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 9,
-                      ),
-                      color: accent,
-                      child: pw.Text(
-                        options.categoryNames[product.categoryId] ??
-                            'Sin categoría',
-                        style: pw.TextStyle(
-                          color: PdfColors.white,
-                          fontSize: 16,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    pw.SizedBox(height: 14),
-                    pw.Expanded(
-                      child: _card(
-                        product,
-                        image: images[product.id],
-                        compact: false,
-                        cardColor: card,
-                        accentColor: accent,
-                        textColor: textColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          _productsPage(
+            pageProducts,
+            options: options,
+            images: images,
+            backgroundColor: background,
+            cardColor: card,
+            accentColor: accent,
+            textColor: textColor,
+            pageNumber: (start ~/ perPage) + 2,
           ),
         );
       }
       return document.save();
     }
-    final compact = options.cardsPerPage == 0;
-    final columns = compact
-        ? 1
-        : options.cardsPerPage <= 4
-        ? 2
-        : 3;
     document.addPage(
       pw.MultiPage(
         pageTheme: pw.PageTheme(
@@ -266,36 +209,17 @@ class CatalogPdfService {
                   ),
                 ),
               ),
-              if (compact)
-                for (final product in entry.value)
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.only(bottom: 8),
-                    child: _card(
-                      product,
-                      image: images[product.id],
-                      compact: true,
-                      cardColor: card,
-                      accentColor: accent,
-                      textColor: textColor,
-                    ),
-                  )
-              else
-                pw.GridView(
-                  crossAxisCount: columns,
-                  childAspectRatio: options.cardsPerPage == 1 ? 1.8 : 1.15,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  children: [
-                    for (final product in entry.value)
-                      _card(
-                        product,
-                        image: images[product.id],
-                        compact: false,
-                        cardColor: card,
-                        accentColor: accent,
-                        textColor: textColor,
-                      ),
-                  ],
+              for (final product in entry.value)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 8),
+                  child: _card(
+                    product,
+                    image: images[product.id],
+                    compact: true,
+                    cardColor: card,
+                    accentColor: accent,
+                    textColor: textColor,
+                  ),
                 ),
             ],
           ];
@@ -303,6 +227,105 @@ class CatalogPdfService {
       ),
     );
     return document.save();
+  }
+
+  pw.Page _productsPage(
+    List<Product> products, {
+    required CatalogPdfOptions options,
+    required Map<String, pw.ImageProvider> images,
+    required PdfColor backgroundColor,
+    required PdfColor cardColor,
+    required PdfColor accentColor,
+    required PdfColor textColor,
+    required int pageNumber,
+  }) {
+    final perPage = options.cardsPerPage;
+    final columns = perPage == 1 || perPage == 2 ? 1 : 2;
+    final rows = perPage == 1
+        ? 1
+        : perPage == 2
+        ? 2
+        : perPage == 4
+        ? 2
+        : 3;
+    final imageHeight = switch (perPage) {
+      1 => 430.0,
+      2 => 205.0,
+      4 => 160.0,
+      _ => 92.0,
+    };
+
+    return pw.Page(
+      pageTheme: pw.PageTheme(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(24),
+        theme: pw.ThemeData(defaultTextStyle: pw.TextStyle(color: textColor)),
+        buildBackground: (_) => pw.FullPage(
+          ignoreMargins: true,
+          child: pw.Container(color: backgroundColor),
+        ),
+      ),
+      build: (_) => pw.Column(
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                options.companyName,
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.Text('Catálogo'),
+            ],
+          ),
+          pw.SizedBox(height: 12),
+          pw.Expanded(
+            child: pw.Column(
+              children: [
+                for (var row = 0; row < rows; row++) ...[
+                  if (row > 0) pw.SizedBox(height: 10),
+                  pw.Expanded(
+                    child: pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                      children: [
+                        for (var column = 0; column < columns; column++) ...[
+                          if (column > 0) pw.SizedBox(width: 10),
+                          pw.Expanded(
+                            child: row * columns + column < products.length
+                                ? _card(
+                                    products[row * columns + column],
+                                    image:
+                                        images[products[row * columns + column]
+                                            .id],
+                                    compact: false,
+                                    imageHeight: imageHeight,
+                                    categoryName:
+                                        options.categoryNames[products[row *
+                                                    columns +
+                                                column]
+                                            .categoryId] ??
+                                        'Sin categoría',
+                                    cardColor: cardColor,
+                                    accentColor: accentColor,
+                                    textColor: textColor,
+                                  )
+                                : pw.SizedBox(),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text('Página $pageNumber'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<Uint8List> _download(String url) async {
@@ -327,6 +350,8 @@ class CatalogPdfService {
     Product product, {
     pw.ImageProvider? image,
     required bool compact,
+    double? imageHeight,
+    String? categoryName,
     required PdfColor cardColor,
     required PdfColor accentColor,
     required PdfColor textColor,
@@ -335,6 +360,7 @@ class CatalogPdfService {
     final finalPrice = hasPromotion
         ? product.promotionPriceInCents!
         : product.unitPriceInCents;
+    final dense = (imageHeight ?? 999) < 110;
     return pw.Container(
       padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
@@ -347,13 +373,25 @@ class CatalogPdfService {
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
+            if (categoryName != null) ...[
+              pw.Text(
+                categoryName.toUpperCase(),
+                maxLines: 1,
+                style: pw.TextStyle(
+                  color: accentColor,
+                  fontSize: 8,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 5),
+            ],
             if (image != null && !compact) ...[
               pw.Container(
-                height: 90,
+                height: imageHeight ?? 90,
                 width: double.infinity,
                 child: pw.Image(image, fit: pw.BoxFit.contain),
               ),
-              pw.SizedBox(height: 8),
+              pw.SizedBox(height: dense ? 4 : 8),
             ],
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -382,21 +420,32 @@ class CatalogPdfService {
                   ),
               ],
             ),
-            pw.SizedBox(height: 8),
+            pw.SizedBox(height: dense ? 3 : 8),
             pw.Text(
               product.name,
-              style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold),
-            ),
-            pw.SizedBox(height: 5),
-            pw.Text(
-              product.description,
-              maxLines: 3,
+              maxLines: dense ? 1 : 2,
               overflow: pw.TextOverflow.clip,
+              style: pw.TextStyle(
+                fontSize: dense ? 12 : 15,
+                fontWeight: pw.FontWeight.bold,
+              ),
             ),
+            if (!dense) ...[
+              pw.SizedBox(height: 5),
+              pw.Text(
+                product.description,
+                maxLines: imageHeight != null && imageHeight > 300 ? 4 : 2,
+                overflow: pw.TextOverflow.clip,
+              ),
+            ],
             if (compact) pw.SizedBox(height: 6) else pw.Spacer(),
             pw.Text(
               'Presentación ${product.packagingType.name.toUpperCase()} - Venta mínima ${product.minimumSaleQuantity}',
-              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+              maxLines: 1,
+              style: pw.TextStyle(
+                fontSize: dense ? 7 : 9,
+                color: PdfColors.grey700,
+              ),
             ),
             if (hasPromotion)
               pw.Text(
@@ -410,7 +459,7 @@ class CatalogPdfService {
             pw.Text(
               'USD ${(finalPrice / 100).toStringAsFixed(2)}',
               style: pw.TextStyle(
-                fontSize: 18,
+                fontSize: dense ? 14 : 18,
                 fontWeight: pw.FontWeight.bold,
                 color: hasPromotion ? accentColor : textColor,
               ),

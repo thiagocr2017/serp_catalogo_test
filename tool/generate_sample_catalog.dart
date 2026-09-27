@@ -47,7 +47,7 @@ Future<void> main() async {
       paymentMethods: 'Transferencia bancaria - IBAN USD\nEfectivo y tarjeta',
       agentName: 'Thiago Lopez',
       agentPhone: '+506 8888 8888',
-      cardsPerPage: 4,
+      cardsPerPage: 2,
       categoryNames: {'1': 'Organización', '2': 'Cocina'},
       backgroundColor: '#F5F5F5',
       cardColor: '#FFFFFF',

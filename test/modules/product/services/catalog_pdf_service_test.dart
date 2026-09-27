@@ -78,4 +78,41 @@ void main() {
       expect(bytes.length, greaterThan(1000));
     },
   );
+
+  test('generates proportional layouts for 2, 4 and 6 cards', () async {
+    Product product(int id) => Product(
+      id: '$id',
+      sku: 'SKU-$id',
+      name: 'Producto $id',
+      description: 'Descripción del producto para el catálogo.',
+      categoryId: 'category-id',
+      unitPriceInCents: 1099,
+      minimumOrderQuantity: 12,
+      packagingType: PackagingType.unit,
+      cbmPerMoq: 0.1,
+      factoryCostInCents: 500,
+      currentStock: 10,
+      reorderPoint: 2,
+      isActive: true,
+      createdAt: DateTime.utc(2026),
+    );
+
+    final products = [for (var id = 1; id <= 7; id++) product(id)];
+    for (final cardsPerPage in [2, 4, 6]) {
+      final bytes = await CatalogPdfService().generate(
+        products,
+        CatalogPdfOptions(
+          companyName: 'SERP',
+          paymentMethods: 'Transferencia',
+          agentName: 'Agente',
+          agentPhone: '+506 8888 8888',
+          cardsPerPage: cardsPerPage,
+          categoryNames: const {'category-id': 'Categoría'},
+        ),
+      );
+
+      expect(bytes.take(4), orderedEquals('%PDF'.codeUnits));
+      expect(bytes.length, greaterThan(1000));
+    }
+  });
 }

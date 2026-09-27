@@ -148,25 +148,27 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         'Colores de la plantilla',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      _colorField(
-                        'Fondo',
-                        backgroundColor,
-                        (value) => setState(() => backgroundColor = value),
+                      _TemplateColorField(
+                        label: 'Fondo',
+                        value: backgroundColor,
+                        onChanged: (value) =>
+                            setState(() => backgroundColor = value),
                       ),
-                      _colorField(
-                        'Tarjetas',
-                        cardColor,
-                        (value) => setState(() => cardColor = value),
+                      _TemplateColorField(
+                        label: 'Tarjetas',
+                        value: cardColor,
+                        onChanged: (value) => setState(() => cardColor = value),
                       ),
-                      _colorField(
-                        'Destaque',
-                        accentColor,
-                        (value) => setState(() => accentColor = value),
+                      _TemplateColorField(
+                        label: 'Destaque',
+                        value: accentColor,
+                        onChanged: (value) =>
+                            setState(() => accentColor = value),
                       ),
-                      _colorField(
-                        'Fuente',
-                        textColor,
-                        (value) => setState(() => textColor = value),
+                      _TemplateColorField(
+                        label: 'Fuente',
+                        value: textColor,
+                        onChanged: (value) => setState(() => textColor = value),
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<int>(
@@ -174,7 +176,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         decoration: const InputDecoration(
                           labelText: 'Tarjetas por página',
                         ),
-                        items: const [0, 1, 2, 3, 4, 6]
+                        items: const [0, 1, 2, 4, 6]
                             .map(
                               (v) => DropdownMenuItem(
                                 value: v,
@@ -272,49 +274,184 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
             ),
     );
   }
+}
 
-  Widget _colorField(
-    String label,
-    String value,
-    ValueChanged<String> onChanged,
-  ) {
-    const colors = <String, String>{
-      '#FFFFFF': 'Blanco',
-      '#F5F5F5': 'Gris claro',
-      '#111111': 'Negro',
-      '#3949AB': 'Índigo',
-      '#1565C0': 'Azul',
-      '#2E7D32': 'Verde',
-      '#C62828': 'Rojo',
-      '#F9A825': 'Amarillo',
-    };
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      decoration: InputDecoration(labelText: label),
-      items: [
-        for (final entry in colors.entries)
-          DropdownMenuItem(
-            value: entry.key,
-            child: Row(
+class _TemplateColorField extends StatefulWidget {
+  const _TemplateColorField({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_TemplateColorField> createState() => _TemplateColorFieldState();
+}
+
+class _TemplateColorFieldState extends State<_TemplateColorField> {
+  late final TextEditingController _controller;
+
+  static final _hexPattern = RegExp(r'^#[0-9A-Fa-f]{6}$');
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+  }
+
+  @override
+  void didUpdateWidget(covariant _TemplateColorField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != _controller.text) _controller.text = widget.value;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Color get _color => _parseColor(widget.value) ?? Colors.white;
+
+  Color? _parseColor(String value) {
+    if (!_hexPattern.hasMatch(value)) return null;
+    return Color(int.parse('FF${value.substring(1)}', radix: 16));
+  }
+
+  String _toHex(Color color) {
+    final value = color.toARGB32() & 0xFFFFFF;
+    return '#${value.toRadixString(16).padLeft(6, '0').toUpperCase()}';
+  }
+
+  void _applyText(String value) {
+    final normalized = value.startsWith('#') ? value : '#$value';
+    if (!_hexPattern.hasMatch(normalized)) return;
+    final upper = normalized.toUpperCase();
+    if (_controller.text != upper) {
+      _controller.value = TextEditingValue(
+        text: upper,
+        selection: TextSelection.collapsed(offset: upper.length),
+      );
+    }
+    widget.onChanged(upper);
+  }
+
+  Future<void> _openPicker() async {
+    var red = _color.r.toDouble() * 255;
+    var green = _color.g.toDouble() * 255;
+    var blue = _color.b.toDouble() * 255;
+    final selected = await showDialog<Color>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final color = Color.fromARGB(
+            255,
+            red.round(),
+            green.round(),
+            blue.round(),
+          );
+          Widget slider(String label, double value, ValueChanged<double> set) {
+            return Row(
               children: [
-                Container(
-                  width: 18,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    color: Color(
-                      int.parse('FF${entry.key.substring(1)}', radix: 16),
-                    ),
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(4),
+                SizedBox(width: 22, child: Text(label)),
+                Expanded(
+                  child: Slider(
+                    min: 0,
+                    max: 255,
+                    value: value,
+                    onChanged: (next) => setDialogState(() => set(next)),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(entry.value),
+                SizedBox(width: 34, child: Text(value.round().toString())),
               ],
+            );
+          }
+
+          return AlertDialog(
+            title: Text('Color de ${widget.label.toLowerCase()}'),
+            content: SizedBox(
+              width: 360,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: color,
+                      border: Border.all(color: Colors.black26),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _toHex(color),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  slider('R', red, (value) => red = value),
+                  slider('G', green, (value) => green = value),
+                  slider('B', blue, (value) => blue = value),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, color),
+                child: const Text('Aplicar'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (selected != null) _applyText(_toHex(selected));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: TextFormField(
+        controller: _controller,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        textCapitalization: TextCapitalization.characters,
+        decoration: InputDecoration(
+          labelText: widget.label,
+          hintText: '#RRGGBB',
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(12),
+            child: InkWell(
+              onTap: _openPicker,
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: _color,
+                  border: Border.all(color: Colors.black26),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
             ),
           ),
-      ],
-      onChanged: (newValue) => onChanged(newValue!),
+          suffixIcon: IconButton(
+            tooltip: 'Abrir selector de color',
+            onPressed: _openPicker,
+            icon: const Icon(Icons.palette_outlined),
+          ),
+        ),
+        validator: (value) => _hexPattern.hasMatch(value ?? '')
+            ? null
+            : 'Usa un código como #1565C0',
+        onChanged: _applyText,
+        onFieldSubmitted: _applyText,
+      ),
     );
   }
 }
