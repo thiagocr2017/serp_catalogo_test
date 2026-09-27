@@ -9,6 +9,7 @@ import '../domain/use_cases/deactivate_product.dart';
 import '../domain/use_cases/get_product_by_id.dart';
 import '../domain/use_cases/get_products.dart';
 import '../domain/use_cases/save_product.dart';
+import '../services/product_image_service.dart';
 
 final productRepositoryProvider = Provider<ProductRepository>((ref) {
   throw StateError(
@@ -39,6 +40,10 @@ final deactivateProductProvider = Provider<DeactivateProduct>((ref) {
 final categoriesProvider = FutureProvider<List<Category>>((ref) {
   return ref.watch(productRepositoryProvider).getCategories();
 });
+
+final productImageServiceProvider = Provider<ProductImageService>(
+  (ref) => throw StateError('ProductImageService must be overridden.'),
+);
 
 final productApiProvider = Provider<ProductApi>((ref) {
   return _ProductApiAdapter(

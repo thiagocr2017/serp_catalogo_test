@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import 'dart:typed_data';
+
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
 import '../controllers/product_list_controller.dart';
@@ -29,6 +31,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   String? _categoryId;
   PackagingType _packagingType = PackagingType.unit;
   bool _saving = false;
+  Uint8List? _imageBytes;
 
   @override
   void dispose() {
@@ -60,8 +63,14 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
     }
     setState(() => _saving = true);
     try {
+      final productId = const Uuid().v4();
+      final imageUrl = _imageBytes == null
+          ? null
+          : await ref
+                .read(productImageServiceProvider)
+                .upload(productId, _imageBytes!);
       final product = Product(
-        id: const Uuid().v4(),
+        id: productId,
         sku: _sku.text.trim(),
         barcode: _barcode.text.trim().isEmpty ? null : _barcode.text.trim(),
         name: _name.text.trim(),
@@ -75,6 +84,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
         packagingType: _packagingType,
         cbmPerMoq: double.parse(_cbm.text),
         factoryCostInCents: _cents(_factoryCost.text),
+        imageUrl: imageUrl,
         currentStock: 0,
         reorderPoint: int.parse(_reorderPoint.text),
         isActive: true,
@@ -110,6 +120,30 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(32),
           children: [
+            OutlinedButton.icon(
+              onPressed: _saving
+                  ? null
+                  : () async {
+                      final bytes = await ref
+                          .read(productImageServiceProvider)
+                          .selectAndCompress();
+                      if (bytes != null && mounted) {
+                        setState(() => _imageBytes = bytes);
+                      }
+                    },
+              icon: const Icon(Icons.image_outlined),
+              label: Text(
+                _imageBytes == null
+                    ? 'Seleccionar imagen'
+                    : 'Imagen lista (${(_imageBytes!.length / 1024).round()} KB)',
+              ),
+            ),
+            if (_imageBytes != null)
+              SizedBox(
+                width: 160,
+                height: 120,
+                child: Image.memory(_imageBytes!, fit: BoxFit.cover),
+              ),
             Wrap(
               spacing: 16,
               runSpacing: 16,

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../modules/product/presentation/pages/product_form_page.dart';
@@ -9,6 +8,7 @@ import '../../modules/inventory/presentation/pages/audit_page.dart';
 import '../../modules/product/presentation/pages/promotion_page.dart';
 import '../../modules/product/presentation/pages/catalog_pdf_page.dart';
 import '../../modules/product/presentation/pages/product_profile_page.dart';
+import '../configuration/settings_page.dart';
 import '../../shared/widgets/desktop_shell_widget.dart';
 
 final appRouter = GoRouter(
@@ -53,24 +53,9 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/settings',
-          builder: (context, state) =>
-              const _PendingPage(title: 'Configuración'),
+          builder: (context, state) => const SettingsPage(),
         ),
       ],
     ),
   ],
 );
-
-class _PendingPage extends StatelessWidget {
-  const _PendingPage({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text('$title se implementará en su módulo.')),
-    );
-  }
-}
