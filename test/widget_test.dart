@@ -6,6 +6,7 @@ void main() {
   testWidgets('shows the product module shell', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: SerpApp()));
 
-    expect(find.text('Productos'), findsOneWidget);
+    expect(find.text('Productos'), findsWidgets);
+    expect(find.text('Nuevo producto'), findsOneWidget);
   });
 }
