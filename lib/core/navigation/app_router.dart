@@ -7,6 +7,7 @@ import '../../modules/product/presentation/pages/product_list_page.dart';
 import '../../modules/inventory/presentation/pages/inventory_page.dart';
 import '../../modules/inventory/presentation/pages/audit_page.dart';
 import '../../modules/product/presentation/pages/promotion_page.dart';
+import '../../modules/product/presentation/pages/catalog_pdf_page.dart';
 import '../../shared/widgets/desktop_shell_widget.dart';
 
 final appRouter = GoRouter(
@@ -41,8 +42,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/catalog-export',
-          builder: (context, state) =>
-              const _PendingPage(title: 'Generar catálogo PDF'),
+          builder: (context, state) => const CatalogPdfPage(),
         ),
         GoRoute(
           path: '/settings',
