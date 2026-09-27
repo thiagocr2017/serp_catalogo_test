@@ -23,6 +23,7 @@ class ProductModel {
   int? get promotionPriceInCents =>
       data['promo_price'] == null ? null : _moneyToCents(data['promo_price']);
   String? get promotionText => data['promo_text'] as String?;
+  String? get promotionType => data['promotion_type'] as String?;
   bool get isActive => data['is_active'] as bool;
   DateTime get createdAt => DateTime.parse(data['created_at'] as String);
   DateTime? get updatedAt => _optionalDate(data['updated_at']);

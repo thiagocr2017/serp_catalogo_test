@@ -101,11 +101,11 @@ class _Profile extends ConsumerWidget {
           _PricingCalculator(product: product),
           const SizedBox(height: 16),
           _Section(
-            title: 'Promoción individual',
+            title: 'Promoción aplicada',
             child: product.promotionPriceInCents == null
-                ? const Text('Sin promoción individual activa.')
+                ? const Text('Sin promoción activa.')
                 : Text(
-                    'Precio promocional USD ${(product.promotionPriceInCents! / 100).toStringAsFixed(2)}\n${product.promotionText ?? ''}',
+                    '${product.promotionType == PromotionType.bulk ? 'Masiva' : 'Individual'} · Precio original USD ${(product.unitPriceInCents / 100).toStringAsFixed(2)}\nPrecio final USD ${(product.promotionPriceInCents! / 100).toStringAsFixed(2)}\n${product.promotionText ?? ''}',
                   ),
           ),
           const SizedBox(height: 16),
@@ -184,7 +184,9 @@ class _Profile extends ConsumerWidget {
       text: (product.factoryCostInCents / 100).toStringAsFixed(2),
     );
     final promo = TextEditingController(
-      text: product.promotionPriceInCents == null
+      text:
+          product.promotionPriceInCents == null ||
+              product.promotionType == PromotionType.bulk
           ? ''
           : (product.promotionPriceInCents! / 100).toStringAsFixed(2),
     );
@@ -266,6 +268,9 @@ class _Profile extends ConsumerWidget {
         promotionText: promoText.text.trim().isEmpty
             ? null
             : promoText.text.trim(),
+        promotionType: promo.text.trim().isEmpty
+            ? null
+            : PromotionType.individual,
         isActive: product.isActive,
         createdAt: product.createdAt,
         updatedAt: DateTime.now().toUtc(),

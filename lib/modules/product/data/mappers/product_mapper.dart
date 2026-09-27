@@ -21,6 +21,9 @@ extension ProductModelMapper on ProductModel {
       reorderPoint: reorderPoint,
       promotionPriceInCents: promotionPriceInCents,
       promotionText: promotionText,
+      promotionType: promotionType == null
+          ? null
+          : PromotionType.values.byName(promotionType!),
       isActive: isActive,
       createdAt: createdAt,
       updatedAt: updatedAt,
@@ -48,10 +51,11 @@ extension ProductToDataMapper on Product {
       'factory_cost': factoryCostInCents / 100,
       'image_url': imageUrl,
       'reorder_point': reorderPoint,
-      'promo_price': promotionPriceInCents == null
+      'promo_price':
+          promotionType == PromotionType.bulk || promotionPriceInCents == null
           ? null
           : promotionPriceInCents! / 100,
-      'promo_text': promotionText,
+      'promo_text': promotionType == PromotionType.bulk ? null : promotionText,
       'is_active': isActive,
     };
   }

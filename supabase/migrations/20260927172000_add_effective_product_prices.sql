@@ -33,7 +33,12 @@ select
   p.created_device_name,
   p.created_device_identifier,
   p.updated_device_name,
-  p.updated_device_identifier
+  p.updated_device_identifier,
+  case
+    when p.promo_price is not null then 'individual'
+    when active_bulk.discount_percentage is not null then 'bulk'
+    else null
+  end as promotion_type
 from public.products p
 left join lateral (
   select bp.name, bp.discount_percentage

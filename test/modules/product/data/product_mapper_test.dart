@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:serp/modules/product/data/mappers/product_mapper.dart';
 import 'package:serp/modules/product/data/models/product_model.dart';
+import 'package:serp/modules/product/domain/entities/product.dart';
 
 void main() {
   test('maps PostgreSQL numeric money values to integer cents', () {
@@ -22,6 +23,7 @@ void main() {
       'reorder_point': 3,
       'promo_price': '8.99',
       'promo_text': 'Oferta',
+      'promotion_type': 'bulk',
       'is_active': true,
       'created_at': '2026-01-01T00:00:00Z',
       'updated_at': null,
@@ -32,5 +34,10 @@ void main() {
     expect(product.packagePriceInCents, 2050);
     expect(product.factoryCostInCents, 410);
     expect(product.promotionPriceInCents, 899);
+    expect(product.promotionType, PromotionType.bulk);
+
+    final persistence = product.toPersistence();
+    expect(persistence['promo_price'], isNull);
+    expect(persistence['promo_text'], isNull);
   });
 }

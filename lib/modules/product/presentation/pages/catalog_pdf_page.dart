@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
@@ -23,6 +26,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   int cards = 4;
   List<Product>? products;
   Map<String, String> categoryNames = const {};
+  Uint8List? logoBytes;
   final selected = <String>{};
 
   @override
@@ -80,6 +84,27 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                       TextField(
                         controller: company,
                         decoration: const InputDecoration(labelText: 'Empresa'),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final file = await openFile(
+                            acceptedTypeGroups: const [
+                              XTypeGroup(
+                                label: 'Imágenes',
+                                extensions: ['png', 'jpg', 'jpeg'],
+                              ),
+                            ],
+                          );
+                          if (file != null) {
+                            final bytes = await file.readAsBytes();
+                            if (mounted) setState(() => logoBytes = bytes);
+                          }
+                        },
+                        icon: const Icon(Icons.business),
+                        label: Text(
+                          logoBytes == null ? 'Seleccionar logo' : 'Logo listo',
+                        ),
                       ),
                       TextField(
                         controller: payments,
@@ -159,6 +184,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         agentPhone: phone.text,
                         cardsPerPage: cards,
                         categoryNames: categoryNames,
+                        logoBytes: logoBytes,
                       ),
                     ),
                   ),

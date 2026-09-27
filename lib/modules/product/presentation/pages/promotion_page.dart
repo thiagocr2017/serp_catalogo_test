@@ -62,9 +62,10 @@ class PromotionPage extends ConsumerWidget {
     final name = TextEditingController();
     final discount = TextEditingController();
     final conditions = TextEditingController();
-    var scope = 'all';
+    final listSelection = ref.read(selectedProductIdsProvider);
+    var scope = listSelection.isEmpty ? 'all' : 'manual';
     final categoryIds = <String>{};
-    final selected = <String>{};
+    final selected = <String>{...listSelection};
     var endDate = DateTime.now().add(const Duration(days: 30));
     final accepted = await showDialog<bool>(
       context: context,

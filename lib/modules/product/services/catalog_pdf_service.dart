@@ -14,6 +14,7 @@ class CatalogPdfOptions {
     required this.agentPhone,
     required this.cardsPerPage,
     this.categoryNames = const {},
+    this.logoBytes,
   });
   final String companyName;
   final String paymentMethods;
@@ -21,6 +22,7 @@ class CatalogPdfOptions {
   final String agentPhone;
   final int cardsPerPage;
   final Map<String, String> categoryNames;
+  final Uint8List? logoBytes;
 }
 
 class CatalogPdfService {
@@ -48,6 +50,17 @@ class CatalogPdfService {
         build: (_) => pw.Column(
           mainAxisAlignment: pw.MainAxisAlignment.center,
           children: [
+            if (options.logoBytes != null) ...[
+              pw.Container(
+                width: 150,
+                height: 90,
+                child: pw.Image(
+                  pw.MemoryImage(options.logoBytes!),
+                  fit: pw.BoxFit.contain,
+                ),
+              ),
+              pw.SizedBox(height: 18),
+            ],
             pw.Text(
               options.companyName,
               style: pw.TextStyle(fontSize: 34, fontWeight: pw.FontWeight.bold),

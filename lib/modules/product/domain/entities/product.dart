@@ -1,5 +1,7 @@
 enum PackagingType { unit, box, set }
 
+enum PromotionType { individual, bulk }
+
 class Product {
   const Product({
     required this.id,
@@ -21,6 +23,7 @@ class Product {
     this.imageUrl,
     this.promotionPriceInCents,
     this.promotionText,
+    this.promotionType,
     this.updatedAt,
     this.deletedAt,
   });
@@ -42,6 +45,7 @@ class Product {
   final int reorderPoint;
   final int? promotionPriceInCents;
   final String? promotionText;
+  final PromotionType? promotionType;
   final bool isActive;
   final DateTime createdAt;
   final DateTime? updatedAt;
