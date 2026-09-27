@@ -7,6 +7,8 @@ import 'core/navigation/app_router.dart';
 import 'modules/product/data/data_sources/supabase_product_data_source.dart';
 import 'modules/product/data/repositories/supabase_product_repository.dart';
 import 'modules/product/di/product_providers.dart';
+import 'modules/product/data/repositories/supabase_promotion_repository.dart';
+import 'modules/product/di/promotion_providers.dart';
 import 'modules/inventory/data/data_sources/supabase_inventory_data_source.dart';
 import 'modules/inventory/data/repositories/supabase_inventory_repository.dart';
 import 'modules/inventory/di/inventory_providers.dart';
@@ -24,12 +26,16 @@ Future<void> main() async {
   final inventoryRepository = SupabaseInventoryRepository(
     SupabaseInventoryDataSource(Supabase.instance.client),
   );
+  final promotionRepository = SupabasePromotionRepository(
+    Supabase.instance.client,
+  );
 
   runApp(
     ProviderScope(
       overrides: [
         productRepositoryProvider.overrideWithValue(repository),
         inventoryRepositoryProvider.overrideWithValue(inventoryRepository),
+        promotionRepositoryProvider.overrideWithValue(promotionRepository),
       ],
       child: const SerpApp(),
     ),
