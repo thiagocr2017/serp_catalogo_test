@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:serp/modules/product/di/product_providers.dart';
 import 'package:serp/modules/product/domain/entities/product.dart';
+import 'package:serp/modules/product/domain/entities/category.dart';
 import 'package:serp/modules/product/domain/entities/product_query.dart';
 import 'package:serp/modules/product/domain/repositories/product_repository.dart';
 import 'package:serp/modules/product/presentation/controllers/product_list_controller.dart';
@@ -42,7 +43,17 @@ class _InMemoryProductRepository implements ProductRepository {
   ];
 
   @override
-  Future<Product> createProduct(Product product) async => product;
+  Future<Product> createProduct(
+    Product product, {
+    required int initialStock,
+  }) async => product;
+
+  @override
+  Future<List<Category>> getCategories() async => const [];
+
+  @override
+  Future<Category> createCategory(String name) async =>
+      Category(id: 'category-id', name: name, isActive: true);
 
   @override
   Future<void> deactivateProduct(String id) async {}

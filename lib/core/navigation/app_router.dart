@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../modules/product/presentation/pages/product_form_page.dart';
+import '../../modules/product/presentation/pages/category_page.dart';
 import '../../modules/product/presentation/pages/product_list_page.dart';
 import '../../shared/widgets/desktop_shell_widget.dart';
 
@@ -24,7 +25,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/categories',
-          builder: (context, state) => const _PendingPage(title: 'Categorías'),
+          builder: (context, state) => const CategoryPage(),
         ),
         GoRoute(
           path: '/promotions',

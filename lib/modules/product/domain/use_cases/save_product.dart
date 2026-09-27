@@ -6,7 +6,8 @@ class SaveProduct {
 
   final ProductRepository _repository;
 
-  Future<Product> create(Product product) => _repository.createProduct(product);
+  Future<Product> create(Product product, {required int initialStock}) =>
+      _repository.createProduct(product, initialStock: initialStock);
 
   Future<Product> update(Product product) => _repository.updateProduct(product);
 }

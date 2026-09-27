@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/product_api.dart';
 import '../domain/entities/product.dart';
 import '../domain/entities/product_query.dart';
+import '../domain/entities/category.dart';
 import '../domain/repositories/product_repository.dart';
 import '../domain/use_cases/deactivate_product.dart';
 import '../domain/use_cases/get_product_by_id.dart';
@@ -29,6 +30,10 @@ final saveProductProvider = Provider<SaveProduct>((ref) {
 
 final deactivateProductProvider = Provider<DeactivateProduct>((ref) {
   return DeactivateProduct(ref.watch(productRepositoryProvider));
+});
+
+final categoriesProvider = FutureProvider<List<Category>>((ref) {
+  return ref.watch(productRepositoryProvider).getCategories();
 });
 
 final productApiProvider = Provider<ProductApi>((ref) {

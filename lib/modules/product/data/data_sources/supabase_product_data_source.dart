@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/entities/product_query.dart';
 import '../models/product_model.dart';
+import '../models/category_model.dart';
 
 class SupabaseProductDataSource {
   const SupabaseProductDataSource(this._client);
@@ -51,9 +52,44 @@ class SupabaseProductDataSource {
     return row == null ? null : ProductModel(row);
   }
 
-  Future<ProductModel> createProduct(Map<String, dynamic> values) async {
-    final row = await _client.from('products').insert(values).select().single();
+  Future<ProductModel> createProduct(
+    Map<String, dynamic> values, {
+    required int initialStock,
+  }) async {
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'create_product_with_initial_stock',
+      params: {
+        'p_product': values,
+        'p_initial_stock': initialStock,
+        'p_actor_name': 'Desktop local',
+        'p_device_name': 'SERP Desktop',
+        'p_device_identifier': 'local-device',
+      },
+    );
     return ProductModel(row);
+  }
+
+  Future<List<CategoryModel>> getCategories() async {
+    final rows = await _client
+        .from('categories')
+        .select()
+        .eq('is_active', true)
+        .order('name');
+    return rows.map(CategoryModel.new).toList();
+  }
+
+  Future<CategoryModel> createCategory(String name) async {
+    final row = await _client
+        .from('categories')
+        .insert({
+          'name': name.trim(),
+          'created_by': 'Desktop local',
+          'created_device_name': 'SERP Desktop',
+          'created_device_identifier': 'local-device',
+        })
+        .select()
+        .single();
+    return CategoryModel(row);
   }
 
   Future<ProductModel> updateProduct(

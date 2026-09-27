@@ -1,4 +1,5 @@
 import '../../domain/entities/product.dart';
+import '../../domain/entities/category.dart';
 import '../../domain/entities/product_query.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../data_sources/supabase_product_data_source.dart';
@@ -21,10 +22,25 @@ class SupabaseProductRepository implements ProductRepository {
   }
 
   @override
-  Future<Product> createProduct(Product product) async {
-    return (await _dataSource.createProduct(product.toPersistence()))
-        .toDomain();
+  Future<Product> createProduct(
+    Product product, {
+    required int initialStock,
+  }) async {
+    return (await _dataSource.createProduct(
+      product.toPersistence(),
+      initialStock: initialStock,
+    )).toDomain();
   }
+
+  @override
+  Future<List<Category>> getCategories() async =>
+      (await _dataSource.getCategories())
+          .map((item) => item.toDomain())
+          .toList();
+
+  @override
+  Future<Category> createCategory(String name) async =>
+      (await _dataSource.createCategory(name)).toDomain();
 
   @override
   Future<Product> updateProduct(Product product) async {
