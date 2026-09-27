@@ -1,8 +1,8 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 import '../domain/entities/product.dart';
 
@@ -33,7 +33,7 @@ class CatalogPdfService {
       final url = product.imageUrl;
       if (url == null || url.isEmpty) continue;
       try {
-        images[product.id] = await networkImage(url);
+        images[product.id] = pw.MemoryImage(await _download(url));
       } catch (_) {
         // El catálogo sigue siendo utilizable si una imagen remota no responde.
       }
@@ -175,6 +175,24 @@ class CatalogPdfService {
     return document.save();
   }
 
+  Future<Uint8List> _download(String url) async {
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(Uri.parse(url));
+      final response = await request.close();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException('Image request failed: ${response.statusCode}');
+      }
+      final bytes = <int>[];
+      await for (final chunk in response) {
+        bytes.addAll(chunk);
+      }
+      return Uint8List.fromList(bytes);
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   pw.Widget _card(
     Product product, {
     pw.ImageProvider? image,
@@ -247,7 +265,11 @@ class CatalogPdfService {
           if (hasPromotion)
             pw.Text(
               'Antes: USD ${(product.unitPriceInCents / 100).toStringAsFixed(2)}',
-              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+              style: const pw.TextStyle(
+                fontSize: 9,
+                color: PdfColors.grey600,
+                decoration: pw.TextDecoration.lineThrough,
+              ),
             ),
           pw.Text(
             'USD ${(finalPrice / 100).toStringAsFixed(2)}',

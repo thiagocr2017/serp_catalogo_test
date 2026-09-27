@@ -48,6 +48,7 @@ Future<void> main() async {
       agentName: 'Thiago Lopez',
       agentPhone: '+506 8888 8888',
       cardsPerPage: 4,
+      categoryNames: {'1': 'Organización', '2': 'Cocina'},
     ),
   );
   final output = File('output/pdf/catalogo_serp_muestra.pdf');
