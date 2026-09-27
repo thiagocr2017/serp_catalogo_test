@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../modules/product/presentation/pages/product_form_page.dart';
 import '../../modules/product/presentation/pages/category_page.dart';
 import '../../modules/product/presentation/pages/product_list_page.dart';
+import '../../modules/inventory/presentation/pages/inventory_page.dart';
+import '../../modules/inventory/presentation/pages/audit_page.dart';
 import '../../shared/widgets/desktop_shell_widget.dart';
 
 final appRouter = GoRouter(
@@ -27,6 +29,11 @@ final appRouter = GoRouter(
           path: '/categories',
           builder: (context, state) => const CategoryPage(),
         ),
+        GoRoute(
+          path: '/inventory',
+          builder: (context, state) => const InventoryPage(),
+        ),
+        GoRoute(path: '/audit', builder: (context, state) => const AuditPage()),
         GoRoute(
           path: '/promotions',
           builder: (context, state) => const _PendingPage(title: 'Promociones'),

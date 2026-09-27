@@ -7,6 +7,9 @@ import 'core/navigation/app_router.dart';
 import 'modules/product/data/data_sources/supabase_product_data_source.dart';
 import 'modules/product/data/repositories/supabase_product_repository.dart';
 import 'modules/product/di/product_providers.dart';
+import 'modules/inventory/data/data_sources/supabase_inventory_data_source.dart';
+import 'modules/inventory/data/repositories/supabase_inventory_repository.dart';
+import 'modules/inventory/di/inventory_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,10 +21,16 @@ Future<void> main() async {
   final repository = SupabaseProductRepository(
     SupabaseProductDataSource(Supabase.instance.client),
   );
+  final inventoryRepository = SupabaseInventoryRepository(
+    SupabaseInventoryDataSource(Supabase.instance.client),
+  );
 
   runApp(
     ProviderScope(
-      overrides: [productRepositoryProvider.overrideWithValue(repository)],
+      overrides: [
+        productRepositoryProvider.overrideWithValue(repository),
+        inventoryRepositoryProvider.overrideWithValue(inventoryRepository),
+      ],
       child: const SerpApp(),
     ),
   );
