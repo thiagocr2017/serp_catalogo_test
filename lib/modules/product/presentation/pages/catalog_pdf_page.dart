@@ -22,6 +22,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   final phone = TextEditingController(text: '+506');
   int cards = 4;
   List<Product>? products;
+  Map<String, String> categoryNames = const {};
   final selected = <String>{};
 
   @override
@@ -34,10 +35,21 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     final data = await ref.read(getProductsProvider)(
       const ProductQuery(isActive: true),
     );
+    final categories = await ref.read(categoriesProvider.future);
     if (mounted) {
+      final sharedSelection = ref.read(selectedProductIdsProvider);
       setState(() {
         products = data;
-        selected.addAll(data.map((p) => p.id));
+        categoryNames = {
+          for (final category in categories) category.id: category.name,
+        };
+        selected.addAll(
+          sharedSelection.isEmpty
+              ? data.map((p) => p.id)
+              : data
+                    .where((p) => sharedSelection.contains(p.id))
+                    .map((p) => p.id),
+        );
       });
     }
   }
@@ -92,11 +104,13 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         decoration: const InputDecoration(
                           labelText: 'Tarjetas por página',
                         ),
-                        items: const [1, 2, 3, 4, 6]
+                        items: const [0, 1, 2, 3, 4, 6]
                             .map(
                               (v) => DropdownMenuItem(
                                 value: v,
-                                child: Text('$v tarjetas'),
+                                child: Text(
+                                  v == 0 ? 'Lista compacta' : '$v tarjetas',
+                                ),
                               ),
                             )
                             .toList(),
@@ -109,6 +123,9 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         onChanged: (v) => setState(() {
                           selected.clear();
                           if (v == true) selected.addAll(data.map((p) => p.id));
+                          ref
+                              .read(selectedProductIdsProvider.notifier)
+                              .replaceAll(selected);
                         }),
                       ),
                       for (final p in data)
@@ -116,10 +133,12 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                           value: selected.contains(p.id),
                           title: Text(p.name),
                           subtitle: Text(p.sku),
-                          onChanged: (v) => setState(
-                            () =>
-                                v! ? selected.add(p.id) : selected.remove(p.id),
-                          ),
+                          onChanged: (v) => setState(() {
+                            v! ? selected.add(p.id) : selected.remove(p.id);
+                            ref
+                                .read(selectedProductIdsProvider.notifier)
+                                .replaceAll(selected);
+                          }),
                         ),
                     ],
                   ),
@@ -139,6 +158,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         agentName: agent.text,
                         agentPhone: phone.text,
                         cardsPerPage: cards,
+                        categoryNames: categoryNames,
                       ),
                     ),
                   ),

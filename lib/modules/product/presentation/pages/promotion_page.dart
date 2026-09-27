@@ -57,11 +57,13 @@ class PromotionPage extends ConsumerWidget {
     final products = await ref.read(getProductsProvider)(
       const ProductQuery(isActive: true),
     );
+    final categories = await ref.read(categoriesProvider.future);
     if (!context.mounted) return;
     final name = TextEditingController();
     final discount = TextEditingController();
     final conditions = TextEditingController();
-    var all = true;
+    var scope = 'all';
+    final categoryIds = <String>{};
     final selected = <String>{};
     var endDate = DateTime.now().add(const Duration(days: 30));
     final accepted = await showDialog<bool>(
@@ -88,12 +90,55 @@ class PromotionPage extends ConsumerWidget {
                   maxLines: 3,
                   decoration: const InputDecoration(labelText: 'Condiciones'),
                 ),
-                SwitchListTile(
-                  value: all,
-                  onChanged: (v) => setState(() => all = v),
-                  title: const Text('Aplicar a todos los productos'),
+                DropdownButtonFormField<String>(
+                  initialValue: scope,
+                  decoration: const InputDecoration(labelText: 'Alcance'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'all',
+                      child: Text('Todos los productos'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'category',
+                      child: Text('Una o varias categorías'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'manual',
+                      child: Text('Selección manual'),
+                    ),
+                  ],
+                  onChanged: (value) => setState(() {
+                    scope = value!;
+                    selected.clear();
+                    categoryIds.clear();
+                  }),
                 ),
-                if (!all) ...[
+                if (scope == 'category') ...[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: Text('Categorías incluidas (selección congelada)'),
+                  ),
+                  for (final category in categories)
+                    CheckboxListTile(
+                      value: categoryIds.contains(category.id),
+                      title: Text(category.name),
+                      onChanged: (value) => setState(() {
+                        value!
+                            ? categoryIds.add(category.id)
+                            : categoryIds.remove(category.id);
+                        selected
+                          ..clear()
+                          ..addAll(
+                            products
+                                .where(
+                                  (p) => categoryIds.contains(p.categoryId),
+                                )
+                                .map((p) => p.id),
+                          );
+                      }),
+                    ),
+                ],
+                if (scope == 'manual') ...[
                   const Text('Productos incluidos'),
                   for (final p in products)
                     CheckboxListTile(
@@ -140,20 +185,38 @@ class PromotionPage extends ConsumerWidget {
         ),
       ),
     );
-    if (accepted == true && name.text.trim().isNotEmpty) {
+    final percentage = double.tryParse(discount.text.replaceAll(',', '.'));
+    final validSelection = scope == 'all' || selected.isNotEmpty;
+    if (accepted == true &&
+        name.text.trim().isNotEmpty &&
+        percentage != null &&
+        percentage > 0 &&
+        percentage <= 100 &&
+        validSelection) {
       final promotion = BulkPromotion(
         id: const Uuid().v4(),
         name: name.text.trim(),
-        discountPercentage: double.parse(discount.text),
+        discountPercentage: percentage,
         conditionsText: conditions.text.trim(),
         endDate: endDate,
-        appliesToAllProducts: all,
+        appliesToAllProducts: scope == 'all',
         isActive: true,
       );
       await ref
           .read(promotionRepositoryProvider)
-          .createPromotion(promotion, productIds: selected);
+          .createPromotion(
+            promotion,
+            productIds: scope == 'all' ? const <String>{} : selected,
+          );
       ref.invalidate(promotionsProvider);
+    } else if (accepted == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Complete el nombre, un descuento entre 0 y 100 y el alcance.',
+          ),
+        ),
+      );
     }
     name.dispose();
     discount.dispose();

@@ -1,13 +1,16 @@
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/device/device_identity.dart';
+
 import '../../domain/entities/audit_entry.dart';
 import '../../domain/entities/inventory_transaction.dart';
 import '../../domain/repositories/inventory_repository.dart';
 import '../data_sources/supabase_inventory_data_source.dart';
 
 class SupabaseInventoryRepository implements InventoryRepository {
-  const SupabaseInventoryRepository(this._source);
+  const SupabaseInventoryRepository(this._source, this._device);
   final SupabaseInventoryDataSource _source;
+  final DeviceIdentity _device;
 
   static const _reasonToDatabase = {
     InventoryReason.initialStock: 'INITIAL_STOCK',
@@ -39,9 +42,9 @@ class SupabaseInventoryRepository implements InventoryRepository {
       'quantity': quantity,
       'reason': _reasonToDatabase[reason],
       'notes': notes,
-      'actor_name': 'Desktop local',
-      'device_name': 'SERP Desktop',
-      'device_identifier': 'local-device',
+      'actor_name': _device.actorName,
+      'device_name': _device.name,
+      'device_identifier': _device.identifier,
     });
     return _transaction(row);
   }
@@ -58,9 +61,9 @@ class SupabaseInventoryRepository implements InventoryRepository {
       'reason': 'REVERSAL',
       'reversal_of_transaction_id': original.id,
       'notes': notes,
-      'actor_name': 'Desktop local',
-      'device_name': 'SERP Desktop',
-      'device_identifier': 'local-device',
+      'actor_name': _device.actorName,
+      'device_name': _device.name,
+      'device_identifier': _device.identifier,
     });
     return _transaction(row);
   }

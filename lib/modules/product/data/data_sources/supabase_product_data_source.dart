@@ -1,16 +1,19 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/device/device_identity.dart';
+
 import '../../domain/entities/product_query.dart';
 import '../models/product_model.dart';
 import '../models/category_model.dart';
 
 class SupabaseProductDataSource {
-  const SupabaseProductDataSource(this._client);
+  const SupabaseProductDataSource(this._client, this._device);
 
   final SupabaseClient _client;
+  final DeviceIdentity _device;
 
   Future<List<ProductModel>> getProducts(ProductQuery query) async {
-    final rows = await _client.from('products').select().order('name');
+    final rows = await _client.from('product_catalog').select().order('name');
     final products = rows.map(ProductModel.new).toList();
 
     return products.where((product) {
@@ -45,7 +48,7 @@ class SupabaseProductDataSource {
 
   Future<ProductModel?> getProductById(String id) async {
     final row = await _client
-        .from('products')
+        .from('product_catalog')
         .select()
         .eq('id', id)
         .maybeSingle();
@@ -61,9 +64,9 @@ class SupabaseProductDataSource {
       params: {
         'p_product': values,
         'p_initial_stock': initialStock,
-        'p_actor_name': 'Desktop local',
-        'p_device_name': 'SERP Desktop',
-        'p_device_identifier': 'local-device',
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
       },
     );
     return ProductModel(row);
@@ -83,9 +86,9 @@ class SupabaseProductDataSource {
         .from('categories')
         .insert({
           'name': name.trim(),
-          'created_by': 'Desktop local',
-          'created_device_name': 'SERP Desktop',
-          'created_device_identifier': 'local-device',
+          'created_by': _device.actorName,
+          'created_device_name': _device.name,
+          'created_device_identifier': _device.identifier,
         })
         .select()
         .single();
@@ -97,9 +100,9 @@ class SupabaseProductDataSource {
     Map<String, dynamic> values,
   ) async {
     values.addAll({
-      'updated_by': 'Desktop local',
-      'updated_device_name': 'SERP Desktop',
-      'updated_device_identifier': 'local-device',
+      'updated_by': _device.actorName,
+      'updated_device_name': _device.name,
+      'updated_device_identifier': _device.identifier,
     });
     final row = await _client
         .from('products')
@@ -116,10 +119,10 @@ class SupabaseProductDataSource {
         .update({
           'is_active': false,
           'deleted_at': DateTime.now().toUtc().toIso8601String(),
-          'deleted_by': 'Desktop local',
-          'updated_by': 'Desktop local',
-          'updated_device_name': 'SERP Desktop',
-          'updated_device_identifier': 'local-device',
+          'deleted_by': _device.actorName,
+          'updated_by': _device.actorName,
+          'updated_device_name': _device.name,
+          'updated_device_identifier': _device.identifier,
         })
         .eq('id', id);
   }

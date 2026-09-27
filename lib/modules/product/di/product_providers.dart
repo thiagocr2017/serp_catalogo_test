@@ -41,6 +41,22 @@ final categoriesProvider = FutureProvider<List<Category>>((ref) {
   return ref.watch(productRepositoryProvider).getCategories();
 });
 
+final selectedProductIdsProvider =
+    NotifierProvider<SelectedProductIds, Set<String>>(SelectedProductIds.new);
+
+class SelectedProductIds extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => <String>{};
+
+  void toggle(String id, {required bool selected}) {
+    state = selected ? {...state, id} : ({...state}..remove(id));
+  }
+
+  void replaceAll(Iterable<String> ids) => state = ids.toSet();
+
+  void clear() => state = <String>{};
+}
+
 final productImageServiceProvider = Provider<ProductImageService>(
   (ref) => throw StateError('ProductImageService must be overridden.'),
 );

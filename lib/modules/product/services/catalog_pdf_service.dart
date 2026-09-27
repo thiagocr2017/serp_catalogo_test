@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../domain/entities/product.dart';
 
@@ -12,12 +13,14 @@ class CatalogPdfOptions {
     required this.agentName,
     required this.agentPhone,
     required this.cardsPerPage,
+    this.categoryNames = const {},
   });
   final String companyName;
   final String paymentMethods;
   final String agentName;
   final String agentPhone;
   final int cardsPerPage;
+  final Map<String, String> categoryNames;
 }
 
 class CatalogPdfService {
@@ -25,6 +28,16 @@ class CatalogPdfService {
     List<Product> products,
     CatalogPdfOptions options,
   ) async {
+    final images = <String, pw.ImageProvider>{};
+    for (final product in products) {
+      final url = product.imageUrl;
+      if (url == null || url.isEmpty) continue;
+      try {
+        images[product.id] = await networkImage(url);
+      } catch (_) {
+        // El catálogo sigue siendo utilizable si una imagen remota no responde.
+      }
+    }
     final document = pw.Document(
       title: 'Catálogo ${options.companyName}',
       author: options.agentName,
@@ -83,7 +96,8 @@ class CatalogPdfService {
         ),
       ),
     );
-    final columns = options.cardsPerPage == 1
+    final compact = options.cardsPerPage == 0;
+    final columns = compact || options.cardsPerPage == 1
         ? 1
         : options.cardsPerPage <= 4
         ? 2
@@ -108,21 +122,64 @@ class CatalogPdfService {
             'Página ${context.pageNumber} de ${context.pagesCount}',
           ),
         ),
-        build: (_) => [
-          pw.GridView(
-            crossAxisCount: columns,
-            childAspectRatio: options.cardsPerPage == 1 ? 1.8 : 1.15,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            children: [for (final product in products) _card(product)],
-          ),
-        ],
+        build: (_) {
+          final groups = <String, List<Product>>{};
+          for (final product in products) {
+            groups.putIfAbsent(product.categoryId, () => []).add(product);
+          }
+          return [
+            for (final entry in groups.entries) ...[
+              pw.Container(
+                width: double.infinity,
+                margin: const pw.EdgeInsets.only(top: 12, bottom: 10),
+                padding: const pw.EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 9,
+                ),
+                color: PdfColors.indigo700,
+                child: pw.Text(
+                  options.categoryNames[entry.key] ?? 'Sin categoría',
+                  style: pw.TextStyle(
+                    color: PdfColors.white,
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (compact)
+                for (final product in entry.value)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.only(bottom: 8),
+                    child: _card(
+                      product,
+                      image: images[product.id],
+                      compact: true,
+                    ),
+                  )
+              else
+                pw.GridView(
+                  crossAxisCount: columns,
+                  childAspectRatio: options.cardsPerPage == 1 ? 1.8 : 1.15,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  children: [
+                    for (final product in entry.value)
+                      _card(product, image: images[product.id], compact: false),
+                  ],
+                ),
+            ],
+          ];
+        },
       ),
     );
     return document.save();
   }
 
-  pw.Widget _card(Product product) {
+  pw.Widget _card(
+    Product product, {
+    pw.ImageProvider? image,
+    required bool compact,
+  }) {
     final hasPromotion = product.promotionPriceInCents != null;
     final finalPrice = hasPromotion
         ? product.promotionPriceInCents!
@@ -136,6 +193,14 @@ class CatalogPdfService {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
+          if (image != null && !compact) ...[
+            pw.Container(
+              height: 90,
+              width: double.infinity,
+              child: pw.Image(image, fit: pw.BoxFit.contain),
+            ),
+            pw.SizedBox(height: 8),
+          ],
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
@@ -174,7 +239,7 @@ class CatalogPdfService {
             maxLines: 3,
             overflow: pw.TextOverflow.clip,
           ),
-          pw.Spacer(),
+          if (compact) pw.SizedBox(height: 6) else pw.Spacer(),
           pw.Text(
             'Se vende en ${product.packagingType.name.toUpperCase()} - MOQ ${product.minimumOrderQuantity}',
             style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),

@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../domain/entities/product.dart';
+import '../../domain/entities/category.dart';
 import '../../domain/entities/product_query.dart';
+import '../../di/product_providers.dart';
 import '../controllers/product_list_controller.dart';
 
 enum ProductView { list, grid }
@@ -17,13 +19,18 @@ class ProductListPage extends ConsumerStatefulWidget {
 
 class _ProductListPageState extends ConsumerState<ProductListPage> {
   final _searchController = TextEditingController();
+  final _minimumPriceController = TextEditingController();
+  final _maximumPriceController = TextEditingController();
   ProductView _view = ProductView.list;
   bool _onlyLowStock = false;
   bool? _activeStatus = true;
+  String? _categoryId;
 
   @override
   void dispose() {
     _searchController.dispose();
+    _minimumPriceController.dispose();
+    _maximumPriceController.dispose();
     super.dispose();
   }
 
@@ -35,13 +42,23 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
             searchTerm: _searchController.text,
             isActive: _activeStatus,
             onlyLowStock: _onlyLowStock,
+            categoryId: _categoryId,
+            minimumPriceInCents: _toCents(_minimumPriceController.text),
+            maximumPriceInCents: _toCents(_maximumPriceController.text),
           ),
         );
+  }
+
+  int? _toCents(String value) {
+    final amount = double.tryParse(value.replaceAll(',', '.'));
+    return amount == null ? null : (amount * 100).round();
   }
 
   @override
   Widget build(BuildContext context) {
     final products = ref.watch(productListControllerProvider);
+    final categories = ref.watch(categoriesProvider).value ?? const [];
+    final selectedIds = ref.watch(selectedProductIdsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -73,10 +90,18 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
           children: [
             _Toolbar(
               searchController: _searchController,
+              minimumPriceController: _minimumPriceController,
+              maximumPriceController: _maximumPriceController,
+              categories: categories,
+              categoryId: _categoryId,
               view: _view,
               activeStatus: _activeStatus,
               onlyLowStock: _onlyLowStock,
               onSearch: _applyFilters,
+              onCategoryChanged: (categoryId) {
+                setState(() => _categoryId = categoryId);
+                _applyFilters();
+              },
               onViewChanged: (view) => setState(() => _view = view),
               onStatusChanged: (status) {
                 setState(() => _activeStatus = status);
@@ -88,6 +113,25 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
               },
             ),
             const SizedBox(height: 20),
+            if (selectedIds.isNotEmpty) ...[
+              Row(
+                children: [
+                  Text('${selectedIds.length} producto(s) seleccionado(s)'),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: () => context.go('/catalog-export'),
+                    icon: const Icon(Icons.picture_as_pdf),
+                    label: const Text('Exportar seleccionados'),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        ref.read(selectedProductIdsProvider.notifier).clear(),
+                    child: const Text('Limpiar selección'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
             Expanded(
               child: products.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
@@ -101,8 +145,20 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
                         ),
                       )
                     : _view == ProductView.list
-                    ? _ProductTable(products: items)
-                    : _ProductGrid(products: items),
+                    ? _ProductTable(
+                        products: items,
+                        selectedIds: selectedIds,
+                        onSelected: (id, selected) => ref
+                            .read(selectedProductIdsProvider.notifier)
+                            .toggle(id, selected: selected),
+                      )
+                    : _ProductGrid(
+                        products: items,
+                        selectedIds: selectedIds,
+                        onSelected: (id, selected) => ref
+                            .read(selectedProductIdsProvider.notifier)
+                            .toggle(id, selected: selected),
+                      ),
               ),
             ),
           ],
@@ -115,20 +171,30 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
 class _Toolbar extends StatelessWidget {
   const _Toolbar({
     required this.searchController,
+    required this.minimumPriceController,
+    required this.maximumPriceController,
+    required this.categories,
+    required this.categoryId,
     required this.view,
     required this.activeStatus,
     required this.onlyLowStock,
     required this.onSearch,
+    required this.onCategoryChanged,
     required this.onViewChanged,
     required this.onStatusChanged,
     required this.onLowStockChanged,
   });
 
   final TextEditingController searchController;
+  final TextEditingController minimumPriceController;
+  final TextEditingController maximumPriceController;
+  final List<Category> categories;
+  final String? categoryId;
   final ProductView view;
   final bool? activeStatus;
   final bool onlyLowStock;
   final VoidCallback onSearch;
+  final ValueChanged<String?> onCategoryChanged;
   final ValueChanged<ProductView> onViewChanged;
   final ValueChanged<bool?> onStatusChanged;
   final ValueChanged<bool> onLowStockChanged;
@@ -166,6 +232,47 @@ class _Toolbar extends StatelessWidget {
           ],
           onChanged: onStatusChanged,
         ),
+        DropdownButton<String?>(
+          value: categoryId,
+          hint: const Text('Categoría'),
+          items: [
+            const DropdownMenuItem(
+              value: null,
+              child: Text('Todas las categorías'),
+            ),
+            for (final category in categories)
+              DropdownMenuItem(value: category.id, child: Text(category.name)),
+          ],
+          onChanged: onCategoryChanged,
+        ),
+        SizedBox(
+          width: 120,
+          child: TextField(
+            controller: minimumPriceController,
+            keyboardType: TextInputType.number,
+            onSubmitted: (_) => onSearch(),
+            decoration: const InputDecoration(
+              labelText: 'Precio mín.',
+              prefixText: r'$ ',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 120,
+          child: TextField(
+            controller: maximumPriceController,
+            keyboardType: TextInputType.number,
+            onSubmitted: (_) => onSearch(),
+            decoration: const InputDecoration(
+              labelText: 'Precio máx.',
+              prefixText: r'$ ',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+          ),
+        ),
         FilterChip(
           selected: onlyLowStock,
           onSelected: onLowStockChanged,
@@ -195,8 +302,14 @@ class _Toolbar extends StatelessWidget {
 }
 
 class _ProductTable extends StatelessWidget {
-  const _ProductTable({required this.products});
+  const _ProductTable({
+    required this.products,
+    required this.selectedIds,
+    required this.onSelected,
+  });
   final List<Product> products;
+  final Set<String> selectedIds;
+  final void Function(String id, bool selected) onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -215,10 +328,15 @@ class _ProductTable extends StatelessWidget {
           rows: [
             for (final product in products)
               DataRow(
-                onSelectChanged: (_) => context.go('/products/${product.id}'),
+                selected: selectedIds.contains(product.id),
+                onSelectChanged: (selected) =>
+                    onSelected(product.id, selected ?? false),
                 cells: [
                   DataCell(Text(product.sku)),
-                  DataCell(Text(product.name)),
+                  DataCell(
+                    Text(product.name),
+                    onTap: () => context.go('/products/${product.id}'),
+                  ),
                   DataCell(
                     Text(
                       '\$${(product.unitPriceInCents / 100).toStringAsFixed(2)}',
@@ -237,15 +355,21 @@ class _ProductTable extends StatelessWidget {
 }
 
 class _ProductGrid extends StatelessWidget {
-  const _ProductGrid({required this.products});
+  const _ProductGrid({
+    required this.products,
+    required this.selectedIds,
+    required this.onSelected,
+  });
   final List<Product> products;
+  final Set<String> selectedIds;
+  final void Function(String id, bool selected) onSelected;
 
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 330,
-        mainAxisExtent: 190,
+        mainAxisExtent: 270,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
@@ -260,8 +384,29 @@ class _ProductGrid extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (product.imageUrl != null)
+                    SizedBox(
+                      height: 72,
+                      width: double.infinity,
+                      child: Image.network(
+                        product.imageUrl!,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) =>
+                            const Icon(Icons.broken_image),
+                      ),
+                    )
+                  else
+                    const SizedBox(
+                      height: 72,
+                      child: Center(child: Icon(Icons.inventory_2_outlined)),
+                    ),
                   Row(
                     children: [
+                      Checkbox(
+                        value: selectedIds.contains(product.id),
+                        onChanged: (value) =>
+                            onSelected(product.id, value ?? false),
+                      ),
                       Expanded(child: Text(product.sku)),
                       _StockBadge(product: product),
                     ],

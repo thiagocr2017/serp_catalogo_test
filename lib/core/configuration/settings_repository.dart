@@ -1,10 +1,12 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../device/device_identity.dart';
 import 'business_settings.dart';
 
 class SettingsRepository {
-  const SettingsRepository(this._client);
+  const SettingsRepository(this._client, this._device);
   final SupabaseClient _client;
+  final DeviceIdentity _device;
 
   Future<BusinessSettings> get() async {
     final row = await _client.from('app_settings').select().single();
@@ -32,9 +34,9 @@ class SettingsRepository {
         'company_name': value.companyName,
         'payment_methods': value.paymentMethods,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
-        'updated_by': 'Desktop local',
-        'updated_device_name': 'SERP Desktop',
-        'updated_device_identifier': 'local-device',
+        'updated_by': _device.actorName,
+        'updated_device_name': _device.name,
+        'updated_device_identifier': _device.identifier,
       })
       .eq('id', true);
 }

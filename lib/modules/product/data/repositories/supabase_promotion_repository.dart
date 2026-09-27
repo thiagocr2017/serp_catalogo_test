@@ -1,11 +1,14 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/device/device_identity.dart';
+
 import '../../domain/entities/bulk_promotion.dart';
 import '../../domain/repositories/promotion_repository.dart';
 
 class SupabasePromotionRepository implements PromotionRepository {
-  const SupabasePromotionRepository(this._client);
+  const SupabasePromotionRepository(this._client, this._device);
   final SupabaseClient _client;
+  final DeviceIdentity _device;
 
   @override
   Future<List<BulkPromotion>> getPromotions() async =>
@@ -33,9 +36,9 @@ class SupabasePromotionRepository implements PromotionRepository {
           'end_date': promotion.endDate.toUtc().toIso8601String(),
           'applies_to_all_products': promotion.appliesToAllProducts,
           'is_active': promotion.isActive,
-          'created_by': 'Desktop local',
-          'created_device_name': 'SERP Desktop',
-          'created_device_identifier': 'local-device',
+          'created_by': _device.actorName,
+          'created_device_name': _device.name,
+          'created_device_identifier': _device.identifier,
         })
         .select()
         .single();
@@ -51,7 +54,12 @@ class SupabasePromotionRepository implements PromotionRepository {
   @override
   Future<void> setActive(String id, {required bool isActive}) => _client
       .from('bulk_promotions')
-      .update({'is_active': isActive, 'updated_by': 'Desktop local'})
+      .update({
+        'is_active': isActive,
+        'updated_by': _device.actorName,
+        'updated_device_name': _device.name,
+        'updated_device_identifier': _device.identifier,
+      })
       .eq('id', id);
 
   BulkPromotion _map(Map<String, dynamic> row) => BulkPromotion(
