@@ -318,6 +318,7 @@ class _ProductTable extends StatelessWidget {
         width: double.infinity,
         child: DataTable(
           columns: const [
+            DataColumn(label: Text('Seleccionar')),
             DataColumn(label: Text('SKU')),
             DataColumn(label: Text('Producto')),
             DataColumn(label: Text('Precio'), numeric: true),
@@ -329,10 +330,18 @@ class _ProductTable extends StatelessWidget {
             for (final product in products)
               DataRow(
                 selected: selectedIds.contains(product.id),
-                onSelectChanged: (selected) =>
-                    onSelected(product.id, selected ?? false),
                 cells: [
-                  DataCell(Text(product.sku)),
+                  DataCell(
+                    Checkbox(
+                      value: selectedIds.contains(product.id),
+                      onChanged: (selected) =>
+                          onSelected(product.id, selected ?? false),
+                    ),
+                  ),
+                  DataCell(
+                    Text(product.sku),
+                    onTap: () => context.go('/products/${product.id}'),
+                  ),
                   DataCell(
                     Text(product.name),
                     onTap: () => context.go('/products/${product.id}'),
@@ -341,10 +350,20 @@ class _ProductTable extends StatelessWidget {
                     Text(
                       '\$${(product.unitPriceInCents / 100).toStringAsFixed(2)}',
                     ),
+                    onTap: () => context.go('/products/${product.id}'),
                   ),
-                  DataCell(Text('${product.currentStock}')),
-                  DataCell(Text('${product.minimumOrderQuantity}')),
-                  DataCell(_StockBadge(product: product)),
+                  DataCell(
+                    Text('${product.currentStock}'),
+                    onTap: () => context.go('/products/${product.id}'),
+                  ),
+                  DataCell(
+                    Text('${product.minimumOrderQuantity}'),
+                    onTap: () => context.go('/products/${product.id}'),
+                  ),
+                  DataCell(
+                    _StockBadge(product: product),
+                    onTap: () => context.go('/products/${product.id}'),
+                  ),
                 ],
               ),
           ],
