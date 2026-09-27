@@ -47,6 +47,7 @@ Future<void> main() async {
       overrides: [
         productRepositoryProvider.overrideWithValue(repository),
         inventoryRepositoryProvider.overrideWithValue(inventoryRepository),
+        productInventoryApiProvider.overrideWithValue(inventoryRepository),
         promotionRepositoryProvider.overrideWithValue(promotionRepository),
         settingsRepositoryProvider.overrideWithValue(settingsRepository),
         productImageServiceProvider.overrideWithValue(imageService),

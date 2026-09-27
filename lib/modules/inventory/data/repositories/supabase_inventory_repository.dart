@@ -1,13 +1,14 @@
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/device/device_identity.dart';
+import '../../api/inventory_api.dart';
 
 import '../../domain/entities/audit_entry.dart';
 import '../../domain/entities/inventory_transaction.dart';
 import '../../domain/repositories/inventory_repository.dart';
 import '../data_sources/supabase_inventory_data_source.dart';
 
-class SupabaseInventoryRepository implements InventoryRepository {
+class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
   const SupabaseInventoryRepository(this._source, this._device);
   final SupabaseInventoryDataSource _source;
   final DeviceIdentity _device;

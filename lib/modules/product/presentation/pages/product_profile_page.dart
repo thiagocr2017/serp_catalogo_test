@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../inventory/di/inventory_providers.dart';
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
 import '../controllers/product_list_controller.dart';

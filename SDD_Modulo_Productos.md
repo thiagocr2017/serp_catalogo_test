@@ -151,7 +151,7 @@ Al crear una promoción, la interfaz permitirá seleccionar todos los productos,
 
 Las selecciones se guardan mediante las tablas de relación `bulk_promotion_products` (`promotion_id`, `product_id`) y `bulk_promotion_categories` (`promotion_id`, `category_id`).
 
-Antes de implementar se debe fijar la semántica de categoría: selección dinámica, donde futuros productos de la categoría entran automáticamente, o selección congelada, donde se guardan los productos existentes al crear la promoción. La opción recomendada para campañas comerciales cerradas es congelar la selección de productos para evitar incorporaciones accidentales.
+La selección por una o varias categorías utiliza semántica **congelada**: al crear la promoción se guardan en `bulk_promotion_products` los productos que pertenecen a las categorías seleccionadas en ese momento. Los productos agregados posteriormente no entran automáticamente en la campaña. Esta decisión evita incorporaciones accidentales y conserva el alcance comercial original.
 
 ### 4.6 Prioridad de promociones
 
@@ -224,10 +224,11 @@ Las reglas que protegen la integridad de los datos deben ejecutarse en PostgreSQ
 
 Esto no reemplaza las validaciones de la aplicación. La aplicación valida para ofrecer mensajes claros e interacción inmediata; PostgreSQL vuelve a validar para impedir inconsistencias por concurrencia, errores de programación o futuros clientes que escriban en la misma base de datos.
 
-## 7. Decisiones pendientes de implementación
+## 7. Estado de decisiones de implementación
 
-- Estrategia definitiva de categorías dinámicas o congeladas en promociones.
-- Reglas del módulo de configuración para impuestos y redondeo.
-- Políticas RLS, permisos y autenticación de Supabase.
+- Selección por categorías: resuelta como selección congelada de productos.
+- Impuestos y redondeo: configurables mediante `app_settings`; la aplicación conserva USD y dos decimales como valores iniciales.
+- RLS: existen políticas locales provisionales para los roles `anon` y `authenticated`; deben reemplazarse por políticas basadas en roles al incorporar autenticación.
+- Identificación provisional: la aplicación obtiene el nombre del equipo y la primera dirección MAC disponible; si el sistema no permite leerla, usa el nombre del equipo como identificador de respaldo.
 - Tratamiento de salidas que intentarían dejar el stock por debajo de cero.
 - Estrategia de sincronización y recuperación ante pérdida de conexión.

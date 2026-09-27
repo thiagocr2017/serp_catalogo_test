@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../inventory/inventory_module.dart';
+
 import '../api/product_api.dart';
 import '../domain/entities/product.dart';
 import '../domain/entities/product_query.dart';
@@ -56,6 +58,23 @@ class SelectedProductIds extends Notifier<Set<String>> {
 
   void clear() => state = <String>{};
 }
+
+final productInventoryApiProvider = Provider<InventoryApi>(
+  (ref) => throw StateError('InventoryApi must be overridden.'),
+);
+
+final productTransactionsProvider =
+    FutureProvider.family<List<InventoryTransaction>, String>(
+      (ref, productId) => ref
+          .watch(productInventoryApiProvider)
+          .getTransactions(productId: productId),
+    );
+
+final productAuditProvider = FutureProvider.family<List<AuditEntry>, String>(
+  (ref, productId) => ref
+      .watch(productInventoryApiProvider)
+      .getAuditEntries(tableName: 'products', recordId: productId),
+);
 
 final productImageServiceProvider = Provider<ProductImageService>(
   (ref) => throw StateError('ProductImageService must be overridden.'),
