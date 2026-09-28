@@ -74,6 +74,16 @@ class _InMemoryProductRepository implements ProductRepository {
       Category(id: 'category-id', name: name, isActive: true);
 
   @override
+  Future<Category> updateCategory(String id, String name) async =>
+      Category(id: id, name: name, isActive: true);
+
+  @override
+  Future<void> deleteCategory({
+    required String categoryId,
+    String? replacementCategoryId,
+  }) async {}
+
+  @override
   Future<void> deactivateProduct(String id) async {}
 
   @override

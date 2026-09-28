@@ -13,6 +13,13 @@ abstract interface class ProductRepository {
 
   Future<Category> createCategory(String name);
 
+  Future<Category> updateCategory(String id, String name);
+
+  Future<void> deleteCategory({
+    required String categoryId,
+    String? replacementCategoryId,
+  });
+
   Future<Product> updateProduct(Product product);
 
   Future<void> deactivateProduct(String id);

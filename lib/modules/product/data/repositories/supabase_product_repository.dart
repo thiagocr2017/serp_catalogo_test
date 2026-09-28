@@ -43,6 +43,19 @@ class SupabaseProductRepository implements ProductRepository {
       (await _dataSource.createCategory(name)).toDomain();
 
   @override
+  Future<Category> updateCategory(String id, String name) async =>
+      (await _dataSource.updateCategory(id, name)).toDomain();
+
+  @override
+  Future<void> deleteCategory({
+    required String categoryId,
+    String? replacementCategoryId,
+  }) => _dataSource.deleteCategory(
+    categoryId: categoryId,
+    replacementCategoryId: replacementCategoryId,
+  );
+
+  @override
   Future<Product> updateProduct(Product product) async {
     return (await _dataSource.updateProduct(
       product.id,

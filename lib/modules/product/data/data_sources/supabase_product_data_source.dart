@@ -112,6 +112,35 @@ class SupabaseProductDataSource {
     return CategoryModel(row);
   }
 
+  Future<CategoryModel> updateCategory(String id, String name) async {
+    final row = await _client
+        .from('categories')
+        .update({
+          'name': name.trim(),
+          'updated_by': _device.actorName,
+          'updated_device_name': _device.name,
+          'updated_device_identifier': _device.identifier,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+    return CategoryModel(row);
+  }
+
+  Future<void> deleteCategory({
+    required String categoryId,
+    String? replacementCategoryId,
+  }) => _client.rpc<void>(
+    'delete_category_and_reassign_products',
+    params: {
+      'p_category_id': categoryId,
+      'p_replacement_category_id': replacementCategoryId,
+      'p_actor_name': _device.actorName,
+      'p_device_name': _device.name,
+      'p_device_identifier': _device.identifier,
+    },
+  );
+
   Future<ProductModel> updateProduct(
     String id,
     Map<String, dynamic> values,
