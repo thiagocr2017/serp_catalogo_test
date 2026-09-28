@@ -147,6 +147,7 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
                     : _view == ProductView.list
                     ? _ProductTable(
                         products: items,
+                        categories: categories,
                         selectedIds: selectedIds,
                         onSelectAll: (selected) => ref
                             .read(selectedProductIdsProvider.notifier)
@@ -324,11 +325,13 @@ class _Toolbar extends StatelessWidget {
 class _ProductTable extends StatelessWidget {
   const _ProductTable({
     required this.products,
+    required this.categories,
     required this.selectedIds,
     required this.onSelected,
     required this.onSelectAll,
   });
   final List<Product> products;
+  final List<Category> categories;
   final Set<String> selectedIds;
   final void Function(String id, bool selected) onSelected;
   final ValueChanged<bool> onSelectAll;
@@ -339,6 +342,8 @@ class _ProductTable extends StatelessWidget {
       child: SizedBox(
         width: double.infinity,
         child: DataTable(
+          columnSpacing: 18,
+          horizontalMargin: 8,
           columns: [
             DataColumn(
               label: Checkbox(
@@ -356,7 +361,7 @@ class _ProductTable extends StatelessWidget {
             const DataColumn(label: Text('Producto')),
             const DataColumn(label: Text('Precio'), numeric: true),
             const DataColumn(label: Text('Stock'), numeric: true),
-            const DataColumn(label: Text('Venta mín.'), numeric: true),
+            const DataColumn(label: Text('Categoría')),
             const DataColumn(label: Text('Estado')),
           ],
           rows: [
@@ -384,7 +389,14 @@ class _ProductTable extends StatelessWidget {
                     onTap: () => context.go('/products/${product.id}'),
                   ),
                   DataCell(
-                    Text(product.name),
+                    SizedBox(
+                      width: 140,
+                      child: Text(
+                        product.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     onTap: () => context.go('/products/${product.id}'),
                   ),
                   DataCell(
@@ -398,7 +410,21 @@ class _ProductTable extends StatelessWidget {
                     onTap: () => context.go('/products/${product.id}'),
                   ),
                   DataCell(
-                    Text('${product.minimumSaleQuantity}'),
+                    SizedBox(
+                      width: 90,
+                      child: Text(
+                        categories
+                                .where(
+                                  (category) =>
+                                      category.id == product.categoryId,
+                                )
+                                .firstOrNull
+                                ?.name ??
+                            'Sin categoría',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     onTap: () => context.go('/products/${product.id}'),
                   ),
                   DataCell(

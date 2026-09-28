@@ -8,6 +8,7 @@ import '../../modules/inventory/presentation/pages/audit_page.dart';
 import '../../modules/product/presentation/pages/promotion_page.dart';
 import '../../modules/product/presentation/pages/catalog_pdf_page.dart';
 import '../../modules/product/presentation/pages/product_profile_page.dart';
+import '../../modules/product/presentation/pages/product_transfer_page.dart';
 import '../configuration/settings_page.dart';
 import '../../shared/widgets/desktop_shell_widget.dart';
 
@@ -56,6 +57,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/catalog-export',
           builder: (context, state) => const CatalogPdfPage(),
+        ),
+        GoRoute(
+          path: '/product-transfer',
+          builder: (context, state) => const ProductTransferPage(),
         ),
         GoRoute(
           path: '/settings',

@@ -165,6 +165,19 @@ class SupabasePromotionRepository implements PromotionRepository {
       })
       .eq('id', id);
 
+  @override
+  Future<void> setProductCondition({
+    required String promotionId,
+    required String productId,
+    required String conditionsText,
+  }) async {
+    await _client.from('bulk_promotion_products').upsert({
+      'promotion_id': promotionId,
+      'product_id': productId,
+      'conditions_text': conditionsText.trim(),
+    });
+  }
+
   BulkPromotion _map(
     Map<String, dynamic> row, {
     Set<String> productIds = const {},

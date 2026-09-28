@@ -27,6 +27,10 @@ extension ProductModelMapper on ProductModel {
       promotionType: promotionType == null
           ? null
           : PromotionType.values.byName(promotionType!),
+      bulkPromotionId: bulkPromotionId,
+      bulkPromotionName: bulkPromotionName,
+      bulkPromotionConditions: bulkPromotionConditions,
+      bulkProductConditions: bulkProductConditions,
       isActive: isActive,
       createdAt: createdAt,
       updatedAt: updatedAt,

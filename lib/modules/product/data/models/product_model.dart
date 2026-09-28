@@ -27,6 +27,12 @@ class ProductModel {
       data['promo_price'] == null ? null : _moneyToCents(data['promo_price']);
   String? get promotionText => data['promo_text'] as String?;
   String? get promotionType => data['promotion_type'] as String?;
+  String? get bulkPromotionId => data['bulk_promotion_id'] as String?;
+  String? get bulkPromotionName => data['bulk_promotion_name'] as String?;
+  String? get bulkPromotionConditions =>
+      data['bulk_promotion_conditions'] as String?;
+  String? get bulkProductConditions =>
+      data['bulk_product_conditions'] as String?;
   bool get isActive => data['is_active'] as bool;
   DateTime get createdAt => DateTime.parse(data['created_at'] as String);
   DateTime? get updatedAt => _optionalDate(data['updated_at']);

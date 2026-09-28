@@ -15,4 +15,9 @@ abstract interface class PromotionRepository {
     Map<String, String> productConditions = const {},
   });
   Future<void> setActive(String id, {required bool isActive});
+  Future<void> setProductCondition({
+    required String promotionId,
+    required String productId,
+    required String conditionsText,
+  });
 }

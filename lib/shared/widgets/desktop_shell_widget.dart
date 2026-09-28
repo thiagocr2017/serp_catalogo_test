@@ -11,48 +11,91 @@ class DesktopShellWidget extends StatelessWidget {
   final String currentLocation;
   final Widget child;
 
-  static const _destinations = [
-    _Destination('/products', 'Productos', Icons.inventory_2_outlined),
-    _Destination('/categories', 'Categorías', Icons.category_outlined),
-    _Destination('/inventory', 'Inventario', Icons.swap_vert_circle_outlined),
-    _Destination('/audit', 'Auditoría', Icons.history_outlined),
-    _Destination('/promotions', 'Promociones', Icons.sell_outlined),
-    _Destination(
-      '/catalog-export',
-      'Catálogo PDF',
-      Icons.picture_as_pdf_outlined,
-    ),
-    _Destination('/settings', 'Configuración', Icons.settings_outlined),
-  ];
+  bool _selected(String path) => currentLocation.startsWith(path);
 
   @override
   Widget build(BuildContext context) {
-    final selectedIndex = _destinations.indexWhere(
-      (destination) => currentLocation.startsWith(destination.path),
-    );
-
+    final productModuleSelected = const [
+      '/products',
+      '/categories',
+      '/promotions',
+      '/catalog-export',
+      '/product-transfer',
+    ].any(_selected);
     return Scaffold(
       body: Row(
         children: [
-          NavigationRail(
-            extended: MediaQuery.sizeOf(context).width >= 1100,
-            selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-            onDestinationSelected: (index) =>
-                context.go(_destinations[index].path),
-            leading: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: CircleAvatar(
-                radius: 24,
-                child: Text('S', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(
+            width: 245,
+            child: Material(
+              color: Theme.of(context).colorScheme.surface,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
+                children: [
+                  const Center(
+                    child: CircleAvatar(
+                      radius: 24,
+                      child: Text(
+                        'S',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ExpansionTile(
+                    initiallyExpanded: productModuleSelected,
+                    leading: const Icon(Icons.inventory_2_outlined),
+                    title: const Text('Productos'),
+                    childrenPadding: const EdgeInsets.only(left: 16),
+                    children: [
+                      _item(
+                        context,
+                        '/products',
+                        'Lista de productos',
+                        Icons.list_alt_outlined,
+                      ),
+                      _item(
+                        context,
+                        '/categories',
+                        'Categorías',
+                        Icons.category_outlined,
+                      ),
+                      _item(
+                        context,
+                        '/promotions',
+                        'Promociones',
+                        Icons.sell_outlined,
+                      ),
+                      _item(
+                        context,
+                        '/catalog-export',
+                        'Catálogo PDF',
+                        Icons.picture_as_pdf_outlined,
+                      ),
+                      _item(
+                        context,
+                        '/product-transfer',
+                        'Importar / Exportar',
+                        Icons.import_export_outlined,
+                      ),
+                    ],
+                  ),
+                  _item(
+                    context,
+                    '/inventory',
+                    'Inventario',
+                    Icons.swap_vert_circle_outlined,
+                  ),
+                  _item(context, '/audit', 'Auditoría', Icons.history_outlined),
+                  _item(
+                    context,
+                    '/settings',
+                    'Configuración',
+                    Icons.settings_outlined,
+                  ),
+                ],
               ),
             ),
-            destinations: [
-              for (final destination in _destinations)
-                NavigationRailDestination(
-                  icon: Icon(destination.icon),
-                  label: Text(destination.label),
-                ),
-            ],
           ),
           const VerticalDivider(width: 1),
           Expanded(child: child),
@@ -60,12 +103,19 @@ class DesktopShellWidget extends StatelessWidget {
       ),
     );
   }
-}
 
-class _Destination {
-  const _Destination(this.path, this.label, this.icon);
-
-  final String path;
-  final String label;
-  final IconData icon;
+  Widget _item(
+    BuildContext context,
+    String path,
+    String label,
+    IconData icon,
+  ) => ListTile(
+    dense: true,
+    selected: _selected(path),
+    selectedTileColor: Theme.of(context).colorScheme.secondaryContainer,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    leading: Icon(icon),
+    title: Text(label),
+    onTap: () => context.go(path),
+  );
 }

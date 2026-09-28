@@ -6,6 +6,7 @@ import '../../../../core/configuration/settings_providers.dart';
 import '../../../inventory/domain/entities/audit_entry.dart';
 import '../../../inventory/domain/entities/inventory_transaction.dart';
 import '../../di/product_providers.dart';
+import '../../di/promotion_providers.dart';
 import '../../domain/entities/product.dart';
 import '../controllers/product_list_controller.dart';
 
@@ -175,8 +176,28 @@ class _Profile extends ConsumerWidget {
             title: 'Promoción aplicada',
             child: product.promotionPriceInCents == null
                 ? const Text('Sin promoción activa.')
-                : Text(
-                    '${product.promotionType == PromotionType.bulk ? 'Masiva' : 'Individual'} · Precio original USD ${(product.unitPriceInCents / 100).toStringAsFixed(2)}\nPrecio final USD ${(product.promotionPriceInCents! / 100).toStringAsFixed(2)}\n${product.promotionText ?? ''}',
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${product.promotionType == PromotionType.bulk ? 'Masiva' : 'Individual'} · Precio original USD ${(product.unitPriceInCents / 100).toStringAsFixed(2)}',
+                      ),
+                      Text(
+                        'Precio final USD ${(product.promotionPriceInCents! / 100).toStringAsFixed(2)}',
+                      ),
+                      if (product.promotionType == PromotionType.bulk) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          product.bulkPromotionName ?? 'Promoción masiva',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        if (product.bulkPromotionConditions?.isNotEmpty == true)
+                          Text(product.bulkPromotionConditions!),
+                        const SizedBox(height: 16),
+                        _BulkProductConditionEditor(product: product),
+                      ] else if (product.promotionText?.isNotEmpty == true)
+                        Text(product.promotionText!),
+                    ],
                   ),
           ),
           const SizedBox(height: 16),
@@ -642,6 +663,93 @@ class _SearchableHistoryState<T> extends State<_SearchableHistory<T>> {
           ),
       ],
     );
+  }
+}
+
+class _BulkProductConditionEditor extends ConsumerStatefulWidget {
+  const _BulkProductConditionEditor({required this.product});
+
+  final Product product;
+
+  @override
+  ConsumerState<_BulkProductConditionEditor> createState() =>
+      _BulkProductConditionEditorState();
+}
+
+class _BulkProductConditionEditorState
+    extends ConsumerState<_BulkProductConditionEditor> {
+  late final TextEditingController _controller;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: widget.product.bulkProductConditions ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _controller,
+            minLines: 2,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Descripción específica para este producto',
+              hintText: 'Ej. Para este código debe comprar al menos 6 unidades',
+              helperText:
+                  'Solo modifica este producto dentro de la promoción masiva.',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        FilledButton.icon(
+          onPressed: _saving ? null : _save,
+          icon: _saving
+              ? const SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.save_outlined),
+          label: const Text('Guardar descripción'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _save() async {
+    final promotionId = widget.product.bulkPromotionId;
+    if (promotionId == null) return;
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(promotionRepositoryProvider)
+          .setProductCondition(
+            promotionId: promotionId,
+            productId: widget.product.id,
+            conditionsText: _controller.text,
+          );
+      ref.invalidate(productByIdProvider(widget.product.id));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Descripción promocional guardada.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }
 

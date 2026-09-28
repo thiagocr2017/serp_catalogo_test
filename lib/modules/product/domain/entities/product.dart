@@ -27,6 +27,10 @@ class Product {
     this.promotionPriceInCents,
     this.promotionText,
     this.promotionType,
+    this.bulkPromotionId,
+    this.bulkPromotionName,
+    this.bulkPromotionConditions,
+    this.bulkProductConditions,
     this.updatedAt,
     this.deletedAt,
   });
@@ -52,6 +56,10 @@ class Product {
   final int? promotionPriceInCents;
   final String? promotionText;
   final PromotionType? promotionType;
+  final String? bulkPromotionId;
+  final String? bulkPromotionName;
+  final String? bulkPromotionConditions;
+  final String? bulkProductConditions;
   final bool isActive;
   final DateTime createdAt;
   final DateTime? updatedAt;
