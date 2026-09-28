@@ -23,6 +23,7 @@ class SupabasePromotionRepository implements PromotionRepository {
   Future<BulkPromotion> createPromotion(
     BulkPromotion promotion, {
     required Set<String> productIds,
+    Map<String, String> productConditions = const {},
   }) async {
     final row = await _client
         .from('bulk_promotions')
@@ -42,10 +43,18 @@ class SupabasePromotionRepository implements PromotionRepository {
         })
         .select()
         .single();
-    if (!promotion.appliesToAllProducts && productIds.isNotEmpty) {
+    final linkedProductIds = {
+      if (!promotion.appliesToAllProducts) ...productIds,
+      ...productConditions.keys,
+    };
+    if (linkedProductIds.isNotEmpty) {
       await _client.from('bulk_promotion_products').insert([
-        for (final id in productIds)
-          {'promotion_id': promotion.id, 'product_id': id},
+        for (final id in linkedProductIds)
+          {
+            'promotion_id': promotion.id,
+            'product_id': id,
+            'conditions_text': productConditions[id]?.trim() ?? '',
+          },
       ]);
     }
     return _map(row);

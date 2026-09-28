@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/configuration/settings_providers.dart';
+import '../../../inventory/domain/entities/audit_entry.dart';
 import '../../../inventory/domain/entities/inventory_transaction.dart';
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
@@ -152,17 +153,6 @@ class _Profile extends ConsumerWidget {
                 value: product.cbmPerMoq.toStringAsFixed(6),
                 icon: Icons.view_in_ar,
               ),
-              if (product.isOutOfStock)
-                _Metric(
-                  label: 'Agotado desde',
-                  value: transactions.maybeWhen(
-                    data: (items) =>
-                        _stockoutDate(items)?.toLocal().toString() ??
-                        'Sin fecha determinada',
-                    orElse: () => 'Calculando...',
-                  ),
-                  icon: Icons.event_busy,
-                ),
               _Metric(
                 label: 'Costo fábrica',
                 value:
@@ -195,24 +185,31 @@ class _Profile extends ConsumerWidget {
             child: transactions.when(
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('$e'),
-              data: (items) => Column(
-                children: [
-                  for (final item in items)
-                    ListTile(
-                      dense: true,
-                      leading: Icon(
-                        item.quantity > 0
-                            ? Icons.add_circle_outline
-                            : Icons.remove_circle_outline,
-                      ),
-                      title: Text(
-                        '${item.quantity > 0 ? '+' : ''}${item.quantity} · ${item.reason.name}',
-                      ),
-                      subtitle: Text(
-                        '${item.notes ?? ''} · ${item.createdAt.toLocal()}',
-                      ),
-                    ),
-                ],
+              data: (items) => _SearchableHistory<InventoryTransaction>(
+                searchLabel: 'Buscar en historial de inventario',
+                emptyText: 'Sin movimientos de inventario.',
+                items: [...items]
+                  ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+                searchableText: (item) => [
+                  _inventoryReason(item.reason),
+                  item.quantity,
+                  item.notes,
+                  item.createdAt.toLocal(),
+                ].join(' '),
+                itemBuilder: (context, item) => ListTile(
+                  dense: true,
+                  leading: Icon(
+                    item.quantity > 0
+                        ? Icons.add_circle_outline
+                        : Icons.remove_circle_outline,
+                  ),
+                  title: Text(
+                    '${item.quantity > 0 ? '+' : ''}${item.quantity} · ${_inventoryReason(item.reason)}',
+                  ),
+                  subtitle: Text(
+                    '${item.notes?.trim().isEmpty ?? true ? 'Sin notas' : item.notes} · ${item.createdAt.toLocal()}',
+                  ),
+                ),
               ),
             ),
           ),
@@ -223,29 +220,30 @@ class _Profile extends ConsumerWidget {
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('$e'),
               data: (items) {
-                final filtered = items
-                    .where(
-                      (e) =>
-                          e.fieldName == 'factory_cost' ||
-                          e.fieldName == 'unit_price' ||
-                          e.fieldName == 'current_stock',
-                    )
-                    .toList();
+                final filtered = items.where(_isUsefulProductChange).toList()
+                  ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
                 return filtered.isEmpty
                     ? const Text('Sin cambios registrados.')
-                    : Column(
-                        children: [
-                          for (final item in filtered)
-                            ListTile(
-                              dense: true,
-                              title: Text(
-                                '${item.fieldName}: ${item.oldValue ?? '∅'} → ${item.newValue ?? '∅'}',
-                              ),
-                              subtitle: Text(
-                                '${item.createdAt.toLocal()} · ${item.actorName ?? 'Sistema'}',
-                              ),
-                            ),
-                        ],
+                    : _SearchableHistory<AuditEntry>(
+                        searchLabel: 'Buscar en cambios y costos',
+                        emptyText: 'No hay cambios que coincidan.',
+                        items: filtered,
+                        searchableText: (item) => [
+                          _productFieldLabel(item.fieldName),
+                          item.oldValue,
+                          item.newValue,
+                          item.actorName,
+                          item.createdAt.toLocal(),
+                        ].join(' '),
+                        itemBuilder: (context, item) => ListTile(
+                          dense: true,
+                          title: Text(
+                            '${_productFieldLabel(item.fieldName)}: ${_auditValue(item.fieldName, item.oldValue)} → ${_auditValue(item.fieldName, item.newValue)}',
+                          ),
+                          subtitle: Text(
+                            '${item.createdAt.toLocal()} · ${item.actorName ?? 'Sistema'}',
+                          ),
+                        ),
                       );
               },
             ),
@@ -255,16 +253,75 @@ class _Profile extends ConsumerWidget {
     );
   }
 
-  DateTime? _stockoutDate(List<InventoryTransaction> transactions) {
-    if (!product.isOutOfStock) return null;
-    var balance = product.currentStock;
-    for (final transaction in transactions) {
-      final before = balance - transaction.quantity;
-      if (balance <= 0 && before > 0) return transaction.createdAt;
-      balance = before;
+  String _inventoryReason(InventoryReason reason) => switch (reason) {
+    InventoryReason.initialStock => 'Stock inicial',
+    InventoryReason.purchase => 'Compra',
+    InventoryReason.sale => 'Venta',
+    InventoryReason.adjustment => 'Ajuste',
+    InventoryReason.returnItem => 'Devolución',
+    InventoryReason.reversal => 'Reversión',
+  };
+
+  bool _isUsefulProductChange(AuditEntry entry) =>
+      (entry.oldValue != null || entry.newValue != null) &&
+      const {
+        'name',
+        'sku',
+        'barcode',
+        'description',
+        'category_id',
+        'unit_price',
+        'package_price',
+        'factory_cost',
+        'min_order_quantity',
+        'minimum_sale_quantity',
+        'packaging_type',
+        'cbm_per_moq',
+        'reorder_point',
+        'promo_price',
+        'promo_text',
+        'image_url',
+        'image_position_x',
+        'image_position_y',
+        'is_active',
+      }.contains(entry.fieldName);
+
+  String _auditValue(String field, String? value) {
+    if (field == 'image_url') {
+      return value == null || value.isEmpty ? 'Sin imagen' : 'Imagen asignada';
     }
-    return null;
+    if (field == 'is_active') {
+      return value == null
+          ? 'Sin definir'
+          : value == 'true'
+          ? 'Activo'
+          : 'Inactivo';
+    }
+    return value ?? '∅';
   }
+
+  String _productFieldLabel(String field) => switch (field) {
+    'name' => 'Nombre',
+    'sku' => 'Código',
+    'barcode' => 'Código de barras',
+    'description' => 'Descripción',
+    'category_id' => 'Categoría',
+    'unit_price' => 'Precio unitario',
+    'package_price' => 'Precio por empaque',
+    'factory_cost' => 'Costo de fábrica',
+    'min_order_quantity' => 'MOQ de recompra',
+    'minimum_sale_quantity' => 'Venta mínima',
+    'packaging_type' => 'Presentación',
+    'cbm_per_moq' => 'CBM por MOQ',
+    'reorder_point' => 'Punto de reorden',
+    'promo_price' => 'Precio promocional individual',
+    'promo_text' => 'Condición promocional individual',
+    'image_url' => 'Imagen',
+    'image_position_x' => 'Posición horizontal de imagen',
+    'image_position_y' => 'Posición vertical de imagen',
+    'is_active' => 'Estado activo',
+    _ => field.replaceAll('_', ' '),
+  };
 
   // TODO: Remove after the full-page editor has completed its transition period.
   // ignore: unused_element
@@ -497,6 +554,95 @@ class _Section extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _SearchableHistory<T> extends StatefulWidget {
+  const _SearchableHistory({
+    required this.searchLabel,
+    required this.emptyText,
+    required this.items,
+    required this.searchableText,
+    required this.itemBuilder,
+  });
+
+  final String searchLabel;
+  final String emptyText;
+  final List<T> items;
+  final String Function(T item) searchableText;
+  final Widget Function(BuildContext context, T item) itemBuilder;
+
+  @override
+  State<_SearchableHistory<T>> createState() => _SearchableHistoryState<T>();
+}
+
+class _SearchableHistoryState<T> extends State<_SearchableHistory<T>> {
+  final _search = TextEditingController();
+  final _scroll = ScrollController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _query.trim().toLowerCase();
+    final filtered = widget.items
+        .where(
+          (item) =>
+              query.isEmpty ||
+              widget.searchableText(item).toLowerCase().contains(query),
+        )
+        .toList();
+    return Column(
+      children: [
+        TextField(
+          controller: _search,
+          onChanged: (value) => setState(() => _query = value),
+          decoration: InputDecoration(
+            labelText: widget.searchLabel,
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: _query.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Limpiar búsqueda',
+                    onPressed: () {
+                      _search.clear();
+                      setState(() => _query = '');
+                    },
+                    icon: const Icon(Icons.close),
+                  ),
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (filtered.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(widget.emptyText),
+          )
+        else
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 340),
+            child: Scrollbar(
+              controller: _scroll,
+              thumbVisibility: filtered.length > 4,
+              child: ListView.separated(
+                controller: _scroll,
+                shrinkWrap: true,
+                itemCount: filtered.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, index) =>
+                    widget.itemBuilder(context, filtered[index]),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 class _PricingCalculator extends StatefulWidget {

@@ -5,6 +5,7 @@ abstract interface class PromotionRepository {
   Future<BulkPromotion> createPromotion(
     BulkPromotion promotion, {
     required Set<String> productIds,
+    Map<String, String> productConditions = const {},
   });
   Future<void> setActive(String id, {required bool isActive});
 }

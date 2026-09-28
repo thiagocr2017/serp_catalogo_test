@@ -7,10 +7,25 @@ import '../../di/promotion_providers.dart';
 import '../../domain/entities/bulk_promotion.dart';
 import '../../domain/entities/product_query.dart';
 
-class PromotionPage extends ConsumerWidget {
+class PromotionPage extends ConsumerStatefulWidget {
   const PromotionPage({super.key});
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PromotionPage> createState() => _PromotionPageState();
+}
+
+class _PromotionPageState extends ConsumerState<PromotionPage> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final promotions = ref.watch(promotionsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Promociones')),
@@ -22,33 +37,77 @@ class PromotionPage extends ConsumerWidget {
       body: promotions.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('No fue posible cargar: $e')),
-        data: (items) => ListView.separated(
-          padding: const EdgeInsets.all(24),
-          itemCount: items.length,
-          separatorBuilder: (_, _) => const Divider(),
-          itemBuilder: (_, i) {
-            final p = items[i];
-            return SwitchListTile(
-              value: p.isActive,
-              onChanged: (value) async {
-                await ref
-                    .read(promotionRepositoryProvider)
-                    .setActive(p.id, isActive: value);
-                ref.invalidate(promotionsProvider);
-              },
-              title: Text(
-                '${p.name} · ${p.discountPercentage.toStringAsFixed(2)}%',
+        data: (items) {
+          final query = _query.trim().toLowerCase();
+          final filtered = items.where((promotion) {
+            if (query.isEmpty) return true;
+            return promotion.name.toLowerCase().contains(query) ||
+                promotion.conditionsText.toLowerCase().contains(query) ||
+                promotion.discountPercentage.toString().contains(query);
+          }).toList();
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                child: TextField(
+                  controller: _search,
+                  onChanged: (value) => setState(() => _query = value),
+                  decoration: InputDecoration(
+                    labelText: 'Buscar promociones',
+                    hintText: 'Nombre, condición o porcentaje',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Limpiar búsqueda',
+                            onPressed: () {
+                              _search.clear();
+                              setState(() => _query = '');
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
               ),
-              subtitle: Text(
-                '${p.appliesToAllProducts ? 'Todos los productos' : 'Selección específica'} · Hasta ${p.endDate.toLocal()}\n${p.conditionsText}',
+              Expanded(
+                child: filtered.isEmpty
+                    ? const Center(
+                        child: Text('No hay promociones que coincidan.'),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 96),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, _) => const Divider(),
+                        itemBuilder: (_, i) {
+                          final p = filtered[i];
+                          return SwitchListTile(
+                            value: p.isActive,
+                            onChanged: (value) async {
+                              await ref
+                                  .read(promotionRepositoryProvider)
+                                  .setActive(p.id, isActive: value);
+                              ref.invalidate(promotionsProvider);
+                            },
+                            title: Text(
+                              '${p.name} · ${p.discountPercentage.toStringAsFixed(2)}%',
+                            ),
+                            subtitle: Text(
+                              '${p.appliesToAllProducts ? 'Todos los productos' : 'Selección específica'} · Hasta ${p.endDate.toLocal()}\n${p.conditionsText}',
+                            ),
+                            isThreeLine: true,
+                            secondary: Icon(
+                              p.isCurrentlyActive
+                                  ? Icons.local_offer
+                                  : Icons.event_busy,
+                            ),
+                          );
+                        },
+                      ),
               ),
-              isThreeLine: true,
-              secondary: Icon(
-                p.isCurrentlyActive ? Icons.local_offer : Icons.event_busy,
-              ),
-            );
-          },
-        ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -66,6 +125,7 @@ class PromotionPage extends ConsumerWidget {
     var scope = listSelection.isEmpty ? 'all' : 'manual';
     final categoryIds = <String>{};
     final selected = <String>{...listSelection};
+    final productConditions = <String, String>{};
     var endDate = DateTime.now().add(const Duration(days: 30));
     final accepted = await showDialog<bool>(
       context: context,
@@ -150,6 +210,38 @@ class PromotionPage extends ConsumerWidget {
                       ),
                     ),
                 ],
+                const SizedBox(height: 8),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: const Text('Condición específica por producto'),
+                  subtitle: const Text(
+                    'Opcional: indica cantidades o requisitos particulares para cada código.',
+                  ),
+                  children: [
+                    for (final product in products.where(
+                      (product) =>
+                          scope == 'all' || selected.contains(product.id),
+                    ))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: TextFormField(
+                          initialValue: productConditions[product.id],
+                          decoration: InputDecoration(
+                            labelText: '${product.sku} · ${product.name}',
+                            hintText: 'Ej. Compra mínima de 6 unidades',
+                            border: const OutlineInputBorder(),
+                          ),
+                          onChanged: (value) {
+                            if (value.trim().isEmpty) {
+                              productConditions.remove(product.id);
+                            } else {
+                              productConditions[product.id] = value;
+                            }
+                          },
+                        ),
+                      ),
+                  ],
+                ),
                 ListTile(
                   title: const Text('Fecha final'),
                   subtitle: Text('${endDate.toLocal()}'),
@@ -208,6 +300,7 @@ class PromotionPage extends ConsumerWidget {
           .createPromotion(
             promotion,
             productIds: scope == 'all' ? const <String>{} : selected,
+            productConditions: productConditions,
           );
       ref.invalidate(promotionsProvider);
     } else if (accepted == true && context.mounted) {

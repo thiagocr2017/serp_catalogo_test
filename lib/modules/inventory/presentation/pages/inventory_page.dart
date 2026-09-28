@@ -7,10 +7,25 @@ import '../../../product/presentation/controllers/product_list_controller.dart';
 import '../../di/inventory_providers.dart';
 import '../../domain/entities/inventory_transaction.dart';
 
-class InventoryPage extends ConsumerWidget {
+class InventoryPage extends ConsumerStatefulWidget {
   const InventoryPage({super.key});
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<InventoryPage> createState() => _InventoryPageState();
+}
+
+class _InventoryPageState extends ConsumerState<InventoryPage> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final transactions = ref.watch(inventoryTransactionsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Movimientos de inventario')),
@@ -22,39 +37,88 @@ class InventoryPage extends ConsumerWidget {
       body: transactions.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('No fue posible cargar: $e')),
-        data: (items) => ListView.separated(
-          padding: const EdgeInsets.all(24),
-          itemCount: items.length,
-          separatorBuilder: (_, _) => const Divider(),
-          itemBuilder: (context, index) {
-            final item = items[index];
-            return ListTile(
-              leading: CircleAvatar(
-                backgroundColor: item.quantity > 0
-                    ? Colors.green.shade100
-                    : Colors.red.shade100,
-                child: Icon(item.quantity > 0 ? Icons.add : Icons.remove),
+        data: (items) {
+          final query = _query.trim().toLowerCase();
+          final filtered = items.where((item) {
+            if (query.isEmpty) return true;
+            return (item.productSku ?? '').toLowerCase().contains(query) ||
+                _reason(item.reason).toLowerCase().contains(query) ||
+                (item.notes ?? '').toLowerCase().contains(query) ||
+                item.quantity.toString().contains(query) ||
+                item.createdAt.toLocal().toString().toLowerCase().contains(
+                  query,
+                );
+          }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                child: TextField(
+                  controller: _search,
+                  onChanged: (value) => setState(() => _query = value),
+                  decoration: InputDecoration(
+                    labelText: 'Buscar movimientos',
+                    hintText: 'Código, motivo, nota, cantidad o fecha',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Limpiar búsqueda',
+                            onPressed: () {
+                              _search.clear();
+                              setState(() => _query = '');
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
               ),
-              title: Text(
-                '${item.productSku ?? 'SKU no disponible'} · '
-                '${item.quantity > 0 ? '+' : ''}${item.quantity} · ${_reason(item.reason)}',
+              Expanded(
+                child: filtered.isEmpty
+                    ? const Center(
+                        child: Text('No hay movimientos que coincidan.'),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 96),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, _) => const Divider(),
+                        itemBuilder: (context, index) {
+                          final item = filtered[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: item.quantity > 0
+                                  ? Colors.green.shade100
+                                  : Colors.red.shade100,
+                              child: Icon(
+                                item.quantity > 0 ? Icons.add : Icons.remove,
+                              ),
+                            ),
+                            title: Text(
+                              '${item.productSku ?? 'SKU no disponible'} · '
+                              '${item.quantity > 0 ? '+' : ''}${item.quantity} · ${_reason(item.reason)}',
+                            ),
+                            subtitle: Text(
+                              '${item.notes ?? 'Sin notas'}\n${item.createdAt.toLocal()}',
+                            ),
+                            isThreeLine: true,
+                            trailing:
+                                item.reason == InventoryReason.reversal ||
+                                    item.reversalOfTransactionId != null
+                                ? null
+                                : IconButton(
+                                    icon: const Icon(Icons.undo),
+                                    tooltip: 'Corregir con reversión',
+                                    onPressed: () =>
+                                        _reverse(context, ref, item),
+                                  ),
+                          );
+                        },
+                      ),
               ),
-              subtitle: Text(
-                '${item.notes ?? 'Sin notas'}\n${item.createdAt.toLocal()}',
-              ),
-              isThreeLine: true,
-              trailing:
-                  item.reason == InventoryReason.reversal ||
-                      item.reversalOfTransactionId != null
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.undo),
-                      tooltip: 'Corregir con reversión',
-                      onPressed: () => _reverse(context, ref, item),
-                    ),
-            );
-          },
-        ),
+            ],
+          );
+        },
       ),
     );
   }
