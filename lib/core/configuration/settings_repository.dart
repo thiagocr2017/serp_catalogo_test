@@ -1,7 +1,11 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../device/device_identity.dart';
 import 'business_settings.dart';
+import 'catalog_preferences.dart';
 
 class SettingsRepository {
   const SettingsRepository(this._client, this._device);
@@ -63,4 +67,131 @@ class SettingsRepository {
       'p_device_identifier': _device.identifier,
     },
   );
+
+  Future<CatalogPreferences> getCatalogPreferences() async {
+    final row = await _client.from('app_settings').select().single();
+    return CatalogPreferences(
+      cardsPerPage: row['catalog_cards_per_page'] as int? ?? 4,
+      backgroundColor: row['catalog_background_color'] as String? ?? '#FFFFFF',
+      cardColor: row['catalog_card_color'] as String? ?? '#FFFFFF',
+      designAccentColor:
+          row['catalog_design_accent_color'] as String? ?? '#3949AB',
+      textColor: row['catalog_text_color'] as String? ?? '#111111',
+      highlightTextColor:
+          row['catalog_highlight_text_color'] as String? ?? '#1565C0',
+      secondaryTextColor:
+          row['catalog_secondary_text_color'] as String? ?? '#616161',
+      promotionColor: row['catalog_promotion_color'] as String? ?? '#C62828',
+      promotionTextColor:
+          row['catalog_promotion_text_color'] as String? ?? '#FFFFFF',
+      promotionPreviousPriceColor:
+          row['catalog_promotion_previous_price_color'] as String? ?? '#757575',
+      promotionPriceColor:
+          row['catalog_promotion_price_color'] as String? ?? '#C62828',
+      promotionDescriptionColor:
+          row['catalog_promotion_description_color'] as String? ?? '#C62828',
+      imageFit: row['catalog_image_fit'] as String? ?? 'cover',
+      logoUrl: row['catalog_logo_url'] as String?,
+      selectedAgentId: row['selected_catalog_agent_id'] as String?,
+    );
+  }
+
+  Future<void> saveCatalogPreferences(CatalogPreferences value) => _client
+      .from('app_settings')
+      .update({
+        'catalog_cards_per_page': value.cardsPerPage,
+        'catalog_background_color': value.backgroundColor,
+        'catalog_card_color': value.cardColor,
+        'catalog_design_accent_color': value.designAccentColor,
+        'catalog_text_color': value.textColor,
+        'catalog_highlight_text_color': value.highlightTextColor,
+        'catalog_secondary_text_color': value.secondaryTextColor,
+        'catalog_promotion_color': value.promotionColor,
+        'catalog_promotion_text_color': value.promotionTextColor,
+        'catalog_promotion_previous_price_color':
+            value.promotionPreviousPriceColor,
+        'catalog_promotion_price_color': value.promotionPriceColor,
+        'catalog_promotion_description_color': value.promotionDescriptionColor,
+        'catalog_image_fit': value.imageFit,
+        'catalog_logo_url': value.logoUrl,
+        'selected_catalog_agent_id': value.selectedAgentId,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_by': _device.actorName,
+        'updated_device_name': _device.name,
+        'updated_device_identifier': _device.identifier,
+      })
+      .eq('id', true);
+
+  Future<List<CatalogAgent>> getCatalogAgents() async {
+    final rows = await _client
+        .from('catalog_agents')
+        .select()
+        .eq('is_active', true)
+        .order('name');
+    return rows
+        .map(
+          (row) => CatalogAgent(
+            id: row['id'] as String,
+            name: row['name'] as String,
+            phone: row['phone'] as String,
+          ),
+        )
+        .toList();
+  }
+
+  Future<CatalogAgent> createCatalogAgent({
+    required String name,
+    required String phone,
+  }) async {
+    final row = await _client
+        .from('catalog_agents')
+        .insert({
+          'name': name.trim(),
+          'phone': phone.trim(),
+          'created_by': _device.actorName,
+          'created_device_name': _device.name,
+          'created_device_identifier': _device.identifier,
+        })
+        .select()
+        .single();
+    return CatalogAgent(
+      id: row['id'] as String,
+      name: row['name'] as String,
+      phone: row['phone'] as String,
+    );
+  }
+
+  Future<String> uploadCatalogLogo(Uint8List bytes, String extension) async {
+    final safeExtension = extension.toLowerCase() == 'png' ? 'png' : 'jpg';
+    final path = 'catalog-logo.$safeExtension';
+    await _client.storage
+        .from('catalog-assets')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: safeExtension == 'png' ? 'image/png' : 'image/jpeg',
+          ),
+        );
+    final url = _client.storage.from('catalog-assets').getPublicUrl(path);
+    return '$url?v=${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  Future<Uint8List?> downloadCatalogLogo(String? url) async {
+    if (url == null || url.isEmpty) return null;
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(Uri.parse(url));
+      final response = await request.close();
+      if (response.statusCode != HttpStatus.ok) return null;
+      final bytes = <int>[];
+      await for (final chunk in response) {
+        bytes.addAll(chunk);
+      }
+      return Uint8List.fromList(bytes);
+    } finally {
+      client.close(force: true);
+    }
+  }
 }

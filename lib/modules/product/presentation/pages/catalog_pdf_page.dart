@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
@@ -7,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 
 import '../../../../core/configuration/settings_providers.dart';
+import '../../../../core/configuration/catalog_preferences.dart';
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_query.dart';
@@ -42,6 +44,10 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   List<Product>? products;
   Map<String, String> categoryNames = const {};
   Uint8List? logoBytes;
+  String? logoUrl;
+  List<CatalogAgent> catalogAgents = const [];
+  String? selectedAgentId;
+  Timer? _preferencesTimer;
   final selected = <String>{};
   final reorderSelection = <String>{};
   final catalogOrder = <String>[];
@@ -60,6 +66,12 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     );
     final categories = await ref.read(categoriesProvider.future);
     final settings = await ref.read(businessSettingsProvider.future);
+    final settingsRepository = ref.read(settingsRepositoryProvider);
+    final preferences = await settingsRepository.getCatalogPreferences();
+    final agents = await settingsRepository.getCatalogAgents();
+    final storedLogo = await settingsRepository.downloadCatalogLogo(
+      preferences.logoUrl,
+    );
     if (mounted) {
       final sharedSelection = ref.read(selectedProductIdsProvider);
       final loadedCategoryNames = {
@@ -91,6 +103,36 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
         packagingUnitLabel = settings.packagingUnitLabel;
         packagingBoxLabel = settings.packagingBoxLabel;
         packagingSetLabel = settings.packagingSetLabel;
+        cards = preferences.cardsPerPage;
+        backgroundColor = preferences.backgroundColor;
+        cardColor = preferences.cardColor;
+        designAccentColor = preferences.designAccentColor;
+        textColor = preferences.textColor;
+        highlightTextColor = preferences.highlightTextColor;
+        secondaryTextColor = preferences.secondaryTextColor;
+        promotionColor = preferences.promotionColor;
+        promotionTextColor = preferences.promotionTextColor;
+        promotionPreviousPriceColor = preferences.promotionPreviousPriceColor;
+        promotionPriceColor = preferences.promotionPriceColor;
+        promotionDescriptionColor = preferences.promotionDescriptionColor;
+        imageFit = CatalogImageFit.values.firstWhere(
+          (value) => value.name == preferences.imageFit,
+          orElse: () => CatalogImageFit.cover,
+        );
+        logoUrl = preferences.logoUrl;
+        logoBytes = storedLogo;
+        catalogAgents = agents;
+        selectedAgentId =
+            agents.any((item) => item.id == preferences.selectedAgentId)
+            ? preferences.selectedAgentId
+            : null;
+        final selectedAgent = agents
+            .where((item) => item.id == selectedAgentId)
+            .firstOrNull;
+        if (selectedAgent != null) {
+          agent.text = selectedAgent.name;
+          phone.text = selectedAgent.phone;
+        }
         catalogOrder
           ..clear()
           ..addAll(eligible.map((product) => product.id));
@@ -117,9 +159,97 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
 
   @override
   void dispose() {
+    if (_preferencesTimer?.isActive == true) {
+      unawaited(_savePreferences());
+    }
+    _preferencesTimer?.cancel();
     agent.dispose();
     phone.dispose();
     super.dispose();
+  }
+
+  void _updatePreference(VoidCallback update) {
+    setState(update);
+    _preferencesTimer?.cancel();
+    _preferencesTimer = Timer(
+      const Duration(milliseconds: 500),
+      _savePreferences,
+    );
+  }
+
+  Future<void> _savePreferences() => ref
+      .read(settingsRepositoryProvider)
+      .saveCatalogPreferences(
+        CatalogPreferences(
+          cardsPerPage: cards,
+          backgroundColor: backgroundColor,
+          cardColor: cardColor,
+          designAccentColor: designAccentColor,
+          textColor: textColor,
+          highlightTextColor: highlightTextColor,
+          secondaryTextColor: secondaryTextColor,
+          promotionColor: promotionColor,
+          promotionTextColor: promotionTextColor,
+          promotionPreviousPriceColor: promotionPreviousPriceColor,
+          promotionPriceColor: promotionPriceColor,
+          promotionDescriptionColor: promotionDescriptionColor,
+          imageFit: imageFit.name,
+          logoUrl: logoUrl,
+          selectedAgentId: selectedAgentId,
+        ),
+      );
+
+  Future<void> _createAgent() async {
+    final name = TextEditingController();
+    final contact = TextEditingController(text: '+506');
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nuevo agente'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: name,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Nombre'),
+            ),
+            TextField(
+              controller: contact,
+              decoration: const InputDecoration(labelText: 'WhatsApp'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(context, name.text.trim().isNotEmpty),
+            child: const Text('Guardar agente'),
+          ),
+        ],
+      ),
+    );
+    if (accepted == true) {
+      final created = await ref
+          .read(settingsRepositoryProvider)
+          .createCatalogAgent(name: name.text, phone: contact.text);
+      if (mounted) {
+        setState(() {
+          catalogAgents = [...catalogAgents, created]
+            ..sort((a, b) => a.name.compareTo(b.name));
+          selectedAgentId = created.id;
+          agent.text = created.name;
+          phone.text = created.phone;
+        });
+        await _savePreferences();
+      }
+    }
+    name.dispose();
+    contact.dispose();
   }
 
   @override
@@ -168,7 +298,17 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                           );
                           if (file != null) {
                             final bytes = await file.readAsBytes();
-                            if (mounted) setState(() => logoBytes = bytes);
+                            final extension = file.name.split('.').last;
+                            final url = await ref
+                                .read(settingsRepositoryProvider)
+                                .uploadCatalogLogo(bytes, extension);
+                            if (mounted) {
+                              setState(() {
+                                logoBytes = bytes;
+                                logoUrl = url;
+                              });
+                              await _savePreferences();
+                            }
                           }
                         },
                         icon: const Icon(Icons.business),
@@ -181,18 +321,47 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         'Datos del catálogo',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      TextField(
-                        controller: agent,
-                        onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(labelText: 'Agente'),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              key: ValueKey(selectedAgentId),
+                              initialValue: selectedAgentId,
+                              decoration: const InputDecoration(
+                                labelText: 'Agente del catálogo',
+                              ),
+                              items: catalogAgents
+                                  .map(
+                                    (item) => DropdownMenuItem(
+                                      value: item.id,
+                                      child: Text(item.name),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) {
+                                final selectedAgent = catalogAgents
+                                    .where((item) => item.id == value)
+                                    .firstOrNull;
+                                _updatePreference(() {
+                                  selectedAgentId = value;
+                                  agent.text = selectedAgent?.name ?? '';
+                                  phone.text = selectedAgent?.phone ?? '';
+                                });
+                              },
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Crear agente',
+                            onPressed: _createAgent,
+                            icon: const Icon(Icons.person_add_alt_1),
+                          ),
+                        ],
                       ),
-                      TextField(
-                        controller: phone,
-                        onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          labelText: 'WhatsApp',
+                      if (selectedAgentId != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text('WhatsApp: ${phone.text}'),
                         ),
-                      ),
                       const Divider(height: 28),
                       Text(
                         'Diseño de la plantilla',
@@ -202,18 +371,19 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         label: 'Fondo',
                         value: backgroundColor,
                         onChanged: (value) =>
-                            setState(() => backgroundColor = value),
+                            _updatePreference(() => backgroundColor = value),
                       ),
                       _TemplateColorField(
                         label: 'Tarjetas',
                         value: cardColor,
-                        onChanged: (value) => setState(() => cardColor = value),
+                        onChanged: (value) =>
+                            _updatePreference(() => cardColor = value),
                       ),
                       _TemplateColorField(
                         label: 'Elemento de diseño',
                         value: designAccentColor,
                         onChanged: (value) =>
-                            setState(() => designAccentColor = value),
+                            _updatePreference(() => designAccentColor = value),
                       ),
                       const SizedBox(height: 18),
                       Text(
@@ -223,19 +393,20 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                       _TemplateColorField(
                         label: 'Fuente de texto',
                         value: textColor,
-                        onChanged: (value) => setState(() => textColor = value),
+                        onChanged: (value) =>
+                            _updatePreference(() => textColor = value),
                       ),
                       _TemplateColorField(
                         label: 'Fuente destacada',
                         value: highlightTextColor,
                         onChanged: (value) =>
-                            setState(() => highlightTextColor = value),
+                            _updatePreference(() => highlightTextColor = value),
                       ),
                       _TemplateColorField(
                         label: 'Fuente secundaria',
                         value: secondaryTextColor,
                         onChanged: (value) =>
-                            setState(() => secondaryTextColor = value),
+                            _updatePreference(() => secondaryTextColor = value),
                       ),
                       const SizedBox(height: 18),
                       Text(
@@ -246,31 +417,34 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         label: 'Elemento de promoción',
                         value: promotionColor,
                         onChanged: (value) =>
-                            setState(() => promotionColor = value),
+                            _updatePreference(() => promotionColor = value),
                       ),
                       _TemplateColorField(
                         label: 'Fuente de promoción',
                         value: promotionTextColor,
                         onChanged: (value) =>
-                            setState(() => promotionTextColor = value),
+                            _updatePreference(() => promotionTextColor = value),
                       ),
                       _TemplateColorField(
                         label: 'Precio anterior (secundario)',
                         value: promotionPreviousPriceColor,
-                        onChanged: (value) =>
-                            setState(() => promotionPreviousPriceColor = value),
+                        onChanged: (value) => _updatePreference(
+                          () => promotionPreviousPriceColor = value,
+                        ),
                       ),
                       _TemplateColorField(
                         label: 'Precio actual (principal)',
                         value: promotionPriceColor,
-                        onChanged: (value) =>
-                            setState(() => promotionPriceColor = value),
+                        onChanged: (value) => _updatePreference(
+                          () => promotionPriceColor = value,
+                        ),
                       ),
                       _TemplateColorField(
                         label: 'Texto de promoción (principal)',
                         value: promotionDescriptionColor,
-                        onChanged: (value) =>
-                            setState(() => promotionDescriptionColor = value),
+                        onChanged: (value) => _updatePreference(
+                          () => promotionDescriptionColor = value,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<CatalogImageFit>(
@@ -294,7 +468,8 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                             child: Text('Ajustar al ancho'),
                           ),
                         ],
-                        onChanged: (value) => setState(() => imageFit = value!),
+                        onChanged: (value) =>
+                            _updatePreference(() => imageFit = value!),
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<int>(
@@ -312,7 +487,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                               ),
                             )
                             .toList(),
-                        onChanged: (v) => setState(() => cards = v!),
+                        onChanged: (v) => _updatePreference(() => cards = v!),
                       ),
                       const Divider(height: 32),
                       Container(
@@ -332,32 +507,70 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         'Selección por categoría',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      for (final entry in categoryNames.entries)
-                        if (data.any((p) => p.categoryId == entry.key))
-                          CheckboxListTile(
-                            contentPadding: EdgeInsets.zero,
-                            value: data
-                                .where((p) => p.categoryId == entry.key)
-                                .every((p) => selected.contains(p.id)),
-                            title: Text(entry.value),
-                            subtitle: Text(
-                              '${data.where((p) => p.categoryId == entry.key).length} producto(s)',
-                            ),
-                            onChanged: (value) => setState(() {
-                              final ids = data
-                                  .where((p) => p.categoryId == entry.key)
-                                  .map((p) => p.id);
-                              if (value == true) {
-                                selected.addAll(ids);
-                              } else {
-                                selected.removeAll(ids);
-                              }
-                              ref
-                                  .read(selectedProductIdsProvider.notifier)
-                                  .replaceAll(selected);
-                            }),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: selected.isEmpty
+                              ? null
+                              : _clearCatalogSelection,
+                          icon: const Icon(Icons.deselect),
+                          label: const Text('Limpiar selección'),
+                        ),
+                      ),
+                      SizedBox(
+                        height: 220,
+                        child: Scrollbar(
+                          child: ListView(
+                            children: [
+                              for (final entry in categoryNames.entries)
+                                if (data.any((p) => p.categoryId == entry.key))
+                                  CheckboxListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    value: data
+                                        .where((p) => p.categoryId == entry.key)
+                                        .every((p) => selected.contains(p.id)),
+                                    title: Text(entry.value),
+                                    subtitle: Text(
+                                      '${data.where((p) => p.categoryId == entry.key).length} producto(s)',
+                                    ),
+                                    onChanged: (value) => setState(() {
+                                      final ids = data
+                                          .where(
+                                            (p) => p.categoryId == entry.key,
+                                          )
+                                          .map((p) => p.id);
+                                      value == true
+                                          ? selected.addAll(ids)
+                                          : selected.removeAll(ids);
+                                      ref
+                                          .read(
+                                            selectedProductIdsProvider.notifier,
+                                          )
+                                          .replaceAll(selected);
+                                    }),
+                                  ),
+                            ],
                           ),
+                        ),
+                      ),
                       const Divider(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Selección por producto',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          TextButton.icon(
+                            onPressed: selected.isEmpty
+                                ? null
+                                : _clearCatalogSelection,
+                            icon: const Icon(Icons.deselect),
+                            label: const Text('Limpiar'),
+                          ),
+                        ],
+                      ),
                       CheckboxListTile(
                         value: selected.length == data.length,
                         title: const Text('Todos los productos'),
@@ -369,18 +582,32 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                               .replaceAll(selected);
                         }),
                       ),
-                      for (final p in data)
-                        CheckboxListTile(
-                          value: selected.contains(p.id),
-                          title: Text(p.name),
-                          subtitle: Text(p.sku),
-                          onChanged: (v) => setState(() {
-                            v! ? selected.add(p.id) : selected.remove(p.id);
-                            ref
-                                .read(selectedProductIdsProvider.notifier)
-                                .replaceAll(selected);
-                          }),
+                      SizedBox(
+                        height: 320,
+                        child: Scrollbar(
+                          child: ListView(
+                            children: [
+                              for (final p in data)
+                                CheckboxListTile(
+                                  dense: true,
+                                  value: selected.contains(p.id),
+                                  title: Text(p.name),
+                                  subtitle: Text(p.sku),
+                                  onChanged: (v) => setState(() {
+                                    v!
+                                        ? selected.add(p.id)
+                                        : selected.remove(p.id);
+                                    ref
+                                        .read(
+                                          selectedProductIdsProvider.notifier,
+                                        )
+                                        .replaceAll(selected);
+                                  }),
+                                ),
+                            ],
+                          ),
                         ),
+                      ),
                       const Divider(height: 32),
                       Text(
                         'Orden de categorías',
@@ -523,6 +750,11 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
         for (final id in catalogOrder)
           if (byId[id]?.categoryId == categoryId) byId[id]!,
     ];
+  }
+
+  void _clearCatalogSelection() {
+    setState(selected.clear);
+    ref.read(selectedProductIdsProvider.notifier).clear();
   }
 
   Widget _orderButtons({
