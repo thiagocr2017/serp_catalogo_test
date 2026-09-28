@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../di/product_providers.dart';
@@ -172,6 +173,11 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
     final productConditions = <String, String>{...?existing?.productConditions};
     var endDate =
         existing?.endDate ?? DateTime.now().add(const Duration(days: 30));
+    String? nameError;
+    String? discountError;
+    String? selectionError;
+    String? saveError;
+    var saving = false;
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -186,12 +192,31 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
               children: [
                 TextField(
                   controller: name,
-                  decoration: const InputDecoration(labelText: 'Nombre'),
+                  decoration: InputDecoration(
+                    labelText: 'Nombre',
+                    errorText: nameError,
+                  ),
+                  onChanged: (_) => setState(() => nameError = null),
                 ),
                 TextField(
                   controller: discount,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Descuento %'),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [
+                    TextInputFormatter.withFunction((oldValue, newValue) {
+                      return RegExp(r'^\d{0,3}([\.,]\d{0,2})?$')
+                              .hasMatch(newValue.text)
+                          ? newValue
+                          : oldValue;
+                    }),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Descuento %',
+                    hintText: 'Ej. 15 o 12,50',
+                    errorText: discountError,
+                  ),
+                  onChanged: (_) => setState(() => discountError = null),
                 ),
                 TextField(
                   controller: conditions,
@@ -220,8 +245,19 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
                     selected.clear();
                     categoryIds.clear();
                     productConditions.clear();
+                    selectionError = null;
                   }),
                 ),
+                if (selectionError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      selectionError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
                 if (scope == 'category') ...[
                   const Padding(
                     padding: EdgeInsets.only(top: 12),
@@ -237,6 +273,7 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
                         value!
                             ? categoryIds.add(category.id)
                             : categoryIds.remove(category.id);
+                        selectionError = null;
                       }),
                     ),
                 ],
@@ -246,9 +283,10 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
                     CheckboxListTile(
                       value: selected.contains(p.id),
                       title: Text('${p.sku} · ${p.name}'),
-                      onChanged: (v) => setState(
-                        () => v! ? selected.add(p.id) : selected.remove(p.id),
-                      ),
+                      onChanged: (v) => setState(() {
+                        v! ? selected.add(p.id) : selected.remove(p.id);
+                        selectionError = null;
+                      }),
                     ),
                 ],
                 const SizedBox(height: 8),
@@ -306,85 +344,133 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
                     }
                   },
                 ),
+                if (saveError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      saveError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: saving ? null : () => Navigator.pop(context, false),
               child: const Text('Cancelar'),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(existing == null ? 'Crear' : 'Guardar cambios'),
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final percentage = double.tryParse(
+                        discount.text.replaceAll(',', '.'),
+                      );
+                      final validSelection =
+                          scope == 'all' ||
+                          (scope == 'category' && categoryIds.isNotEmpty) ||
+                          (scope == 'manual' && selected.isNotEmpty);
+                      setState(() {
+                        nameError = name.text.trim().isEmpty
+                            ? 'Escriba el nombre de la promoción.'
+                            : null;
+                        discountError = percentage == null
+                            ? 'Escriba un descuento numérico.'
+                            : percentage <= 0 || percentage > 100
+                            ? 'El descuento debe ser mayor que 0 y máximo 100.'
+                            : null;
+                        selectionError = validSelection
+                            ? null
+                            : scope == 'category'
+                            ? 'Seleccione al menos una categoría.'
+                            : 'Seleccione al menos un producto.';
+                        saveError = null;
+                      });
+                      if (nameError != null ||
+                          discountError != null ||
+                          selectionError != null) {
+                        return;
+                      }
+
+                      setState(() => saving = true);
+                      try {
+                        final promotion = BulkPromotion(
+                          id: existing?.id ?? const Uuid().v4(),
+                          name: name.text.trim(),
+                          discountPercentage: percentage!,
+                          conditionsText: conditions.text.trim(),
+                          endDate: endDate,
+                          appliesToAllProducts: scope == 'all',
+                          isActive: existing?.isActive ?? true,
+                        );
+                        final allowedConditionIds = products
+                            .where(
+                              (product) =>
+                                  scope == 'all' ||
+                                  (scope == 'manual' &&
+                                      selected.contains(product.id)) ||
+                                  (scope == 'category' &&
+                                      categoryIds.contains(product.categoryId)),
+                            )
+                            .map((product) => product.id)
+                            .toSet();
+                        final savedProductConditions = {
+                          for (final entry in productConditions.entries)
+                            if (allowedConditionIds.contains(entry.key) &&
+                                entry.value.trim().isNotEmpty)
+                              entry.key: entry.value.trim(),
+                        };
+                        final repository = ref.read(
+                          promotionRepositoryProvider,
+                        );
+                        if (existing == null) {
+                          await repository.createPromotion(
+                            promotion,
+                            productIds: scope == 'manual'
+                                ? selected
+                                : const <String>{},
+                            categoryIds: scope == 'category'
+                                ? categoryIds
+                                : const <String>{},
+                            productConditions: savedProductConditions,
+                          );
+                        } else {
+                          await repository.updatePromotion(
+                            promotion,
+                            productIds: scope == 'manual'
+                                ? selected
+                                : const <String>{},
+                            categoryIds: scope == 'category'
+                                ? categoryIds
+                                : const <String>{},
+                            productConditions: savedProductConditions,
+                          );
+                        }
+                        if (context.mounted) Navigator.pop(context, true);
+                      } catch (error) {
+                        setState(() {
+                          saving = false;
+                          saveError =
+                              'No fue posible guardar la promoción: $error';
+                        });
+                      }
+                    },
+              child: saving
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(existing == null ? 'Crear' : 'Guardar cambios'),
             ),
           ],
         ),
       ),
     );
-    final percentage = double.tryParse(discount.text.replaceAll(',', '.'));
-    final validSelection =
-        scope == 'all' ||
-        (scope == 'category' && categoryIds.isNotEmpty) ||
-        (scope == 'manual' && selected.isNotEmpty);
-    if (accepted == true &&
-        name.text.trim().isNotEmpty &&
-        percentage != null &&
-        percentage > 0 &&
-        percentage <= 100 &&
-        validSelection) {
-      final promotion = BulkPromotion(
-        id: existing?.id ?? const Uuid().v4(),
-        name: name.text.trim(),
-        discountPercentage: percentage,
-        conditionsText: conditions.text.trim(),
-        endDate: endDate,
-        appliesToAllProducts: scope == 'all',
-        isActive: existing?.isActive ?? true,
-      );
-      final repository = ref.read(promotionRepositoryProvider);
-      final productIds = scope == 'manual' ? selected : const <String>{};
-      final categories = scope == 'category' ? categoryIds : const <String>{};
-      final allowedConditionIds = products
-          .where(
-            (product) =>
-                scope == 'all' ||
-                (scope == 'manual' && selected.contains(product.id)) ||
-                (scope == 'category' &&
-                    categoryIds.contains(product.categoryId)),
-          )
-          .map((product) => product.id)
-          .toSet();
-      final savedProductConditions = {
-        for (final entry in productConditions.entries)
-          if (allowedConditionIds.contains(entry.key) &&
-              entry.value.trim().isNotEmpty)
-            entry.key: entry.value.trim(),
-      };
-      if (existing == null) {
-        await repository.createPromotion(
-          promotion,
-          productIds: productIds,
-          categoryIds: categories,
-          productConditions: savedProductConditions,
-        );
-      } else {
-        await repository.updatePromotion(
-          promotion,
-          productIds: productIds,
-          categoryIds: categories,
-          productConditions: savedProductConditions,
-        );
-      }
+    if (accepted == true) {
       ref.invalidate(promotionsProvider);
-    } else if (accepted == true && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Complete el nombre, un descuento entre 0 y 100 y el alcance.',
-          ),
-        ),
-      );
     }
     name.dispose();
     discount.dispose();
