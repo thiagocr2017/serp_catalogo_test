@@ -36,7 +36,6 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   String? _categoryId;
   PackagingType _packagingType = PackagingType.unit;
   bool _saving = false;
-  bool _isActive = true;
   double _imagePositionX = 0.5;
   double _imagePositionY = 0.5;
   Uint8List? _imageBytes;
@@ -79,7 +78,6 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       _reorderPoint.text = '${product.reorderPoint}';
       _categoryId = product.categoryId;
       _packagingType = product.packagingType;
-      _isActive = product.isActive;
       _imagePositionX = product.imagePositionX;
       _imagePositionY = product.imagePositionY;
     }
@@ -160,7 +158,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
         promotionType: _promotionPrice.text.trim().isEmpty
             ? null
             : PromotionType.individual,
-        isActive: _isActive,
+        isActive: _existing?.isActive ?? true,
         createdAt: _existing?.createdAt ?? DateTime.now().toUtc(),
         updatedAt: _isEditing ? DateTime.now().toUtc() : null,
       );
@@ -473,27 +471,6 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                       ),
                     ],
                   ),
-                  if (_isEditing && _existing != null)
-                    _section(
-                      'Estado',
-                      'Un producto reactivado vuelve a aparecer entre los productos activos.',
-                      [
-                        SizedBox(
-                          width: 320,
-                          child: SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            value: _isActive,
-                            title: Text(
-                              _isActive
-                                  ? 'Producto activo'
-                                  : 'Producto inactivo',
-                            ),
-                            onChanged: (value) =>
-                                setState(() => _isActive = value),
-                          ),
-                        ),
-                      ],
-                    ),
                   if (_isEditing && _existing != null)
                     _section(
                       'Inventario',

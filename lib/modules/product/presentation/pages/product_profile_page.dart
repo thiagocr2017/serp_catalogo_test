@@ -57,11 +57,13 @@ class _Profile extends ConsumerWidget {
             label: const Text('Editar'),
           ),
           TextButton.icon(
-            onPressed: product.isActive
-                ? () => _deactivate(context, ref)
-                : null,
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Desactivar'),
+            onPressed: () => _changeStatus(context, ref),
+            icon: Icon(
+              product.isActive
+                  ? Icons.visibility_off_outlined
+                  : Icons.check_circle_outline,
+            ),
+            label: Text(product.isActive ? 'Desactivar' : 'Activar'),
           ),
           const SizedBox(width: 16),
         ],
@@ -382,13 +384,16 @@ class _Profile extends ConsumerWidget {
     promoText.dispose();
   }
 
-  Future<void> _deactivate(BuildContext context, WidgetRef ref) async {
+  Future<void> _changeStatus(BuildContext context, WidgetRef ref) async {
+    final activating = !product.isActive;
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Desactivar producto'),
-        content: const Text(
-          'El producto dejará de aparecer entre los activos, pero conservará todo su historial.',
+        title: Text(activating ? 'Activar producto' : 'Desactivar producto'),
+        content: Text(
+          activating
+              ? 'El producto volverá a aparecer entre los productos activos.'
+              : 'El producto dejará de aparecer entre los activos, pero conservará todo su historial.',
         ),
         actions: [
           TextButton(
@@ -397,15 +402,54 @@ class _Profile extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Desactivar'),
+            child: Text(activating ? 'Activar' : 'Desactivar'),
           ),
         ],
       ),
     );
     if (accepted == true) {
-      await ref.read(deactivateProductProvider)(product.id);
+      if (activating) {
+        final activated = Product(
+          id: product.id,
+          sku: product.sku,
+          barcode: product.barcode,
+          name: product.name,
+          description: product.description,
+          categoryId: product.categoryId,
+          unitPriceInCents: product.unitPriceInCents,
+          packagePriceInCents: product.packagePriceInCents,
+          minimumOrderQuantity: product.minimumOrderQuantity,
+          minimumSaleQuantity: product.minimumSaleQuantity,
+          packagingType: product.packagingType,
+          cbmPerMoq: product.cbmPerMoq,
+          factoryCostInCents: product.factoryCostInCents,
+          imageUrl: product.imageUrl,
+          imagePositionX: product.imagePositionX,
+          imagePositionY: product.imagePositionY,
+          currentStock: product.currentStock,
+          reorderPoint: product.reorderPoint,
+          promotionPriceInCents: product.promotionPriceInCents,
+          promotionText: product.promotionText,
+          promotionType: product.promotionType,
+          isActive: true,
+          createdAt: product.createdAt,
+          updatedAt: DateTime.now().toUtc(),
+        );
+        await ref.read(saveProductProvider).update(activated);
+      } else {
+        await ref.read(deactivateProductProvider)(product.id);
+      }
+      ref.invalidate(productByIdProvider(product.id));
       ref.invalidate(productListControllerProvider);
-      if (context.mounted) context.go('/products');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              activating ? 'Producto activado' : 'Producto desactivado',
+            ),
+          ),
+        );
+      }
     }
   }
 }
