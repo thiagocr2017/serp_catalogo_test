@@ -229,9 +229,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                       alignment: Alignment.centerLeft,
                       child: Container(
                         width: 280,
-                        height: 220,
+                        height: 280,
                         margin: const EdgeInsets.only(top: 12),
-                        padding: const EdgeInsets.all(12),
+                        clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
                           color: Theme.of(context)
                               .colorScheme
@@ -244,10 +244,10 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: _imageBytes != null
-                              ? Image.memory(_imageBytes!, fit: BoxFit.contain)
+                              ? Image.memory(_imageBytes!, fit: BoxFit.cover)
                               : Image.network(
                                   _existing!.imageUrl!,
-                                  fit: BoxFit.contain,
+                                  fit: BoxFit.cover,
                                   errorBuilder: (_, _, _) => const Center(
                                     child: Icon(Icons.broken_image_outlined),
                                   ),

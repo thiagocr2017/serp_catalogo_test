@@ -70,8 +70,8 @@ class _Profile extends ConsumerWidget {
                 children: [
                   Container(
                     width: 320,
-                    height: 260,
-                    padding: const EdgeInsets.all(16),
+                    height: 320,
+                    clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
                       color: Theme.of(context)
                           .colorScheme
@@ -82,7 +82,7 @@ class _Profile extends ConsumerWidget {
                         ? const Icon(Icons.inventory_2_outlined, size: 80)
                         : Image.network(
                             product.imageUrl!,
-                            fit: BoxFit.contain,
+                            fit: BoxFit.cover,
                             errorBuilder: (_, _, _) => const Icon(
                               Icons.broken_image_outlined,
                               size: 80,

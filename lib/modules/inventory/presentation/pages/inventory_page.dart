@@ -36,6 +36,7 @@ class InventoryPage extends ConsumerWidget {
                 child: Icon(item.quantity > 0 ? Icons.add : Icons.remove),
               ),
               title: Text(
+                '${item.productSku ?? 'SKU no disponible'} · '
                 '${item.quantity > 0 ? '+' : ''}${item.quantity} · ${_reason(item.reason)}',
               ),
               subtitle: Text(
@@ -125,9 +126,20 @@ class InventoryPage extends ConsumerWidget {
                 const SizedBox(height: 12),
                 TextField(
                   controller: quantity,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Cantidad positiva',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    signed: true,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: reason == InventoryReason.adjustment
+                        ? 'Cantidad con signo (ej. -5 o 5)'
+                        : 'Cantidad',
+                    helperText: switch (reason) {
+                      InventoryReason.sale =>
+                        'Se registrará automáticamente como salida negativa.',
+                      InventoryReason.adjustment =>
+                        'Usa signo negativo para restar o positivo para sumar.',
+                      _ => 'Se registrará como entrada positiva.',
+                    },
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -156,18 +168,41 @@ class InventoryPage extends ConsumerWidget {
       ),
     );
     if (accepted == true && productId != null) {
-      final absolute = int.parse(quantity.text).abs();
-      final signed = reason == InventoryReason.sale ? -absolute : absolute;
-      await ref
-          .read(inventoryRepositoryProvider)
-          .addTransaction(
-            productId: productId!,
-            quantity: signed,
-            reason: reason,
-            notes: notes.text.trim(),
+      final entered = int.tryParse(quantity.text.trim());
+      if (entered == null || entered == 0) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ingresa una cantidad entera distinta de cero.'),
+            ),
           );
-      ref.invalidate(inventoryTransactionsProvider);
-      ref.invalidate(productListControllerProvider);
+        }
+      } else {
+        final signed = signedInventoryQuantity(
+          enteredQuantity: entered,
+          reason: reason,
+        );
+        try {
+          await ref
+              .read(inventoryRepositoryProvider)
+              .addTransaction(
+                productId: productId!,
+                quantity: signed,
+                reason: reason,
+                notes: notes.text.trim(),
+              );
+          ref.invalidate(inventoryTransactionsProvider);
+          ref.invalidate(productListControllerProvider);
+        } catch (error) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('No fue posible registrar el movimiento: $error'),
+              ),
+            );
+          }
+        }
+      }
     }
     quantity.dispose();
     notes.dispose();

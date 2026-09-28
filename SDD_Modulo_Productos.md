@@ -108,6 +108,11 @@ La inserción de la transacción y la actualización del stock deben ejecutarse 
 
 Esta tabla es el libro contable inmutable del inventario.
 
+- Las ventas se registran siempre como cantidades negativas.
+- Las compras y devoluciones se registran siempre como cantidades positivas.
+- Los ajustes conservan el signo introducido para permitir aumentos y disminuciones explícitas.
+- Cada movimiento se presenta junto con el SKU del producto relacionado.
+
 | Columna | Tipo | Descripción |
 |---|---|---|
 | `id` | UUID, PK | Identificador de la transacción. |
@@ -211,12 +216,17 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 - Promoción activa y regla de prioridad aplicada.
 - Espacios para futuros módulos de inventario avanzado, ventas, CRM y reportes.
 
+### Pantalla de auditoría
+
+- Búsqueda local por tabla, registro, operación, campo, valores, usuario o dispositivo, con limpieza inmediata del filtro.
+
 ### Pantalla D: generador avanzado de PDF
 
 - Diseños de 1, 2, 4 o 6 tarjetas por página y lista compacta. La cuadrícula reserva automáticamente una página completa, media página, un cuarto o un sexto para cada producto, y escala la fotografía según ese espacio.
 - Portada con logo, nombre de empresa y métodos de pago.
 - Empresa y métodos de pago provienen exclusivamente de Configuración; el generador mantiene sólo datos propios del documento, selección, diseño y colores.
-- Colores configurables de fondo, tarjeta, destaque y fuente mediante selector RGB o código hexadecimal `#RRGGBB`.
+- Colores configurables mediante selector RGB o código hexadecimal `#RRGGBB`: fondo, tarjeta, elemento de diseño, fuente principal, fuente destacada, fuente secundaria, elemento de promoción y fuente de promoción.
+- Ajuste de fotografías configurable entre rellenar y recortar, mostrar la imagen completa o ajustar al ancho.
 - Datos del agente y QR de WhatsApp generado localmente.
 - Portadas o separadores por categoría según el diseño.
 - SKU, descripción, precio unitario, empaque y MOQ.

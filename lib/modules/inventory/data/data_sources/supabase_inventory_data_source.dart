@@ -5,7 +5,9 @@ class SupabaseInventoryDataSource {
   final SupabaseClient _client;
 
   Future<List<Map<String, dynamic>>> transactions({String? productId}) async {
-    var query = _client.from('inventory_transactions').select();
+    var query = _client
+        .from('inventory_transactions')
+        .select('*, products(sku)');
     if (productId != null) query = query.eq('product_id', productId);
     return query.order('created_at', ascending: false);
   }

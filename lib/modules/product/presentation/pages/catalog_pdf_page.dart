@@ -25,8 +25,13 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   String paymentMethods = '';
   String backgroundColor = '#FFFFFF';
   String cardColor = '#FFFFFF';
-  String accentColor = '#3949AB';
+  String designAccentColor = '#3949AB';
   String textColor = '#111111';
+  String highlightTextColor = '#1565C0';
+  String secondaryTextColor = '#616161';
+  String promotionColor = '#C62828';
+  String promotionTextColor = '#FFFFFF';
+  CatalogImageFit imageFit = CatalogImageFit.cover;
   int cards = 4;
   List<Product>? products;
   Map<String, String> categoryNames = const {};
@@ -145,7 +150,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                       ),
                       const Divider(height: 28),
                       Text(
-                        'Colores de la plantilla',
+                        'Diseño de la plantilla',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       _TemplateColorField(
@@ -160,15 +165,73 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         onChanged: (value) => setState(() => cardColor = value),
                       ),
                       _TemplateColorField(
-                        label: 'Destaque',
-                        value: accentColor,
+                        label: 'Elemento de diseño',
+                        value: designAccentColor,
                         onChanged: (value) =>
-                            setState(() => accentColor = value),
+                            setState(() => designAccentColor = value),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        'Colores de fuentes',
+                        style: Theme.of(context).textTheme.titleSmall,
                       ),
                       _TemplateColorField(
-                        label: 'Fuente',
+                        label: 'Fuente de texto',
                         value: textColor,
                         onChanged: (value) => setState(() => textColor = value),
+                      ),
+                      _TemplateColorField(
+                        label: 'Fuente destacada',
+                        value: highlightTextColor,
+                        onChanged: (value) =>
+                            setState(() => highlightTextColor = value),
+                      ),
+                      _TemplateColorField(
+                        label: 'Fuente secundaria',
+                        value: secondaryTextColor,
+                        onChanged: (value) =>
+                            setState(() => secondaryTextColor = value),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        'Promociones',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      _TemplateColorField(
+                        label: 'Elemento de promoción',
+                        value: promotionColor,
+                        onChanged: (value) =>
+                            setState(() => promotionColor = value),
+                      ),
+                      _TemplateColorField(
+                        label: 'Fuente de promoción',
+                        value: promotionTextColor,
+                        onChanged: (value) =>
+                            setState(() => promotionTextColor = value),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<CatalogImageFit>(
+                        initialValue: imageFit,
+                        decoration: const InputDecoration(
+                          labelText: 'Ajuste de fotografías',
+                          helperText:
+                              'Define cómo llenan el marco del producto.',
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: CatalogImageFit.cover,
+                            child: Text('Rellenar marco (puede recortar)'),
+                          ),
+                          DropdownMenuItem(
+                            value: CatalogImageFit.contain,
+                            child: Text('Mostrar imagen completa'),
+                          ),
+                          DropdownMenuItem(
+                            value: CatalogImageFit.fitWidth,
+                            child: Text('Ajustar al ancho'),
+                          ),
+                        ],
+                        onChanged: (value) => setState(() => imageFit = value!),
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<int>(
@@ -264,8 +327,13 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         logoBytes: logoBytes,
                         backgroundColor: backgroundColor,
                         cardColor: cardColor,
-                        accentColor: accentColor,
+                        accentColor: designAccentColor,
                         textColor: textColor,
+                        highlightTextColor: highlightTextColor,
+                        secondaryTextColor: secondaryTextColor,
+                        promotionColor: promotionColor,
+                        promotionTextColor: promotionTextColor,
+                        imageFit: imageFit,
                       ),
                     ),
                   ),

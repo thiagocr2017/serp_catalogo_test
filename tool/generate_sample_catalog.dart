@@ -53,6 +53,11 @@ Future<void> main() async {
       cardColor: '#FFFFFF',
       accentColor: '#1565C0',
       textColor: '#111111',
+      highlightTextColor: '#0D47A1',
+      secondaryTextColor: '#616161',
+      promotionColor: '#C62828',
+      promotionTextColor: '#FFFFFF',
+      imageFit: CatalogImageFit.cover,
     ),
   );
   final output = File('output/pdf/catalogo_serp_muestra.pdf');

@@ -526,14 +526,20 @@ class _ProductThumbnail extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
+  Widget build(BuildContext context) => Container(
     width: size,
     height: size,
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(size * .22),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+    ),
     child: product.imageUrl == null
         ? Icon(Icons.inventory_2_outlined, size: size * .45)
         : Image.network(
             product.imageUrl!,
-            fit: BoxFit.contain,
+            fit: BoxFit.cover,
             errorBuilder: (_, _, _) =>
                 Icon(Icons.broken_image_outlined, size: size * .45),
           ),

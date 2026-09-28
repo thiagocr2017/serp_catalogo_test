@@ -94,6 +94,8 @@ class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
       InventoryTransaction(
         id: row['id'] as String,
         productId: row['product_id'] as String,
+        productSku:
+            (row['products'] as Map<String, dynamic>?)?['sku'] as String?,
         quantity: row['quantity'] as int,
         reason: switch (row['reason'] as String) {
           'INITIAL_STOCK' => InventoryReason.initialStock,
