@@ -167,6 +167,60 @@ class SettingsRepository {
     );
   }
 
+  Future<CatalogAgent> updateCatalogAgent({
+    required String id,
+    required String name,
+    required String phone,
+  }) async {
+    final row = await _client
+        .from('catalog_agents')
+        .update({
+          'name': name.trim(),
+          'phone': phone.trim(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+          'updated_by': _device.actorName,
+          'updated_device_name': _device.name,
+          'updated_device_identifier': _device.identifier,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+    return CatalogAgent(
+      id: row['id'] as String,
+      name: row['name'] as String,
+      phone: row['phone'] as String,
+    );
+  }
+
+  Future<void> deactivateCatalogAgent(String id) async {
+    await _client
+        .from('catalog_agents')
+        .update({
+          'is_active': false,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+          'updated_by': _device.actorName,
+          'updated_device_name': _device.name,
+          'updated_device_identifier': _device.identifier,
+        })
+        .eq('id', id);
+    await _client
+        .from('app_settings')
+        .update({'selected_catalog_agent_id': null})
+        .eq('id', true)
+        .eq('selected_catalog_agent_id', id);
+  }
+
+  Future<void> setCatalogLogoUrl(String url) => _client
+      .from('app_settings')
+      .update({
+        'catalog_logo_url': url,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_by': _device.actorName,
+        'updated_device_name': _device.name,
+        'updated_device_identifier': _device.identifier,
+      })
+      .eq('id', true);
+
   Future<String> uploadCatalogLogo(Uint8List bytes, String extension) async {
     final safeExtension = extension.toLowerCase() == 'png' ? 'png' : 'jpg';
     final path = 'catalog-logo.$safeExtension';

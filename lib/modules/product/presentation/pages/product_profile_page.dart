@@ -94,18 +94,20 @@ class _Profile extends ConsumerWidget {
                     ),
                     child: product.imageUrl == null
                         ? const Icon(Icons.inventory_2_outlined, size: 80)
-                        : Transform.scale(
-                            scale: product.imageScale,
-                            child: Image.network(
-                              product.imageUrl!,
-                              fit: BoxFit.cover,
-                              alignment: Alignment(
-                                (product.imagePositionX * 2) - 1,
-                                (product.imagePositionY * 2) - 1,
-                              ),
-                              errorBuilder: (_, _, _) => const Icon(
-                                Icons.broken_image_outlined,
-                                size: 80,
+                        : FractionalTranslation(
+                            translation: Offset(
+                              (product.imagePositionX - .5) * .9,
+                              (product.imagePositionY - .5) * .9,
+                            ),
+                            child: Transform.scale(
+                              scale: product.imageScale,
+                              child: Image.network(
+                                product.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => const Icon(
+                                  Icons.broken_image_outlined,
+                                  size: 80,
+                                ),
                               ),
                             ),
                           ),

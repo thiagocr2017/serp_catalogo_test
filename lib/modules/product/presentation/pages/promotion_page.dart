@@ -139,6 +139,16 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
     );
     final categories = await ref.read(categoriesProvider.future);
     if (!context.mounted) return;
+    if (products.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No se puede crear una promoción porque no existen productos activos.',
+          ),
+        ),
+      );
+      return;
+    }
     final name = TextEditingController(text: existing?.name ?? '');
     final discount = TextEditingController(
       text: existing?.discountPercentage.toStringAsFixed(2) ?? '',

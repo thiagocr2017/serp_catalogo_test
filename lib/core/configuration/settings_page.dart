@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -42,6 +45,27 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
   late int decimals = widget.initial.decimalPlaces;
   late bool includesTax = widget.initial.pricesIncludeTax;
   late String rounding = widget.initial.roundingMode;
+  Uint8List? catalogLogo;
+  bool loadingLogo = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLogo();
+  }
+
+  Future<void> _loadLogo() async {
+    final repository = ref.read(settingsRepositoryProvider);
+    final preferences = await repository.getCatalogPreferences();
+    final bytes = await repository.downloadCatalogLogo(preferences.logoUrl);
+    if (mounted) {
+      setState(() {
+        catalogLogo = bytes;
+        loadingLogo = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
     company.dispose();
@@ -75,6 +99,41 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
           labelText: 'Métodos de pago',
           border: OutlineInputBorder(),
         ),
+      ),
+      const SizedBox(height: 16),
+      Text(
+        'Logo de la empresa',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Container(
+            width: 150,
+            height: 100,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+            ),
+            child: loadingLogo
+                ? const Center(child: CircularProgressIndicator())
+                : catalogLogo == null
+                ? const Icon(Icons.business_outlined, size: 42)
+                : Image.memory(catalogLogo!, fit: BoxFit.contain),
+          ),
+          const SizedBox(width: 16),
+          OutlinedButton.icon(
+            onPressed: _selectLogo,
+            icon: const Icon(Icons.image_outlined),
+            label: Text(
+              catalogLogo == null ? 'Seleccionar logo' : 'Cambiar logo',
+            ),
+          ),
+        ],
       ),
       const SizedBox(height: 28),
       Row(
@@ -272,6 +331,31 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Configuración guardada')));
+    }
+  }
+
+  Future<void> _selectLogo() async {
+    final file = await openFile(
+      acceptedTypeGroups: const [
+        XTypeGroup(
+          label: 'Imágenes',
+          extensions: ['png', 'jpg', 'jpeg', 'webp'],
+        ),
+      ],
+    );
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    final repository = ref.read(settingsRepositoryProvider);
+    final url = await repository.uploadCatalogLogo(
+      bytes,
+      file.name.split('.').last,
+    );
+    await repository.setCatalogLogoUrl(url);
+    if (mounted) {
+      setState(() => catalogLogo = bytes);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Logo guardado correctamente.')),
+      );
     }
   }
 

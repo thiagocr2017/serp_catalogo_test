@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'dart:typed_data';
 
 import '../../../../core/configuration/settings_providers.dart';
+import '../../../inventory/di/inventory_providers.dart' as inventory;
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
 import '../controllers/product_list_controller.dart';
@@ -186,6 +187,10 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
             .create(product, initialStock: int.parse(_initialStock.text));
       }
       ref.invalidate(productListControllerProvider);
+      ref.invalidate(inventory.inventoryTransactionsProvider);
+      ref.invalidate(inventory.auditEntriesProvider);
+      ref.invalidate(productTransactionsProvider(productId));
+      ref.invalidate(productAuditProvider(productId));
       if (mounted) {
         context.go(_isEditing ? '/products/$productId' : '/products');
       }
@@ -267,22 +272,23 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                             color: Theme.of(context).colorScheme.outlineVariant,
                           ),
                         ),
-                        child: Transform.scale(
-                          scale: _imageScale,
-                          child: _imageBytes != null
-                              ? Image.memory(
-                                  _imageBytes!,
-                                  fit: BoxFit.cover,
-                                  alignment: _imageAlignment,
-                                )
-                              : Image.network(
-                                  _existing!.imageUrl!,
-                                  fit: BoxFit.cover,
-                                  alignment: _imageAlignment,
-                                  errorBuilder: (_, _, _) => const Center(
-                                    child: Icon(Icons.broken_image_outlined),
+                        child: FractionalTranslation(
+                          translation: Offset(
+                            (_imagePositionX - .5) * .9,
+                            (_imagePositionY - .5) * .9,
+                          ),
+                          child: Transform.scale(
+                            scale: _imageScale,
+                            child: _imageBytes != null
+                                ? Image.memory(_imageBytes!, fit: BoxFit.cover)
+                                : Image.network(
+                                    _existing!.imageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => const Center(
+                                      child: Icon(Icons.broken_image_outlined),
+                                    ),
                                   ),
-                                ),
+                          ),
                         ),
                       ),
                     ),
@@ -582,9 +588,6 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
             ),
     );
   }
-
-  Alignment get _imageAlignment =>
-      Alignment((_imagePositionX * 2) - 1, (_imagePositionY * 2) - 1);
 
   Widget _section(String title, String description, List<Widget> fields) {
     return Card(

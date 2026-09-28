@@ -48,47 +48,60 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) =>
             Center(child: Text('No fue posible cargar: $error')),
-        data: (items) => ListView.separated(
-          padding: const EdgeInsets.all(24),
-          itemCount: items.length,
-          separatorBuilder: (_, _) => const Divider(),
-          itemBuilder: (_, index) {
-            final category = items[index];
-            final productCount = _products
-                .where((product) => product.categoryId == category.id)
-                .length;
-            return ListTile(
-              leading: const Icon(Icons.category_outlined),
-              title: Text(category.name),
-              subtitle: Text(
-                _loadingProducts
-                    ? 'Contando productos…'
-                    : '$productCount producto(s)',
+        data: (items) => items.isEmpty
+            ? const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.category_outlined, size: 56),
+                    SizedBox(height: 12),
+                    Text('No existen categorías.'),
+                    SizedBox(height: 4),
+                    Text('Crea la primera categoría para registrar productos.'),
+                  ],
+                ),
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.all(24),
+                itemCount: items.length,
+                separatorBuilder: (_, _) => const Divider(),
+                itemBuilder: (_, index) {
+                  final category = items[index];
+                  final productCount = _products
+                      .where((product) => product.categoryId == category.id)
+                      .length;
+                  return ListTile(
+                    leading: const Icon(Icons.category_outlined),
+                    title: Text(category.name),
+                    subtitle: Text(
+                      _loadingProducts
+                          ? 'Contando productos…'
+                          : '$productCount producto(s)',
+                    ),
+                    trailing: Wrap(
+                      spacing: 4,
+                      children: [
+                        IconButton(
+                          tooltip: 'Editar categoría',
+                          onPressed: () => _editCategory(category),
+                          icon: const Icon(Icons.edit_outlined),
+                        ),
+                        IconButton(
+                          tooltip: 'Eliminar categoría',
+                          onPressed: items.length <= 1
+                              ? null
+                              : () => _deleteCategory(
+                                  category,
+                                  categories: items,
+                                  productCount: productCount,
+                                ),
+                          icon: const Icon(Icons.delete_outline),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
-              trailing: Wrap(
-                spacing: 4,
-                children: [
-                  IconButton(
-                    tooltip: 'Editar categoría',
-                    onPressed: () => _editCategory(category),
-                    icon: const Icon(Icons.edit_outlined),
-                  ),
-                  IconButton(
-                    tooltip: 'Eliminar categoría',
-                    onPressed: items.length <= 1
-                        ? null
-                        : () => _deleteCategory(
-                            category,
-                            categories: items,
-                            productCount: productCount,
-                          ),
-                    icon: const Icon(Icons.delete_outline),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
       ),
     );
   }

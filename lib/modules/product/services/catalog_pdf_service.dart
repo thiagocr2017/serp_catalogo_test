@@ -497,15 +497,14 @@ class CatalogPdfService {
               child: image == null
                   ? pw.SizedBox()
                   : pw.ClipRect(
-                      child: pw.Transform.scale(
-                        scale: product.imageScale,
-                        child: pw.Image(
-                          image,
-                          fit: _pdfImageFit(imageFit),
-                          alignment: pw.Alignment(
-                            (product.imagePositionX * 2) - 1,
-                            (product.imagePositionY * 2) - 1,
-                          ),
+                      child: pw.Transform.translate(
+                        offset: PdfPoint(
+                          (product.imagePositionX - .5) * 180,
+                          (product.imagePositionY - .5) * 180,
+                        ),
+                        child: pw.Transform.scale(
+                          scale: product.imageScale,
+                          child: pw.Image(image, fit: _pdfImageFit(imageFit)),
                         ),
                       ),
                     ),
@@ -624,15 +623,15 @@ class CatalogPdfService {
                 height: imageHeight ?? 90,
                 width: double.infinity,
                 child: pw.ClipRect(
-                  child: pw.Transform.scale(
-                    scale: product.imageScale,
-                    child: pw.Image(
-                      image,
-                      fit: _pdfImageFit(imageFit),
-                      alignment: pw.Alignment(
-                        (product.imagePositionX * 2) - 1,
-                        (product.imagePositionY * 2) - 1,
-                      ),
+                  child: pw.Transform.translate(
+                    offset: PdfPoint(
+                      (product.imagePositionX - .5) * 180,
+                      (product.imagePositionY - .5) *
+                          ((imageHeight ?? 90) * .9),
+                    ),
+                    child: pw.Transform.scale(
+                      scale: product.imageScale,
+                      child: pw.Image(image, fit: _pdfImageFit(imageFit)),
                     ),
                   ),
                 ),

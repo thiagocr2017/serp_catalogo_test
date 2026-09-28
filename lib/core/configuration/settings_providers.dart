@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'business_settings.dart';
+import 'catalog_preferences.dart';
 import 'settings_repository.dart';
 import 'packaging_presentation.dart';
 
@@ -15,3 +16,6 @@ final packagingPresentationsProvider =
       (ref) =>
           ref.watch(settingsRepositoryProvider).getPackagingPresentations(),
     );
+final catalogAgentsProvider = FutureProvider<List<CatalogAgent>>(
+  (ref) => ref.watch(settingsRepositoryProvider).getCatalogAgents(),
+);

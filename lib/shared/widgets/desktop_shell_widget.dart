@@ -22,6 +22,7 @@ class DesktopShellWidget extends StatelessWidget {
       '/catalog-export',
       '/product-transfer',
     ].any(_selected);
+    final salesModuleSelected = _selected('/sales');
     return Scaffold(
       body: Row(
         children: [
@@ -77,6 +78,20 @@ class DesktopShellWidget extends StatelessWidget {
                         '/product-transfer',
                         'Importar / Exportar',
                         Icons.import_export_outlined,
+                      ),
+                    ],
+                  ),
+                  ExpansionTile(
+                    initiallyExpanded: salesModuleSelected,
+                    leading: const Icon(Icons.point_of_sale_outlined),
+                    title: const Text('Ventas'),
+                    childrenPadding: const EdgeInsets.only(left: 16),
+                    children: [
+                      _item(
+                        context,
+                        '/sales/agents',
+                        'Agentes',
+                        Icons.badge_outlined,
                       ),
                     ],
                   ),

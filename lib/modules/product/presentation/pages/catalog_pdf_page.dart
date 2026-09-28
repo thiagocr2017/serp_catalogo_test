@@ -232,59 +232,6 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     }
   }
 
-  Future<void> _createAgent() async {
-    final name = TextEditingController();
-    final contact = TextEditingController(text: '+506');
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nuevo agente'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: name,
-              autofocus: true,
-              decoration: const InputDecoration(labelText: 'Nombre'),
-            ),
-            TextField(
-              controller: contact,
-              decoration: const InputDecoration(labelText: 'WhatsApp'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(context, name.text.trim().isNotEmpty),
-            child: const Text('Guardar agente'),
-          ),
-        ],
-      ),
-    );
-    if (accepted == true) {
-      final created = await ref
-          .read(settingsRepositoryProvider)
-          .createCatalogAgent(name: name.text, phone: contact.text);
-      if (mounted) {
-        setState(() {
-          catalogAgents = [...catalogAgents, created]
-            ..sort((a, b) => a.name.compareTo(b.name));
-          selectedAgentId = created.id;
-          agent.text = created.name;
-          phone.text = created.phone;
-        });
-        await _savePreferences();
-      }
-    }
-    name.dispose();
-    contact.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final data = products;
@@ -318,36 +265,19 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                       const Text(
                         'Estos datos se administran en Configuración y se usan automáticamente.',
                       ),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        onPressed: () async {
-                          final file = await openFile(
-                            acceptedTypeGroups: const [
-                              XTypeGroup(
-                                label: 'Imágenes',
-                                extensions: ['png', 'jpg', 'jpeg'],
-                              ),
-                            ],
-                          );
-                          if (file != null) {
-                            final bytes = await file.readAsBytes();
-                            final extension = file.name.split('.').last;
-                            final url = await ref
-                                .read(settingsRepositoryProvider)
-                                .uploadCatalogLogo(bytes, extension);
-                            if (mounted) {
-                              setState(() {
-                                logoBytes = bytes;
-                                logoUrl = url;
-                              });
-                              await _savePreferences();
-                            }
-                          }
-                        },
-                        icon: const Icon(Icons.business),
-                        label: Text(
-                          logoBytes == null ? 'Seleccionar logo' : 'Logo listo',
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        onTap: () => context.go('/settings'),
+                        leading: const Icon(Icons.business_outlined),
+                        title: Text(
+                          logoBytes == null
+                              ? 'Logo no configurado'
+                              : 'Logo configurado',
                         ),
+                        subtitle: const Text(
+                          'El logo se administra en Configuración.',
+                        ),
+                        trailing: const Icon(Icons.open_in_new),
                       ),
                       const Divider(height: 28),
                       Text(
@@ -384,9 +314,9 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                             ),
                           ),
                           IconButton(
-                            tooltip: 'Crear agente',
-                            onPressed: _createAgent,
-                            icon: const Icon(Icons.person_add_alt_1),
+                            tooltip: 'Administrar agentes',
+                            onPressed: () => context.go('/sales/agents'),
+                            icon: const Icon(Icons.manage_accounts_outlined),
                           ),
                         ],
                       ),

@@ -574,17 +574,19 @@ class _ProductThumbnail extends StatelessWidget {
       ),
       child: product.imageUrl == null
           ? Icon(Icons.inventory_2_outlined, size: size * .45)
-          : Transform.scale(
-              scale: product.imageScale,
-              child: Image.network(
-                product.imageUrl!,
-                fit: BoxFit.cover,
-                alignment: Alignment(
-                  (product.imagePositionX * 2) - 1,
-                  (product.imagePositionY * 2) - 1,
+          : FractionalTranslation(
+              translation: Offset(
+                (product.imagePositionX - .5) * .9,
+                (product.imagePositionY - .5) * .9,
+              ),
+              child: Transform.scale(
+                scale: product.imageScale,
+                child: Image.network(
+                  product.imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) =>
+                      Icon(Icons.broken_image_outlined, size: size * .45),
                 ),
-                errorBuilder: (_, _, _) =>
-                    Icon(Icons.broken_image_outlined, size: size * .45),
               ),
             ),
     ),
