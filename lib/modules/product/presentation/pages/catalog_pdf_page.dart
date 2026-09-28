@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
@@ -48,6 +49,13 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   List<CatalogAgent> catalogAgents = const [];
   String? selectedAgentId;
   Timer? _preferencesTimer;
+  bool _savingPreferences = false;
+  bool _savePreferencesAgain = false;
+  bool _preferencesSaved = true;
+  String categorySelectionSearch = '';
+  String productSelectionSearch = '';
+  String categoryOrderSearch = '';
+  String productOrderSearch = '';
   final selected = <String>{};
   final reorderSelection = <String>{};
   final catalogOrder = <String>[];
@@ -169,7 +177,10 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   }
 
   void _updatePreference(VoidCallback update) {
-    setState(update);
+    setState(() {
+      update();
+      _preferencesSaved = false;
+    });
     _preferencesTimer?.cancel();
     _preferencesTimer = Timer(
       const Duration(milliseconds: 500),
@@ -177,27 +188,49 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     );
   }
 
-  Future<void> _savePreferences() => ref
-      .read(settingsRepositoryProvider)
-      .saveCatalogPreferences(
-        CatalogPreferences(
-          cardsPerPage: cards,
-          backgroundColor: backgroundColor,
-          cardColor: cardColor,
-          designAccentColor: designAccentColor,
-          textColor: textColor,
-          highlightTextColor: highlightTextColor,
-          secondaryTextColor: secondaryTextColor,
-          promotionColor: promotionColor,
-          promotionTextColor: promotionTextColor,
-          promotionPreviousPriceColor: promotionPreviousPriceColor,
-          promotionPriceColor: promotionPriceColor,
-          promotionDescriptionColor: promotionDescriptionColor,
-          imageFit: imageFit.name,
-          logoUrl: logoUrl,
-          selectedAgentId: selectedAgentId,
-        ),
-      );
+  Future<void> _savePreferences() async {
+    if (_savingPreferences) {
+      _savePreferencesAgain = true;
+      return;
+    }
+    if (mounted) setState(() => _savingPreferences = true);
+    try {
+      await ref
+          .read(settingsRepositoryProvider)
+          .saveCatalogPreferences(
+            CatalogPreferences(
+              cardsPerPage: cards,
+              backgroundColor: backgroundColor,
+              cardColor: cardColor,
+              designAccentColor: designAccentColor,
+              textColor: textColor,
+              highlightTextColor: highlightTextColor,
+              secondaryTextColor: secondaryTextColor,
+              promotionColor: promotionColor,
+              promotionTextColor: promotionTextColor,
+              promotionPreviousPriceColor: promotionPreviousPriceColor,
+              promotionPriceColor: promotionPriceColor,
+              promotionDescriptionColor: promotionDescriptionColor,
+              imageFit: imageFit.name,
+              logoUrl: logoUrl,
+              selectedAgentId: selectedAgentId,
+            ),
+          );
+      if (mounted) setState(() => _preferencesSaved = true);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo guardar el diseño: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingPreferences = false);
+      if (_savePreferencesAgain) {
+        _savePreferencesAgain = false;
+        unawaited(_savePreferences());
+      }
+    }
+  }
 
   Future<void> _createAgent() async {
     final name = TextEditingController();
@@ -489,6 +522,32 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                             .toList(),
                         onChanged: (v) => _updatePreference(() => cards = v!),
                       ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.tonalIcon(
+                          onPressed: _savingPreferences
+                              ? null
+                              : _savePreferences,
+                          icon: _savingPreferences
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Icon(
+                                  _preferencesSaved
+                                      ? Icons.cloud_done_outlined
+                                      : Icons.save_outlined,
+                                ),
+                          label: Text(
+                            _preferencesSaved
+                                ? 'Diseño guardado'
+                                : 'Guardar diseño',
+                          ),
+                        ),
+                      ),
                       const Divider(height: 32),
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -502,10 +561,38 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                           'Los productos inactivos o agotados se excluyen automáticamente del catálogo.',
                         ),
                       ),
+                      if (data.isEmpty) ...[
+                        const SizedBox(height: 12),
+                        const Card(
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                Icon(Icons.inventory_2_outlined, size: 38),
+                                SizedBox(height: 8),
+                                Text(
+                                  'No hay productos disponibles para el catálogo.',
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Crea productos activos con existencias para habilitar la selección y el orden.',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                       const Divider(height: 32),
                       Text(
                         'Selección por categoría',
                         style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      _CatalogSearchField(
+                        hint: 'Buscar categoría',
+                        onChanged: (value) =>
+                            setState(() => categorySelectionSearch = value),
                       ),
                       Align(
                         alignment: Alignment.centerRight,
@@ -523,7 +610,13 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                           child: ListView(
                             children: [
                               for (final entry in categoryNames.entries)
-                                if (data.any((p) => p.categoryId == entry.key))
+                                if (data.any(
+                                      (p) => p.categoryId == entry.key,
+                                    ) &&
+                                    _matches(
+                                      entry.value,
+                                      categorySelectionSearch,
+                                    ))
                                   CheckboxListTile(
                                     dense: true,
                                     contentPadding: EdgeInsets.zero,
@@ -571,6 +664,11 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                           ),
                         ],
                       ),
+                      _CatalogSearchField(
+                        hint: 'Buscar por nombre, SKU o categoría',
+                        onChanged: (value) =>
+                            setState(() => productSelectionSearch = value),
+                      ),
                       CheckboxListTile(
                         value: selected.length == data.length,
                         title: const Text('Todos los productos'),
@@ -588,22 +686,23 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                           child: ListView(
                             children: [
                               for (final p in data)
-                                CheckboxListTile(
-                                  dense: true,
-                                  value: selected.contains(p.id),
-                                  title: Text(p.name),
-                                  subtitle: Text(p.sku),
-                                  onChanged: (v) => setState(() {
-                                    v!
-                                        ? selected.add(p.id)
-                                        : selected.remove(p.id);
-                                    ref
-                                        .read(
-                                          selectedProductIdsProvider.notifier,
-                                        )
-                                        .replaceAll(selected);
-                                  }),
-                                ),
+                                if (_matchesProduct(p, productSelectionSearch))
+                                  CheckboxListTile(
+                                    dense: true,
+                                    value: selected.contains(p.id),
+                                    title: Text(p.name),
+                                    subtitle: Text(p.sku),
+                                    onChanged: (v) => setState(() {
+                                      v!
+                                          ? selected.add(p.id)
+                                          : selected.remove(p.id);
+                                      ref
+                                          .read(
+                                            selectedProductIdsProvider.notifier,
+                                          )
+                                          .replaceAll(selected);
+                                    }),
+                                  ),
                             ],
                           ),
                         ),
@@ -615,6 +714,11 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                       ),
                       const Text(
                         'Al mover una categoría se mueve con todos sus productos.',
+                      ),
+                      _CatalogSearchField(
+                        hint: 'Buscar categoría para ordenar',
+                        onChanged: (value) =>
+                            setState(() => categoryOrderSearch = value),
                       ),
                       _orderButtons(
                         selection: categoryReorderSelection,
@@ -629,26 +733,30 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                           child: ListView(
                             children: [
                               for (final categoryId in categoryOrder)
-                                CheckboxListTile(
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  value: categoryReorderSelection.contains(
-                                    categoryId,
+                                if (_matches(
+                                  categoryNames[categoryId] ?? '',
+                                  categoryOrderSearch,
+                                ))
+                                  CheckboxListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    value: categoryReorderSelection.contains(
+                                      categoryId,
+                                    ),
+                                    title: Text(
+                                      categoryNames[categoryId] ??
+                                          'Sin categoría',
+                                    ),
+                                    onChanged: (value) => setState(() {
+                                      value == true
+                                          ? categoryReorderSelection.add(
+                                              categoryId,
+                                            )
+                                          : categoryReorderSelection.remove(
+                                              categoryId,
+                                            );
+                                    }),
                                   ),
-                                  title: Text(
-                                    categoryNames[categoryId] ??
-                                        'Sin categoría',
-                                  ),
-                                  onChanged: (value) => setState(() {
-                                    value == true
-                                        ? categoryReorderSelection.add(
-                                            categoryId,
-                                          )
-                                        : categoryReorderSelection.remove(
-                                            categoryId,
-                                          );
-                                  }),
-                                ),
                             ],
                           ),
                         ),
@@ -660,6 +768,11 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                       ),
                       const Text(
                         'Marca uno o varios productos y muévelos juntos. Las categorías siempre permanecen agrupadas.',
+                      ),
+                      _CatalogSearchField(
+                        hint: 'Buscar producto para ordenar',
+                        onChanged: (value) =>
+                            setState(() => productOrderSearch = value),
                       ),
                       _orderButtons(
                         selection: reorderSelection,
@@ -673,7 +786,11 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                           child: ListView(
                             children: [
                               for (final product in _orderedProducts(data))
-                                if (selected.contains(product.id))
+                                if (selected.contains(product.id) &&
+                                    _matchesProduct(
+                                      product,
+                                      productOrderSearch,
+                                    ))
                                   CheckboxListTile(
                                     dense: true,
                                     contentPadding: EdgeInsets.zero,
@@ -700,47 +817,75 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                 const VerticalDivider(width: 1),
                 Expanded(
                   child: PdfPreview(
+                    allowPrinting: false,
+                    allowSharing: false,
                     canChangePageFormat: false,
                     canChangeOrientation: false,
                     canDebug: false,
                     pdfFileName: 'catalogo_serp.pdf',
-                    build: (_) => CatalogPdfService().generate(
-                      _orderedProducts(data)
-                          .where((p) => selected.contains(p.id))
-                          .toList(),
-                      CatalogPdfOptions(
-                        companyName: companyName,
-                        paymentMethods: paymentMethods,
-                        agentName: agent.text,
-                        agentPhone: phone.text,
-                        cardsPerPage: cards,
-                        categoryNames: categoryNames,
-                        logoBytes: logoBytes,
-                        backgroundColor: backgroundColor,
-                        cardColor: cardColor,
-                        accentColor: designAccentColor,
-                        textColor: textColor,
-                        highlightTextColor: highlightTextColor,
-                        secondaryTextColor: secondaryTextColor,
-                        promotionColor: promotionColor,
-                        promotionTextColor: promotionTextColor,
-                        promotionPreviousPriceColor:
-                            promotionPreviousPriceColor,
-                        promotionPriceColor: promotionPriceColor,
-                        promotionDescriptionColor: promotionDescriptionColor,
-                        packagingLabels: {
-                          PackagingType.unit: packagingUnitLabel,
-                          PackagingType.box: packagingBoxLabel,
-                          PackagingType.set: packagingSetLabel,
-                        },
-                        imageFit: imageFit,
+                    actions: [
+                      IconButton(
+                        tooltip: 'Guardar PDF',
+                        onPressed: () => _savePdf(data),
+                        icon: const Icon(Icons.download_outlined),
                       ),
-                    ),
+                    ],
+                    build: (_) => _generatePdf(data),
                   ),
                 ),
               ],
             ),
     );
+  }
+
+  Future<Uint8List> _generatePdf(List<Product> data) =>
+      CatalogPdfService().generate(
+        _orderedProducts(data)
+            .where((product) => selected.contains(product.id))
+            .toList(),
+        CatalogPdfOptions(
+          companyName: companyName,
+          paymentMethods: paymentMethods,
+          agentName: agent.text,
+          agentPhone: phone.text,
+          cardsPerPage: cards,
+          categoryNames: categoryNames,
+          logoBytes: logoBytes,
+          backgroundColor: backgroundColor,
+          cardColor: cardColor,
+          accentColor: designAccentColor,
+          textColor: textColor,
+          highlightTextColor: highlightTextColor,
+          secondaryTextColor: secondaryTextColor,
+          promotionColor: promotionColor,
+          promotionTextColor: promotionTextColor,
+          promotionPreviousPriceColor: promotionPreviousPriceColor,
+          promotionPriceColor: promotionPriceColor,
+          promotionDescriptionColor: promotionDescriptionColor,
+          packagingLabels: {
+            PackagingType.unit: packagingUnitLabel,
+            PackagingType.box: packagingBoxLabel,
+            PackagingType.set: packagingSetLabel,
+          },
+          imageFit: imageFit,
+        ),
+      );
+
+  Future<void> _savePdf(List<Product> data) async {
+    final location = await getSaveLocation(
+      suggestedName: 'catalogo_serp.pdf',
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'Documento PDF', extensions: ['pdf']),
+      ],
+    );
+    if (location == null) return;
+    final bytes = await _generatePdf(data);
+    await File(location.path).writeAsBytes(bytes, flush: true);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF guardado en ${location.path}')),
+      );
+    }
   }
 
   List<Product> _orderedProducts(List<Product> data) {
@@ -755,6 +900,16 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   void _clearCatalogSelection() {
     setState(selected.clear);
     ref.read(selectedProductIdsProvider.notifier).clear();
+  }
+
+  bool _matches(String value, String query) {
+    final term = query.trim().toLowerCase();
+    return term.isEmpty || value.toLowerCase().contains(term);
+  }
+
+  bool _matchesProduct(Product product, String query) {
+    final category = categoryNames[product.categoryId] ?? '';
+    return _matches('${product.name} ${product.sku} $category', query);
   }
 
   Widget _orderButtons({
@@ -862,6 +1017,55 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
       }
     }
   }
+}
+
+class _CatalogSearchField extends StatefulWidget {
+  const _CatalogSearchField({required this.hint, required this.onChanged});
+
+  final String hint;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_CatalogSearchField> createState() => _CatalogSearchFieldState();
+}
+
+class _CatalogSearchFieldState extends State<_CatalogSearchField> {
+  final controller = TextEditingController();
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: TextField(
+      controller: controller,
+      onChanged: (value) {
+        setState(() {});
+        widget.onChanged(value);
+      },
+      decoration: InputDecoration(
+        hintText: widget.hint,
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: controller.text.isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Limpiar búsqueda',
+                onPressed: () {
+                  controller.clear();
+                  setState(() {});
+                  widget.onChanged('');
+                },
+                icon: const Icon(Icons.close),
+              ),
+        border: const OutlineInputBorder(),
+        isDense: true,
+      ),
+    ),
+  );
 }
 
 class _TemplateColorField extends StatefulWidget {

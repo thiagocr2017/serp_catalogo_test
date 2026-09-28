@@ -97,31 +97,36 @@ class SettingsRepository {
     );
   }
 
-  Future<void> saveCatalogPreferences(CatalogPreferences value) => _client
-      .from('app_settings')
-      .update({
-        'catalog_cards_per_page': value.cardsPerPage,
-        'catalog_background_color': value.backgroundColor,
-        'catalog_card_color': value.cardColor,
-        'catalog_design_accent_color': value.designAccentColor,
-        'catalog_text_color': value.textColor,
-        'catalog_highlight_text_color': value.highlightTextColor,
-        'catalog_secondary_text_color': value.secondaryTextColor,
-        'catalog_promotion_color': value.promotionColor,
-        'catalog_promotion_text_color': value.promotionTextColor,
-        'catalog_promotion_previous_price_color':
-            value.promotionPreviousPriceColor,
-        'catalog_promotion_price_color': value.promotionPriceColor,
-        'catalog_promotion_description_color': value.promotionDescriptionColor,
-        'catalog_image_fit': value.imageFit,
-        'catalog_logo_url': value.logoUrl,
-        'selected_catalog_agent_id': value.selectedAgentId,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-        'updated_by': _device.actorName,
-        'updated_device_name': _device.name,
-        'updated_device_identifier': _device.identifier,
-      })
-      .eq('id', true);
+  Future<void> saveCatalogPreferences(CatalogPreferences value) async {
+    await _client
+        .from('app_settings')
+        .update({
+          'catalog_cards_per_page': value.cardsPerPage,
+          'catalog_background_color': value.backgroundColor,
+          'catalog_card_color': value.cardColor,
+          'catalog_design_accent_color': value.designAccentColor,
+          'catalog_text_color': value.textColor,
+          'catalog_highlight_text_color': value.highlightTextColor,
+          'catalog_secondary_text_color': value.secondaryTextColor,
+          'catalog_promotion_color': value.promotionColor,
+          'catalog_promotion_text_color': value.promotionTextColor,
+          'catalog_promotion_previous_price_color':
+              value.promotionPreviousPriceColor,
+          'catalog_promotion_price_color': value.promotionPriceColor,
+          'catalog_promotion_description_color':
+              value.promotionDescriptionColor,
+          'catalog_image_fit': value.imageFit,
+          'catalog_logo_url': value.logoUrl,
+          'selected_catalog_agent_id': value.selectedAgentId,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+          'updated_by': _device.actorName,
+          'updated_device_name': _device.name,
+          'updated_device_identifier': _device.identifier,
+        })
+        .eq('id', true)
+        .select('catalog_cards_per_page')
+        .single();
+  }
 
   Future<List<CatalogAgent>> getCatalogAgents() async {
     final rows = await _client
