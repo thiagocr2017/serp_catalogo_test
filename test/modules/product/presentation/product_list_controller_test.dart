@@ -85,4 +85,10 @@ class _InMemoryProductRepository implements ProductRepository {
 
   @override
   Future<Product> updateProduct(Product product) async => product;
+
+  @override
+  Future<void> saveCatalogOrder({
+    required List<String> productIds,
+    required List<String> categoryIds,
+  }) async {}
 }

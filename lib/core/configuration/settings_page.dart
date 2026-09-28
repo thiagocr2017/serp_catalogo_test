@@ -88,6 +88,47 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
         ),
       ),
       const SizedBox(height: 28),
+      Row(
+        children: [
+          Text(
+            'Entorno de la aplicación',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(width: 12),
+          Chip(
+            avatar: Icon(
+              widget.initial.appMode == 'PRODUCTION'
+                  ? Icons.verified_outlined
+                  : Icons.science_outlined,
+            ),
+            label: Text(
+              widget.initial.appMode == 'PRODUCTION' ? 'Producción' : 'Prueba',
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      Text(
+        widget.initial.appMode == 'PRODUCTION'
+            ? 'Los datos actuales pertenecen al entorno de producción.'
+            : 'El entorno de prueba permite eliminar todos los datos operativos antes de iniciar producción.',
+      ),
+      if (widget.initial.appMode == 'TEST' && widget.initial.isSuperAdmin) ...[
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.tonalIcon(
+            style: FilledButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+              backgroundColor: Theme.of(context).colorScheme.errorContainer,
+            ),
+            onPressed: _confirmProduction,
+            icon: const Icon(Icons.delete_sweep_outlined),
+            label: const Text('Eliminar datos de prueba y pasar a producción'),
+          ),
+        ),
+      ],
+      const SizedBox(height: 28),
       Text(
         'Nombres de presentaciones',
         style: Theme.of(context).textTheme.headlineSmall,
@@ -230,6 +271,8 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
             packagingSetLabel: packagingSet.text.trim().isEmpty
                 ? 'Set'
                 : packagingSet.text.trim(),
+            appMode: widget.initial.appMode,
+            isSuperAdmin: widget.initial.isSuperAdmin,
           ),
         );
     ref.invalidate(businessSettingsProvider);
@@ -237,6 +280,57 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Configuración guardada')));
+    }
+  }
+
+  Future<void> _confirmProduction() async {
+    final confirmation = TextEditingController();
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar todos los datos de prueba'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Esta acción elimina productos, imágenes, categorías, promociones, movimientos de inventario y auditoría. Conserva únicamente la configuración y cambia la aplicación a producción.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: confirmation,
+              decoration: const InputDecoration(
+                labelText: 'Escribe PRODUCCION para confirmar',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(
+              context,
+              confirmation.text.trim().toUpperCase() == 'PRODUCCION',
+            ),
+            child: const Text('Eliminar y pasar a producción'),
+          ),
+        ],
+      ),
+    );
+    confirmation.dispose();
+    if (accepted != true) return;
+    await ref.read(settingsRepositoryProvider).purgeTestDataAndGoProduction();
+    ref.invalidate(businessSettingsProvider);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Datos de prueba eliminados. Modo producción activo.'),
+        ),
+      );
     }
   }
 }

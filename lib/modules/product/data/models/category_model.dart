@@ -8,5 +8,6 @@ class CategoryModel {
     id: data['id'] as String,
     name: data['name'] as String,
     isActive: data['is_active'] as bool,
+    catalogSortOrder: data['catalog_sort_order'] as int? ?? 0,
   );
 }

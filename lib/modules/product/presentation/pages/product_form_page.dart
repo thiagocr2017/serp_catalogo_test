@@ -38,6 +38,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   bool _saving = false;
   double _imagePositionX = 0.5;
   double _imagePositionY = 0.5;
+  double _imageScale = 1;
   Uint8List? _imageBytes;
   Product? _existing;
   bool _loading = false;
@@ -80,6 +81,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       _packagingType = product.packagingType;
       _imagePositionX = product.imagePositionX;
       _imagePositionY = product.imagePositionY;
+      _imageScale = product.imageScale;
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -147,6 +149,8 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
         imageUrl: imageUrl,
         imagePositionX: _imagePositionX,
         imagePositionY: _imagePositionY,
+        imageScale: _imageScale,
+        catalogSortOrder: _existing?.catalogSortOrder ?? 0,
         currentStock: _existing?.currentStock ?? 0,
         reorderPoint: int.parse(_reorderPoint.text),
         promotionPriceInCents: _promotionPrice.text.trim().isEmpty
@@ -249,20 +253,23 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                             color: Theme.of(context).colorScheme.outlineVariant,
                           ),
                         ),
-                        child: _imageBytes != null
-                            ? Image.memory(
-                                _imageBytes!,
-                                fit: BoxFit.cover,
-                                alignment: _imageAlignment,
-                              )
-                            : Image.network(
-                                _existing!.imageUrl!,
-                                fit: BoxFit.cover,
-                                alignment: _imageAlignment,
-                                errorBuilder: (_, _, _) => const Center(
-                                  child: Icon(Icons.broken_image_outlined),
+                        child: Transform.scale(
+                          scale: _imageScale,
+                          child: _imageBytes != null
+                              ? Image.memory(
+                                  _imageBytes!,
+                                  fit: BoxFit.cover,
+                                  alignment: _imageAlignment,
+                                )
+                              : Image.network(
+                                  _existing!.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  alignment: _imageAlignment,
+                                  errorBuilder: (_, _, _) => const Center(
+                                    child: Icon(Icons.broken_image_outlined),
+                                  ),
                                 ),
-                              ),
+                        ),
                       ),
                     ),
                     SizedBox(
@@ -295,6 +302,44 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                           ),
                           Row(
                             children: [
+                              const SizedBox(width: 82, child: Text('Zoom')),
+                              IconButton(
+                                tooltip: 'Alejar',
+                                onPressed: _imageScale <= 1
+                                    ? null
+                                    : () => setState(
+                                        () => _imageScale = (_imageScale - 0.1)
+                                            .clamp(1, 3)
+                                            .toDouble(),
+                                      ),
+                                icon: const Icon(Icons.zoom_out),
+                              ),
+                              Expanded(
+                                child: Slider(
+                                  min: 1,
+                                  max: 3,
+                                  divisions: 20,
+                                  label: '${_imageScale.toStringAsFixed(1)}×',
+                                  value: _imageScale,
+                                  onChanged: (value) =>
+                                      setState(() => _imageScale = value),
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Acercar',
+                                onPressed: _imageScale >= 3
+                                    ? null
+                                    : () => setState(
+                                        () => _imageScale = (_imageScale + 0.1)
+                                            .clamp(1, 3)
+                                            .toDouble(),
+                                      ),
+                                icon: const Icon(Icons.zoom_in),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
                               const SizedBox(
                                 width: 82,
                                 child: Text('Vertical'),
@@ -312,6 +357,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                             onPressed: () => setState(() {
                               _imagePositionX = 0.5;
                               _imagePositionY = 0.5;
+                              _imageScale = 1;
                             }),
                             icon: const Icon(Icons.center_focus_strong),
                             label: const Text('Centrar imagen'),

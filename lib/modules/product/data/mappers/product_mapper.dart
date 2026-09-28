@@ -20,6 +20,8 @@ extension ProductModelMapper on ProductModel {
       imageUrl: imageUrl,
       imagePositionX: imagePositionX,
       imagePositionY: imagePositionY,
+      imageScale: imageScale,
+      catalogSortOrder: catalogSortOrder,
       currentStock: currentStock,
       reorderPoint: reorderPoint,
       promotionPriceInCents: promotionPriceInCents,
@@ -60,6 +62,8 @@ extension ProductToDataMapper on Product {
       'image_url': imageUrl,
       'image_position_x': imagePositionX,
       'image_position_y': imagePositionY,
+      'image_scale': imageScale,
+      'catalog_sort_order': catalogSortOrder,
       'reorder_point': reorderPoint,
       'promo_price':
           promotionType == PromotionType.bulk || promotionPriceInCents == null

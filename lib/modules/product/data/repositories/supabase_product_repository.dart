@@ -53,4 +53,13 @@ class SupabaseProductRepository implements ProductRepository {
   @override
   Future<void> deactivateProduct(String id) =>
       _dataSource.deactivateProduct(id);
+
+  @override
+  Future<void> saveCatalogOrder({
+    required List<String> productIds,
+    required List<String> categoryIds,
+  }) => _dataSource.saveCatalogOrder(
+    productIds: productIds,
+    categoryIds: categoryIds,
+  );
 }

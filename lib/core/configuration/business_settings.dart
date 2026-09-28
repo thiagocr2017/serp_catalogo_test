@@ -11,6 +11,8 @@ class BusinessSettings {
     this.packagingUnitLabel = 'Unidad',
     this.packagingBoxLabel = 'Caja',
     this.packagingSetLabel = 'Set',
+    this.appMode = 'TEST',
+    this.isSuperAdmin = false,
   });
   final String defaultCurrency;
   final int decimalPlaces;
@@ -23,4 +25,6 @@ class BusinessSettings {
   final String packagingUnitLabel;
   final String packagingBoxLabel;
   final String packagingSetLabel;
+  final String appMode;
+  final bool isSuperAdmin;
 }

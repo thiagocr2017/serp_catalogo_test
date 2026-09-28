@@ -24,6 +24,8 @@ class Product {
     this.imageUrl,
     this.imagePositionX = 0.5,
     this.imagePositionY = 0.5,
+    this.imageScale = 1,
+    this.catalogSortOrder = 0,
     this.promotionPriceInCents,
     this.promotionText,
     this.promotionType,
@@ -51,6 +53,8 @@ class Product {
   final String? imageUrl;
   final double imagePositionX;
   final double imagePositionY;
+  final double imageScale;
+  final int catalogSortOrder;
   final int currentStock;
   final int reorderPoint;
   final int? promotionPriceInCents;

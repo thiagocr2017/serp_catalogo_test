@@ -16,4 +16,9 @@ abstract interface class ProductRepository {
   Future<Product> updateProduct(Product product);
 
   Future<void> deactivateProduct(String id);
+
+  Future<void> saveCatalogOrder({
+    required List<String> productIds,
+    required List<String> categoryIds,
+  });
 }

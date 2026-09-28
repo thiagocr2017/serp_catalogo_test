@@ -45,6 +45,8 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   final selected = <String>{};
   final reorderSelection = <String>{};
   final catalogOrder = <String>[];
+  final categoryOrder = <String>[];
+  final categoryReorderSelection = <String>{};
 
   @override
   void initState() {
@@ -68,9 +70,18 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
               .where((product) => product.isActive && !product.isOutOfStock)
               .toList()
             ..sort((a, b) {
-              final category = (loadedCategoryNames[a.categoryId] ?? '')
-                  .compareTo(loadedCategoryNames[b.categoryId] ?? '');
-              return category != 0 ? category : a.name.compareTo(b.name);
+              final categoryA = categories.firstWhere(
+                (item) => item.id == a.categoryId,
+              );
+              final categoryB = categories.firstWhere(
+                (item) => item.id == b.categoryId,
+              );
+              final category = categoryA.catalogSortOrder.compareTo(
+                categoryB.catalogSortOrder,
+              );
+              return category != 0
+                  ? category
+                  : a.catalogSortOrder.compareTo(b.catalogSortOrder);
             });
       setState(() {
         products = eligible;
@@ -83,6 +94,16 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
         catalogOrder
           ..clear()
           ..addAll(eligible.map((product) => product.id));
+        categoryOrder
+          ..clear()
+          ..addAll(
+            categories
+                .where(
+                  (category) =>
+                      eligible.any((p) => p.categoryId == category.id),
+                )
+                .map((category) => category.id),
+          );
         selected.addAll(
           sharedSelection.isEmpty
               ? eligible.map((p) => p.id)
@@ -362,47 +383,90 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         ),
                       const Divider(height: 32),
                       Text(
+                        'Orden de categorías',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const Text(
+                        'Al mover una categoría se mueve con todos sus productos.',
+                      ),
+                      _orderButtons(
+                        selection: categoryReorderSelection,
+                        onUp: () => _moveCategories(-1),
+                        onDown: () => _moveCategories(1),
+                        onClear: () =>
+                            setState(() => categoryReorderSelection.clear()),
+                      ),
+                      SizedBox(
+                        height: 180,
+                        child: Scrollbar(
+                          child: ListView(
+                            children: [
+                              for (final categoryId in categoryOrder)
+                                CheckboxListTile(
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  value: categoryReorderSelection.contains(
+                                    categoryId,
+                                  ),
+                                  title: Text(
+                                    categoryNames[categoryId] ??
+                                        'Sin categoría',
+                                  ),
+                                  onChanged: (value) => setState(() {
+                                    value == true
+                                        ? categoryReorderSelection.add(
+                                            categoryId,
+                                          )
+                                        : categoryReorderSelection.remove(
+                                            categoryId,
+                                          );
+                                  }),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 24),
+                      Text(
                         'Orden dentro de cada categoría',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const Text(
                         'Marca uno o varios productos y muévelos juntos. Las categorías siempre permanecen agrupadas.',
                       ),
-                      Row(
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: reorderSelection.isEmpty
-                                ? null
-                                : () => _moveMarked(data, -1),
-                            icon: const Icon(Icons.arrow_upward),
-                            label: const Text('Subir'),
-                          ),
-                          const SizedBox(width: 8),
-                          OutlinedButton.icon(
-                            onPressed: reorderSelection.isEmpty
-                                ? null
-                                : () => _moveMarked(data, 1),
-                            icon: const Icon(Icons.arrow_downward),
-                            label: const Text('Bajar'),
-                          ),
-                        ],
+                      _orderButtons(
+                        selection: reorderSelection,
+                        onUp: () => _moveMarked(data, -1),
+                        onDown: () => _moveMarked(data, 1),
+                        onClear: () => setState(reorderSelection.clear),
                       ),
-                      for (final product in _orderedProducts(data))
-                        if (selected.contains(product.id))
-                          CheckboxListTile(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            value: reorderSelection.contains(product.id),
-                            title: Text(product.name),
-                            subtitle: Text(
-                              '${categoryNames[product.categoryId] ?? 'Sin categoría'} · ${product.sku}',
-                            ),
-                            onChanged: (value) => setState(() {
-                              value == true
-                                  ? reorderSelection.add(product.id)
-                                  : reorderSelection.remove(product.id);
-                            }),
+                      SizedBox(
+                        height: 340,
+                        child: Scrollbar(
+                          child: ListView(
+                            children: [
+                              for (final product in _orderedProducts(data))
+                                if (selected.contains(product.id))
+                                  CheckboxListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    value: reorderSelection.contains(
+                                      product.id,
+                                    ),
+                                    title: Text(product.name),
+                                    subtitle: Text(
+                                      '${categoryNames[product.categoryId] ?? 'Sin categoría'} · ${product.sku}',
+                                    ),
+                                    onChanged: (value) => setState(() {
+                                      value == true
+                                          ? reorderSelection.add(product.id)
+                                          : reorderSelection.remove(product.id);
+                                    }),
+                                  ),
+                            ],
                           ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -455,12 +519,65 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   List<Product> _orderedProducts(List<Product> data) {
     final byId = {for (final product in data) product.id: product};
     return [
-      for (final id in catalogOrder)
-        if (byId[id] != null) byId[id]!,
+      for (final categoryId in categoryOrder)
+        for (final id in catalogOrder)
+          if (byId[id]?.categoryId == categoryId) byId[id]!,
     ];
   }
 
-  void _moveMarked(List<Product> data, int direction) {
+  Widget _orderButtons({
+    required Set<String> selection,
+    required VoidCallback onUp,
+    required VoidCallback onDown,
+    required VoidCallback onClear,
+  }) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      OutlinedButton.icon(
+        onPressed: selection.isEmpty ? null : onUp,
+        icon: const Icon(Icons.arrow_upward),
+        label: const Text('Subir'),
+      ),
+      OutlinedButton.icon(
+        onPressed: selection.isEmpty ? null : onDown,
+        icon: const Icon(Icons.arrow_downward),
+        label: const Text('Bajar'),
+      ),
+      TextButton.icon(
+        onPressed: selection.isEmpty ? null : onClear,
+        icon: const Icon(Icons.deselect),
+        label: const Text('Limpiar'),
+      ),
+    ],
+  );
+
+  Future<void> _persistOrder() async {
+    try {
+      await ref
+          .read(productRepositoryProvider)
+          .saveCatalogOrder(
+            productIds: catalogOrder,
+            categoryIds: categoryOrder,
+          );
+      ref.invalidate(categoriesProvider);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo guardar el orden: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _moveCategories(int direction) async {
+    setState(() {
+      _moveSelectedItems(categoryOrder, categoryReorderSelection, direction);
+    });
+    await _persistOrder();
+  }
+
+  Future<void> _moveMarked(List<Product> data, int direction) async {
     final byId = {for (final product in data) product.id: product};
     setState(() {
       if (direction < 0) {
@@ -487,6 +604,31 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
         }
       }
     });
+    await _persistOrder();
+  }
+
+  void _moveSelectedItems(
+    List<String> items,
+    Set<String> selection,
+    int direction,
+  ) {
+    if (direction < 0) {
+      for (var index = 1; index < items.length; index++) {
+        if (selection.contains(items[index]) &&
+            !selection.contains(items[index - 1])) {
+          final value = items.removeAt(index);
+          items.insert(index - 1, value);
+        }
+      }
+    } else {
+      for (var index = items.length - 2; index >= 0; index--) {
+        if (selection.contains(items[index]) &&
+            !selection.contains(items[index + 1])) {
+          final value = items.removeAt(index);
+          items.insert(index + 1, value);
+        }
+      }
+    }
   }
 }
 

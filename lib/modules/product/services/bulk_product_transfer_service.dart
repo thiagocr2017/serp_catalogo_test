@@ -228,6 +228,8 @@ class BulkProductTransferService {
           imageUrl: imageUrl,
           imagePositionX: existing?.imagePositionX ?? .5,
           imagePositionY: existing?.imagePositionY ?? .5,
+          imageScale: existing?.imageScale ?? 1,
+          catalogSortOrder: existing?.catalogSortOrder ?? 0,
           currentStock: existing?.currentStock ?? 0,
           reorderPoint: row.reorderPoint,
           promotionPriceInCents: existing?.promotionPriceInCents,

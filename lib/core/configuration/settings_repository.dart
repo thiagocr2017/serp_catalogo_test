@@ -9,7 +9,15 @@ class SettingsRepository {
   final DeviceIdentity _device;
 
   Future<BusinessSettings> get() async {
-    final row = await _client.from('app_settings').select().single();
+    var row = await _client.from('app_settings').select().single();
+    if (row['superadmin_device_identifier'] == null) {
+      await _client
+          .from('app_settings')
+          .update({'superadmin_device_identifier': _device.identifier})
+          .eq('id', true)
+          .isFilter('superadmin_device_identifier', null);
+      row = await _client.from('app_settings').select().single();
+    }
     return BusinessSettings(
       defaultCurrency: row['default_currency'] as String,
       decimalPlaces: row['decimal_places'] as int,
@@ -22,6 +30,8 @@ class SettingsRepository {
       packagingUnitLabel: row['packaging_unit_label'] as String? ?? 'Unidad',
       packagingBoxLabel: row['packaging_box_label'] as String? ?? 'Caja',
       packagingSetLabel: row['packaging_set_label'] as String? ?? 'Set',
+      appMode: row['app_mode'] as String? ?? 'TEST',
+      isSuperAdmin: row['superadmin_device_identifier'] == _device.identifier,
     );
   }
 
@@ -45,4 +55,12 @@ class SettingsRepository {
         'updated_device_identifier': _device.identifier,
       })
       .eq('id', true);
+
+  Future<void> purgeTestDataAndGoProduction() => _client.rpc<void>(
+    'purge_test_data_and_go_production',
+    params: {
+      'p_actor_name': _device.actorName,
+      'p_device_identifier': _device.identifier,
+    },
+  );
 }

@@ -21,6 +21,8 @@ class ProductModel {
   String? get imageUrl => data['image_url'] as String?;
   double get imagePositionX => _asDouble(data['image_position_x'] ?? 0.5);
   double get imagePositionY => _asDouble(data['image_position_y'] ?? 0.5);
+  double get imageScale => _asDouble(data['image_scale'] ?? 1);
+  int get catalogSortOrder => data['catalog_sort_order'] as int? ?? 0;
   int get currentStock => data['current_stock'] as int;
   int get reorderPoint => data['reorder_point'] as int;
   int? get promotionPriceInCents =>

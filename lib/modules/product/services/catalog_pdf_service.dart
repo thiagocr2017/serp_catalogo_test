@@ -116,20 +116,20 @@ class CatalogPdfService {
               children: [
                 if (options.logoBytes != null) ...[
                   pw.Container(
-                    width: 150,
-                    height: 90,
+                    width: 300,
+                    height: 190,
                     child: pw.Image(
                       pw.MemoryImage(options.logoBytes!),
                       fit: pw.BoxFit.contain,
                     ),
                   ),
-                  pw.SizedBox(height: 18),
+                  pw.SizedBox(height: 12),
                 ],
                 pw.Text(
                   options.companyName,
                   style: pw.TextStyle(
-                    fontSize: 34,
-                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.normal,
                   ),
                 ),
                 pw.SizedBox(height: 18),
@@ -383,6 +383,7 @@ class CatalogPdfService {
                                         images[products[row * columns + column]
                                             .id],
                                     compact: false,
+                                    horizontal: perPage == 2,
                                     imageHeight: imageHeight,
                                     cardColor: cardColor,
                                     accentColor: accentColor,
@@ -448,6 +449,7 @@ class CatalogPdfService {
     Product product, {
     pw.ImageProvider? image,
     required bool compact,
+    bool horizontal = false,
     double? imageHeight,
     String? categoryName,
     required PdfColor cardColor,
@@ -476,6 +478,120 @@ class CatalogPdfService {
         ? product.promotionPriceInCents!
         : product.unitPriceInCents;
     final dense = (imageHeight ?? 999) < 110;
+    if (horizontal) {
+      return pw.Container(
+        padding: const pw.EdgeInsets.all(12),
+        decoration: pw.BoxDecoration(
+          color: cardColor,
+          border: pw.Border.all(color: accentColor),
+          borderRadius: pw.BorderRadius.circular(8),
+        ),
+        child: pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+          children: [
+            pw.Expanded(
+              flex: 11,
+              child: image == null
+                  ? pw.SizedBox()
+                  : pw.ClipRect(
+                      child: pw.Transform.scale(
+                        scale: product.imageScale,
+                        child: pw.Image(
+                          image,
+                          fit: _pdfImageFit(imageFit),
+                          alignment: pw.Alignment(
+                            (product.imagePositionX * 2) - 1,
+                            (product.imagePositionY * 2) - 1,
+                          ),
+                        ),
+                      ),
+                    ),
+            ),
+            pw.SizedBox(width: 18),
+            pw.Expanded(
+              flex: 9,
+              child: pw.DefaultTextStyle(
+                style: pw.TextStyle(color: textColor),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          product.sku,
+                          style: pw.TextStyle(
+                            fontWeight: pw.FontWeight.bold,
+                            color: highlight,
+                          ),
+                        ),
+                        if (hasPromotion)
+                          pw.Container(
+                            color: promoBackground,
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            child: pw.Text(
+                              'OFERTA',
+                              style: pw.TextStyle(
+                                color: promoText,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    pw.SizedBox(height: 10),
+                    pw.Text(
+                      product.name,
+                      maxLines: 2,
+                      style: pw.TextStyle(
+                        fontSize: 17,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 7),
+                    pw.Text(product.description, maxLines: 4),
+                    pw.Spacer(),
+                    pw.Text(
+                      'Presentación ${packagingLabel ?? product.packagingType.name} - Venta mínima ${product.minimumSaleQuantity}',
+                      style: pw.TextStyle(fontSize: 9, color: secondary),
+                    ),
+                    if (hasPromotion)
+                      pw.Text(
+                        'Antes: USD ${(product.unitPriceInCents / 100).toStringAsFixed(2)}',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          color: previousPrice,
+                          decoration: pw.TextDecoration.lineThrough,
+                        ),
+                      ),
+                    pw.Text(
+                      'USD ${(finalPrice / 100).toStringAsFixed(2)}',
+                      style: pw.TextStyle(
+                        fontSize: 20,
+                        fontWeight: pw.FontWeight.bold,
+                        color: hasPromotion ? currentPromotionPrice : textColor,
+                      ),
+                    ),
+                    if (product.promotionText != null)
+                      pw.Text(
+                        product.promotionText!,
+                        style: pw.TextStyle(
+                          fontSize: 8,
+                          color: promotionDescription,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return pw.Container(
       padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
@@ -504,12 +620,17 @@ class CatalogPdfService {
               pw.Container(
                 height: imageHeight ?? 90,
                 width: double.infinity,
-                child: pw.Image(
-                  image,
-                  fit: _pdfImageFit(imageFit),
-                  alignment: pw.Alignment(
-                    (product.imagePositionX * 2) - 1,
-                    (product.imagePositionY * 2) - 1,
+                child: pw.ClipRect(
+                  child: pw.Transform.scale(
+                    scale: product.imageScale,
+                    child: pw.Image(
+                      image,
+                      fit: _pdfImageFit(imageFit),
+                      alignment: pw.Alignment(
+                        (product.imagePositionX * 2) - 1,
+                        (product.imagePositionY * 2) - 1,
+                      ),
+                    ),
                   ),
                 ),
               ),
