@@ -40,11 +40,13 @@ class _Profile extends ConsumerWidget {
     final transactions = ref.watch(productTransactionsProvider(product.id));
     final audit = ref.watch(productAuditProvider(product.id));
     final settings = ref.watch(businessSettingsProvider).value;
-    final packagingLabel = switch (product.packagingType) {
-      PackagingType.unit => settings?.packagingUnitLabel ?? 'Unidad',
-      PackagingType.box => settings?.packagingBoxLabel ?? 'Caja',
-      PackagingType.set => settings?.packagingSetLabel ?? 'Set',
-    };
+    final packagingLabel =
+        product.packagingPresentationName ??
+        switch (product.packagingType) {
+          PackagingType.unit => settings?.packagingUnitLabel ?? 'Unidad',
+          PackagingType.box => settings?.packagingBoxLabel ?? 'Caja',
+          PackagingType.set => settings?.packagingSetLabel ?? 'Set',
+        };
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -432,6 +434,8 @@ class _Profile extends ConsumerWidget {
         packagePriceInCents: product.packagePriceInCents,
         minimumOrderQuantity: product.minimumOrderQuantity,
         packagingType: product.packagingType,
+        packagingPresentationId: product.packagingPresentationId,
+        packagingPresentationName: product.packagingPresentationName,
         cbmPerMoq: product.cbmPerMoq,
         factoryCostInCents: cents(factory.text),
         imageUrl: product.imageUrl,
@@ -504,6 +508,8 @@ class _Profile extends ConsumerWidget {
           minimumOrderQuantity: product.minimumOrderQuantity,
           minimumSaleQuantity: product.minimumSaleQuantity,
           packagingType: product.packagingType,
+          packagingPresentationId: product.packagingPresentationId,
+          packagingPresentationName: product.packagingPresentationName,
           cbmPerMoq: product.cbmPerMoq,
           factoryCostInCents: product.factoryCostInCents,
           imageUrl: product.imageUrl,

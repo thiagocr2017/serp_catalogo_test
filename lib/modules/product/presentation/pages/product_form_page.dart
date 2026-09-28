@@ -35,6 +35,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   final _reorderPoint = TextEditingController(text: '0');
   String? _categoryId;
   PackagingType _packagingType = PackagingType.unit;
+  String? _packagingPresentationId;
   bool _saving = false;
   double _imagePositionX = 0.5;
   double _imagePositionY = 0.5;
@@ -79,6 +80,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       _reorderPoint.text = '${product.reorderPoint}';
       _categoryId = product.categoryId;
       _packagingType = product.packagingType;
+      _packagingPresentationId = product.packagingPresentationId;
       _imagePositionX = product.imagePositionX;
       _imagePositionY = product.imagePositionY;
       _imageScale = product.imageScale;
@@ -115,7 +117,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       value == null || value.trim().isEmpty ? 'Campo requerido' : null;
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() || _categoryId == null) {
+    if (!_formKey.currentState!.validate() ||
+        _categoryId == null ||
+        _packagingPresentationId == null) {
       return;
     }
     setState(() => _saving = true);
@@ -144,6 +148,13 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
         minimumOrderQuantity: int.parse(_moq.text),
         minimumSaleQuantity: int.parse(_minimumSaleQuantity.text),
         packagingType: _packagingType,
+        packagingPresentationId: _packagingPresentationId,
+        packagingPresentationName: ref
+            .read(packagingPresentationsProvider)
+            .value
+            ?.where((item) => item.id == _packagingPresentationId)
+            .firstOrNull
+            ?.name,
         cbmPerMoq: _decimal(_cbm.text),
         factoryCostInCents: _cents(_factoryCost.text),
         imageUrl: imageUrl,
@@ -194,7 +205,10 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   @override
   Widget build(BuildContext context) {
     final categories = ref.watch(categoriesProvider);
-    final settings = ref.watch(businessSettingsProvider).value;
+    final presentations = ref.watch(packagingPresentationsProvider).value ?? [];
+    if (_packagingPresentationId == null && presentations.isNotEmpty) {
+      _packagingPresentationId = presentations.first.id;
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Editar producto' : 'Nuevo producto'),
@@ -435,32 +449,23 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                       ),
                       SizedBox(
                         width: 320,
-                        child: DropdownButtonFormField<PackagingType>(
-                          initialValue: _packagingType,
+                        child: DropdownButtonFormField<String>(
+                          key: ValueKey(_packagingPresentationId),
+                          initialValue: _packagingPresentationId,
                           decoration: const InputDecoration(
                             labelText: 'Presentación de venta',
                             border: OutlineInputBorder(),
                           ),
-                          items: [
-                            DropdownMenuItem(
-                              value: PackagingType.unit,
-                              child: Text(
-                                settings?.packagingUnitLabel ?? 'Unidad',
-                              ),
-                            ),
-                            DropdownMenuItem(
-                              value: PackagingType.box,
-                              child: Text(
-                                settings?.packagingBoxLabel ?? 'Caja',
-                              ),
-                            ),
-                            DropdownMenuItem(
-                              value: PackagingType.set,
-                              child: Text(settings?.packagingSetLabel ?? 'Set'),
-                            ),
-                          ],
+                          items: presentations
+                              .map(
+                                (item) => DropdownMenuItem(
+                                  value: item.id,
+                                  child: Text(item.name),
+                                ),
+                              )
+                              .toList(),
                           onChanged: (value) =>
-                              setState(() => _packagingType = value!),
+                              setState(() => _packagingPresentationId = value),
                         ),
                       ),
                     ],

@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../domain/entities/category.dart';
 import '../domain/entities/product.dart';
 import '../domain/repositories/product_repository.dart';
+import '../../../core/configuration/packaging_presentation.dart';
 import 'product_image_service.dart';
 
 class BulkProductTransferService {
@@ -54,7 +55,8 @@ class BulkProductTransferService {
               ? ''
               : product.packagePriceInCents! / 100,
           product.minimumSaleQuantity,
-          product.packagingType.name.toUpperCase(),
+          product.packagingPresentationName ??
+              product.packagingType.name.toUpperCase(),
           product.minimumOrderQuantity,
           product.cbmPerMoq,
           product.factoryCostInCents / 100,
@@ -70,6 +72,7 @@ class BulkProductTransferService {
     String text, {
     required List<Category> categories,
     required List<Product> existingProducts,
+    List<PackagingPresentation> presentations = const [],
   }) {
     final rows = csv.decode(text);
     if (rows.isEmpty) {
@@ -104,6 +107,10 @@ class BulkProductTransferService {
       for (final product in existingProducts)
         product.sku.trim().toLowerCase(): product,
     };
+    final presentationByName = {
+      for (final presentation in presentations)
+        presentation.name.trim().toLowerCase(): presentation,
+    };
     final parsed = <BulkProductRow>[];
     final errors = <String>[];
     for (var index = 1; index < rows.length; index++) {
@@ -124,6 +131,8 @@ class BulkProductTransferService {
         continue;
       }
       try {
+        final presentation =
+            presentationByName[value('presentacion').toLowerCase()];
         final packaging = switch (value('presentacion').toUpperCase()) {
           'CAJA' || 'BOX' => PackagingType.box,
           'SET' => PackagingType.set,
@@ -147,6 +156,8 @@ class BulkProductTransferService {
               fallback: 1,
             ),
             packagingType: packaging,
+            packagingPresentationId: presentation?.id,
+            packagingPresentationName: presentation?.name,
             minimumOrderQuantity: _positiveInt(
               value('moq_recompra'),
               fallback: 1,
@@ -223,6 +234,11 @@ class BulkProductTransferService {
           minimumOrderQuantity: row.minimumOrderQuantity,
           minimumSaleQuantity: row.minimumSaleQuantity,
           packagingType: row.packagingType,
+          packagingPresentationId:
+              row.packagingPresentationId ?? existing?.packagingPresentationId,
+          packagingPresentationName:
+              row.packagingPresentationName ??
+              existing?.packagingPresentationName,
           cbmPerMoq: row.cbmPerMoq,
           factoryCostInCents: row.factoryCostInCents,
           imageUrl: imageUrl,
@@ -315,6 +331,8 @@ class BulkProductRow {
     required this.packagePriceInCents,
     required this.minimumSaleQuantity,
     required this.packagingType,
+    this.packagingPresentationId,
+    this.packagingPresentationName,
     required this.minimumOrderQuantity,
     required this.cbmPerMoq,
     required this.factoryCostInCents,
@@ -334,6 +352,8 @@ class BulkProductRow {
   final int? packagePriceInCents;
   final int minimumSaleQuantity;
   final PackagingType packagingType;
+  final String? packagingPresentationId;
+  final String? packagingPresentationName;
   final int minimumOrderQuantity;
   final double cbmPerMoq;
   final int factoryCostInCents;

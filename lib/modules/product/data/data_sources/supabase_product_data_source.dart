@@ -80,6 +80,7 @@ class SupabaseProductDataSource {
           'image_position_y': values['image_position_y'],
           'image_scale': values['image_scale'],
           'catalog_sort_order': values['catalog_sort_order'],
+          'packaging_presentation_id': values['packaging_presentation_id'],
         })
         .eq('id', row['id'] as String)
         .select()

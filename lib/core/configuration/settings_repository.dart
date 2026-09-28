@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../device/device_identity.dart';
 import 'business_settings.dart';
 import 'catalog_preferences.dart';
+import 'packaging_presentation.dart';
 
 class SettingsRepository {
   const SettingsRepository(this._client, this._device);
@@ -193,5 +194,65 @@ class SettingsRepository {
     } finally {
       client.close(force: true);
     }
+  }
+
+  Future<List<PackagingPresentation>> getPackagingPresentations() async {
+    final rows = await _client
+        .from('packaging_presentations')
+        .select()
+        .eq('is_active', true)
+        .order('sort_order')
+        .order('name');
+    return rows
+        .map(
+          (row) => PackagingPresentation(
+            id: row['id'] as String,
+            name: row['name'] as String,
+            sortOrder: row['sort_order'] as int,
+            isActive: row['is_active'] as bool,
+          ),
+        )
+        .toList();
+  }
+
+  Future<PackagingPresentation> savePackagingPresentation({
+    String? id,
+    required String name,
+  }) async {
+    final values = {
+      'name': name.trim(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+      'updated_by': _device.actorName,
+      'updated_device_name': _device.name,
+      'updated_device_identifier': _device.identifier,
+    };
+    final Map<String, dynamic> row;
+    if (id == null) {
+      final existing = await getPackagingPresentations();
+      row = await _client
+          .from('packaging_presentations')
+          .insert({
+            ...values,
+            'sort_order': existing.length,
+            'created_by': _device.actorName,
+            'created_device_name': _device.name,
+            'created_device_identifier': _device.identifier,
+          })
+          .select()
+          .single();
+    } else {
+      row = await _client
+          .from('packaging_presentations')
+          .update(values)
+          .eq('id', id)
+          .select()
+          .single();
+    }
+    return PackagingPresentation(
+      id: row['id'] as String,
+      name: row['name'] as String,
+      sortOrder: row['sort_order'] as int,
+      isActive: row['is_active'] as bool,
+    );
   }
 }

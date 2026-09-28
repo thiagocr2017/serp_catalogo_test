@@ -281,6 +281,7 @@ class CatalogPdfService {
                     promotionPriceColor: promotionPrice,
                     promotionDescriptionColor: promotionDescription,
                     packagingLabel:
+                        product.packagingPresentationName ??
                         options.packagingLabels[product.packagingType] ??
                         product.packagingType.name,
                     imageFit: options.imageFit,
@@ -398,6 +399,8 @@ class CatalogPdfService {
                                     promotionDescriptionColor:
                                         promotionDescriptionColor,
                                     packagingLabel:
+                                        products[row * columns + column]
+                                            .packagingPresentationName ??
                                         options.packagingLabels[products[row *
                                                     columns +
                                                 column]

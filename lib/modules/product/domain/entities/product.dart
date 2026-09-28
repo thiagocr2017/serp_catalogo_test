@@ -13,6 +13,8 @@ class Product {
     required this.minimumOrderQuantity,
     this.minimumSaleQuantity = 1,
     required this.packagingType,
+    this.packagingPresentationId,
+    this.packagingPresentationName,
     required this.cbmPerMoq,
     required this.factoryCostInCents,
     required this.currentStock,
@@ -48,6 +50,8 @@ class Product {
   final int minimumOrderQuantity;
   final int minimumSaleQuantity;
   final PackagingType packagingType;
+  final String? packagingPresentationId;
+  final String? packagingPresentationName;
   final double cbmPerMoq;
   final int factoryCostInCents;
   final String? imageUrl;

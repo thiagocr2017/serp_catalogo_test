@@ -6,6 +6,8 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/configuration/settings_providers.dart';
+
 import '../../di/product_providers.dart';
 import '../../domain/entities/product_query.dart';
 import '../../services/bulk_product_transfer_service.dart';
@@ -201,6 +203,9 @@ class _ProductTransferPageState extends ConsumerState<ProductTransferPage> {
       final existing = await ref.read(getProductsProvider)(
         const ProductQuery(),
       );
+      final presentations = await ref.read(
+        packagingPresentationsProvider.future,
+      );
       final text = utf8.decode(await file.readAsBytes(), allowMalformed: true);
       setState(() {
         _csvName = file.name;
@@ -208,6 +213,7 @@ class _ProductTransferPageState extends ConsumerState<ProductTransferPage> {
           text,
           categories: categories,
           existingProducts: existing,
+          presentations: presentations,
         );
       });
     });

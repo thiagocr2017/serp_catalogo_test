@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'business_settings.dart';
+import 'packaging_presentation.dart';
 import 'settings_providers.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -37,15 +38,6 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
   late final increment = TextEditingController(
     text: widget.initial.roundingIncrement.toStringAsFixed(2),
   );
-  late final packagingUnit = TextEditingController(
-    text: widget.initial.packagingUnitLabel,
-  );
-  late final packagingBox = TextEditingController(
-    text: widget.initial.packagingBoxLabel,
-  );
-  late final packagingSet = TextEditingController(
-    text: widget.initial.packagingSetLabel,
-  );
   late String currency = widget.initial.defaultCurrency;
   late int decimals = widget.initial.decimalPlaces;
   late bool includesTax = widget.initial.pricesIncludeTax;
@@ -56,9 +48,6 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     payments.dispose();
     tax.dispose();
     increment.dispose();
-    packagingUnit.dispose();
-    packagingBox.dispose();
-    packagingSet.dispose();
     super.dispose();
   }
 
@@ -129,36 +118,45 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
         ),
       ],
       const SizedBox(height: 28),
-      Text(
-        'Nombres de presentaciones',
-        style: Theme.of(context).textTheme.headlineSmall,
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Presentaciones de productos',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+          ),
+          FilledButton.tonalIcon(
+            onPressed: () => _editPresentation(),
+            icon: const Icon(Icons.add),
+            label: const Text('Nueva presentación'),
+          ),
+        ],
       ),
       const SizedBox(height: 8),
       const Text(
-        'Estos nombres se usan en la ficha del producto y en el catálogo.',
+        'Crea todos los tipos necesarios, por ejemplo Unidad, Caja, Cartón, Paquete o Set. Puedes cambiar sus nombres en cualquier momento.',
       ),
       const SizedBox(height: 16),
-      Wrap(
-        spacing: 16,
-        runSpacing: 16,
-        children: [
-          for (final field in [
-            (packagingUnit, 'Unidad'),
-            (packagingBox, 'Caja'),
-            (packagingSet, 'Set'),
-          ])
-            SizedBox(
-              width: 260,
-              child: TextField(
-                controller: field.$1,
-                decoration: InputDecoration(
-                  labelText: field.$2,
-                  border: const OutlineInputBorder(),
-                ),
-              ),
+      ref
+          .watch(packagingPresentationsProvider)
+          .when(
+            loading: () => const LinearProgressIndicator(),
+            error: (error, _) => Text('No se pudieron cargar: $error'),
+            data: (items) => Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final item in items)
+                  ActionChip(
+                    avatar: const Icon(Icons.inventory_2_outlined, size: 18),
+                    label: Text(item.name),
+                    tooltip: 'Editar nombre',
+                    onPressed: () => _editPresentation(item),
+                  ),
+              ],
             ),
-        ],
-      ),
+          ),
       const SizedBox(height: 28),
       Text(
         'Precios e impuestos',
@@ -262,15 +260,9 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
             roundingIncrement: double.parse(increment.text),
             companyName: company.text.trim(),
             paymentMethods: payments.text.trim(),
-            packagingUnitLabel: packagingUnit.text.trim().isEmpty
-                ? 'Unidad'
-                : packagingUnit.text.trim(),
-            packagingBoxLabel: packagingBox.text.trim().isEmpty
-                ? 'Caja'
-                : packagingBox.text.trim(),
-            packagingSetLabel: packagingSet.text.trim().isEmpty
-                ? 'Set'
-                : packagingSet.text.trim(),
+            packagingUnitLabel: widget.initial.packagingUnitLabel,
+            packagingBoxLabel: widget.initial.packagingBoxLabel,
+            packagingSetLabel: widget.initial.packagingSetLabel,
             appMode: widget.initial.appMode,
             isSuperAdmin: widget.initial.isSuperAdmin,
           ),
@@ -281,6 +273,47 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Configuración guardada')));
     }
+  }
+
+  Future<void> _editPresentation([PackagingPresentation? existing]) async {
+    final controller = TextEditingController(text: existing?.name ?? '');
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          existing == null ? 'Nueva presentación' : 'Editar presentación',
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Nombre',
+            hintText: 'Ej. Cartón',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (_) =>
+              Navigator.pop(context, controller.text.trim().isNotEmpty),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(context, controller.text.trim().isNotEmpty),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (accepted == true) {
+      await ref
+          .read(settingsRepositoryProvider)
+          .savePackagingPresentation(id: existing?.id, name: controller.text);
+      ref.invalidate(packagingPresentationsProvider);
+    }
+    controller.dispose();
   }
 
   Future<void> _confirmProduction() async {
