@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/configuration/settings_providers.dart';
+import '../../../inventory/domain/entities/inventory_transaction.dart';
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
 import '../controllers/product_list_controller.dart';
@@ -35,6 +37,12 @@ class _Profile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final transactions = ref.watch(productTransactionsProvider(product.id));
     final audit = ref.watch(productAuditProvider(product.id));
+    final settings = ref.watch(businessSettingsProvider).value;
+    final packagingLabel = switch (product.packagingType) {
+      PackagingType.unit => settings?.packagingUnitLabel ?? 'Unidad',
+      PackagingType.box => settings?.packagingBoxLabel ?? 'Caja',
+      PackagingType.set => settings?.packagingSetLabel ?? 'Set',
+    };
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -83,6 +91,10 @@ class _Profile extends ConsumerWidget {
                         : Image.network(
                             product.imageUrl!,
                             fit: BoxFit.cover,
+                            alignment: Alignment(
+                              (product.imagePositionX * 2) - 1,
+                              (product.imagePositionY * 2) - 1,
+                            ),
                             errorBuilder: (_, _, _) => const Icon(
                               Icons.broken_image_outlined,
                               size: 80,
@@ -130,8 +142,7 @@ class _Profile extends ConsumerWidget {
               ),
               _Metric(
                 label: 'Venta mínima',
-                value:
-                    '${product.minimumSaleQuantity} ${product.packagingType.name}',
+                value: '${product.minimumSaleQuantity} $packagingLabel',
                 icon: Icons.all_inbox,
               ),
               _Metric(
@@ -139,6 +150,17 @@ class _Profile extends ConsumerWidget {
                 value: product.cbmPerMoq.toStringAsFixed(6),
                 icon: Icons.view_in_ar,
               ),
+              if (product.isOutOfStock)
+                _Metric(
+                  label: 'Agotado desde',
+                  value: transactions.maybeWhen(
+                    data: (items) =>
+                        _stockoutDate(items)?.toLocal().toString() ??
+                        'Sin fecha determinada',
+                    orElse: () => 'Calculando...',
+                  ),
+                  icon: Icons.event_busy,
+                ),
               _Metric(
                 label: 'Costo fábrica',
                 value:
@@ -231,6 +253,17 @@ class _Profile extends ConsumerWidget {
     );
   }
 
+  DateTime? _stockoutDate(List<InventoryTransaction> transactions) {
+    if (!product.isOutOfStock) return null;
+    var balance = product.currentStock;
+    for (final transaction in transactions) {
+      final before = balance - transaction.quantity;
+      if (balance <= 0 && before > 0) return transaction.createdAt;
+      balance = before;
+    }
+    return null;
+  }
+
   // TODO: Remove after the full-page editor has completed its transition period.
   // ignore: unused_element
   Future<void> _edit(BuildContext context, WidgetRef ref) async {
@@ -319,6 +352,8 @@ class _Profile extends ConsumerWidget {
         cbmPerMoq: product.cbmPerMoq,
         factoryCostInCents: cents(factory.text),
         imageUrl: product.imageUrl,
+        imagePositionX: product.imagePositionX,
+        imagePositionY: product.imagePositionY,
         currentStock: product.currentStock,
         reorderPoint: product.reorderPoint,
         promotionPriceInCents: promo.text.trim().isEmpty

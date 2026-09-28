@@ -22,6 +22,8 @@ class Product {
     this.barcode,
     this.packagePriceInCents,
     this.imageUrl,
+    this.imagePositionX = 0.5,
+    this.imagePositionY = 0.5,
     this.promotionPriceInCents,
     this.promotionText,
     this.promotionType,
@@ -43,6 +45,8 @@ class Product {
   final double cbmPerMoq;
   final int factoryCostInCents;
   final String? imageUrl;
+  final double imagePositionX;
+  final double imagePositionY;
   final int currentStock;
   final int reorderPoint;
   final int? promotionPriceInCents;

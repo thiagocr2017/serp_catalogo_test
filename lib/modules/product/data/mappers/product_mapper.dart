@@ -18,6 +18,8 @@ extension ProductModelMapper on ProductModel {
       cbmPerMoq: cbmPerMoq,
       factoryCostInCents: factoryCostInCents,
       imageUrl: imageUrl,
+      imagePositionX: imagePositionX,
+      imagePositionY: imagePositionY,
       currentStock: currentStock,
       reorderPoint: reorderPoint,
       promotionPriceInCents: promotionPriceInCents,
@@ -52,6 +54,8 @@ extension ProductToDataMapper on Product {
       'cbm_per_moq': cbmPerMoq,
       'factory_cost': factoryCostInCents / 100,
       'image_url': imageUrl,
+      'image_position_x': imagePositionX,
+      'image_position_y': imagePositionY,
       'reorder_point': reorderPoint,
       'promo_price':
           promotionType == PromotionType.bulk || promotionPriceInCents == null

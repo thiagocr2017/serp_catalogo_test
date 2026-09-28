@@ -19,6 +19,9 @@ class SettingsRepository {
       roundingIncrement: (row['rounding_increment'] as num).toDouble(),
       companyName: row['company_name'] as String,
       paymentMethods: row['payment_methods'] as String,
+      packagingUnitLabel: row['packaging_unit_label'] as String? ?? 'Unidad',
+      packagingBoxLabel: row['packaging_box_label'] as String? ?? 'Caja',
+      packagingSetLabel: row['packaging_set_label'] as String? ?? 'Set',
     );
   }
 
@@ -33,6 +36,9 @@ class SettingsRepository {
         'rounding_increment': value.roundingIncrement,
         'company_name': value.companyName,
         'payment_methods': value.paymentMethods,
+        'packaging_unit_label': value.packagingUnitLabel,
+        'packaging_box_label': value.packagingBoxLabel,
+        'packaging_set_label': value.packagingSetLabel,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
         'updated_by': _device.actorName,
         'updated_device_name': _device.name,

@@ -19,6 +19,8 @@ class ProductModel {
   double get cbmPerMoq => _asDouble(data['cbm_per_moq']);
   int get factoryCostInCents => _moneyToCents(data['factory_cost']);
   String? get imageUrl => data['image_url'] as String?;
+  double get imagePositionX => _asDouble(data['image_position_x'] ?? 0.5);
+  double get imagePositionY => _asDouble(data['image_position_y'] ?? 0.5);
   int get currentStock => data['current_stock'] as int;
   int get reorderPoint => data['reorder_point'] as int;
   int? get promotionPriceInCents =>

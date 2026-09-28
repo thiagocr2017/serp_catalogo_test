@@ -99,6 +99,9 @@ class SupabaseProductDataSource {
     String id,
     Map<String, dynamic> values,
   ) async {
+    if (values['is_active'] == true) {
+      values.addAll({'deleted_at': null, 'deleted_by': null});
+    }
     values.addAll({
       'updated_by': _device.actorName,
       'updated_device_name': _device.name,

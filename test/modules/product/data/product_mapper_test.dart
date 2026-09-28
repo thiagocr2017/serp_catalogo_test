@@ -20,6 +20,8 @@ void main() {
       'cbm_per_moq': '0.125',
       'factory_cost': '4.10',
       'image_url': null,
+      'image_position_x': '0.25',
+      'image_position_y': 0.75,
       'current_stock': 7,
       'reorder_point': 3,
       'promo_price': '8.99',
@@ -38,9 +40,13 @@ void main() {
     expect(product.promotionType, PromotionType.bulk);
     expect(product.minimumOrderQuantity, 2);
     expect(product.minimumSaleQuantity, 5);
+    expect(product.imagePositionX, 0.25);
+    expect(product.imagePositionY, 0.75);
 
     final persistence = product.toPersistence();
     expect(persistence['promo_price'], isNull);
     expect(persistence['promo_text'], isNull);
+    expect(persistence['image_position_x'], 0.25);
+    expect(persistence['image_position_y'], 0.75);
   });
 }

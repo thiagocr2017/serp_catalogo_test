@@ -73,22 +73,53 @@ class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
   Future<List<AuditEntry>> getAuditEntries({
     String? tableName,
     String? recordId,
-  }) async => (await _source.audit(tableName: tableName, recordId: recordId))
-      .map(
-        (row) => AuditEntry(
-          id: row['id'] as String,
-          tableName: row['table_name'] as String,
-          recordId: row['record_id'] as String,
-          operation: row['operation'] as String,
-          fieldName: row['field_name'] as String? ?? '',
-          oldValue: row['old_value'] as String?,
-          newValue: row['new_value'] as String?,
-          actorName: row['actor_name'] as String?,
-          deviceName: row['device_name'] as String?,
-          createdAt: DateTime.parse(row['created_at'] as String),
-        ),
-      )
-      .toList();
+  }) async {
+    final rows = await _source.audit(tableName: tableName, recordId: recordId);
+    final productIds = rows
+        .where((row) => row['table_name'] == 'products')
+        .map((row) => row['record_id'] as String);
+    final categoryIds = rows
+        .where((row) => row['table_name'] == 'categories')
+        .map((row) => row['record_id'] as String)
+        .followedBy(
+          rows
+              .where((row) => row['field_name'] == 'category_id')
+              .expand(
+                (row) =>
+                    [row['old_value'], row['new_value']].whereType<String>(),
+              ),
+        );
+    final products = await _source.productLabels(productIds);
+    final categories = await _source.categoryLabels(categoryIds);
+    return rows.map((row) {
+      final table = row['table_name'] as String;
+      final recordId = row['record_id'] as String;
+      return AuditEntry(
+        id: row['id'] as String,
+        tableName: table,
+        recordId: recordId,
+        operation: row['operation'] as String,
+        fieldName: row['field_name'] as String? ?? '',
+        oldValue: row['field_name'] == 'category_id'
+            ? categories[row['old_value'] as String?] ??
+                  row['old_value'] as String?
+            : row['old_value'] as String?,
+        newValue: row['field_name'] == 'category_id'
+            ? categories[row['new_value'] as String?] ??
+                  row['new_value'] as String?
+            : row['new_value'] as String?,
+        actorName: row['actor_name'] as String?,
+        deviceName: row['device_name'] as String?,
+        createdAt: DateTime.parse(row['created_at'] as String),
+        resourceLabel: table == 'products'
+            ? products[recordId]
+            : table == 'categories'
+            ? categories[recordId]
+            : null,
+        resourcePath: table == 'products' ? '/products/$recordId' : null,
+      );
+    }).toList();
+  }
 
   InventoryTransaction _transaction(Map<String, dynamic> row) =>
       InventoryTransaction(

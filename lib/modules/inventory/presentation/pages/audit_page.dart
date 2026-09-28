@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../di/inventory_providers.dart';
+import '../../domain/entities/audit_entry.dart';
 
 class AuditPage extends ConsumerStatefulWidget {
   const AuditPage({super.key});
@@ -13,6 +15,8 @@ class AuditPage extends ConsumerStatefulWidget {
 class _AuditPageState extends ConsumerState<AuditPage> {
   final _search = TextEditingController();
   String _query = '';
+  DateTime? _from;
+  DateTime? _to;
 
   @override
   void dispose() {
@@ -30,21 +34,22 @@ class _AuditPageState extends ConsumerState<AuditPage> {
         error: (e, _) => Center(child: Text('No fue posible cargar: $e')),
         data: (items) {
           final query = _query.trim().toLowerCase();
-          final filtered = query.isEmpty
-              ? items
-              : items.where((item) {
-                  final searchable = [
-                    item.tableName,
-                    item.recordId,
-                    item.operation,
-                    item.fieldName,
-                    item.oldValue,
-                    item.newValue,
-                    item.actorName,
-                    item.deviceName,
-                  ].whereType<String>().join(' ').toLowerCase();
-                  return searchable.contains(query);
-                }).toList();
+          final events = _group(items).where((event) {
+            final localDate = event.createdAt.toLocal();
+            final afterFrom =
+                _from == null ||
+                !localDate.isBefore(
+                  DateTime(_from!.year, _from!.month, _from!.day),
+                );
+            final beforeTo =
+                _to == null ||
+                localDate.isBefore(
+                  DateTime(_to!.year, _to!.month, _to!.day + 1),
+                );
+            if (!afterFrom || !beforeTo) return false;
+            if (query.isEmpty) return true;
+            return event.searchable.contains(query);
+          }).toList();
           return Column(
             children: [
               Padding(
@@ -73,34 +78,69 @@ class _AuditPageState extends ConsumerState<AuditPage> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('${filtered.length} registro(s)'),
+                child: Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _pickDate(isFrom: true),
+                      icon: const Icon(Icons.date_range),
+                      label: Text(_from == null ? 'Desde' : _dateLabel(_from!)),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => _pickDate(isFrom: false),
+                      icon: const Icon(Icons.event),
+                      label: Text(_to == null ? 'Hasta' : _dateLabel(_to!)),
+                    ),
+                    if (_from != null || _to != null)
+                      TextButton(
+                        onPressed: () => setState(() {
+                          _from = null;
+                          _to = null;
+                        }),
+                        child: const Text('Limpiar fechas'),
+                      ),
+                    const Spacer(),
+                    Text('${events.length} acción(es)'),
+                  ],
                 ),
               ),
               Expanded(
-                child: filtered.isEmpty
+                child: events.isEmpty
                     ? const Center(
                         child: Text('No hay resultados para esta búsqueda.'),
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.all(24),
-                        itemCount: filtered.length,
+                        itemCount: events.length,
                         separatorBuilder: (_, _) => const Divider(),
                         itemBuilder: (_, i) {
-                          final item = filtered[i];
-                          return ListTile(
-                            leading: const Icon(Icons.history),
-                            title: Text(
-                              '${item.tableName}.${item.fieldName} · ${item.operation}',
-                            ),
+                          final event = events[i];
+                          return ExpansionTile(
+                            leading: Icon(_eventIcon(event)),
+                            title: Text(_eventTitle(event)),
                             subtitle: Text(
-                              '${item.oldValue ?? '∅'} → ${item.newValue ?? '∅'}\n'
-                              '${item.actorName ?? 'Sistema'} · '
-                              '${item.deviceName ?? 'Sin dispositivo'}',
+                              '${event.actorName ?? 'Sistema'} · '
+                              '${event.deviceName ?? 'Sin dispositivo'} · '
+                              '${event.createdAt.toLocal()}',
                             ),
-                            trailing: Text(item.createdAt.toLocal().toString()),
-                            isThreeLine: true,
+                            trailing: event.resourcePath == null
+                                ? const Icon(Icons.expand_more)
+                                : IconButton(
+                                    tooltip: 'Abrir elemento afectado',
+                                    onPressed: () =>
+                                        context.go(event.resourcePath!),
+                                    icon: const Icon(Icons.open_in_new),
+                                  ),
+                            children: [
+                              for (final detail in event.changes)
+                                ListTile(
+                                  dense: true,
+                                  title: Text(_fieldLabel(detail.fieldName)),
+                                  subtitle: Text(
+                                    '${detail.oldValue ?? '∅'} → ${detail.newValue ?? '∅'}',
+                                  ),
+                                ),
+                            ],
                           );
                         },
                       ),
@@ -111,4 +151,171 @@ class _AuditPageState extends ConsumerState<AuditPage> {
       ),
     );
   }
+
+  Future<void> _pickDate({required bool isFrom}) async {
+    final selected = await showDatePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: (isFrom ? _from : _to) ?? DateTime.now(),
+    );
+    if (selected != null) {
+      setState(() => isFrom ? _from = selected : _to = selected);
+    }
+  }
+
+  List<_AuditEvent> _group(List<AuditEntry> items) {
+    final groups = <String, List<AuditEntry>>{};
+    for (final item in items) {
+      final second = item.createdAt.millisecondsSinceEpoch ~/ 1000;
+      final key = '${item.tableName}|${item.recordId}|$second';
+      groups.putIfAbsent(key, () => []).add(item);
+    }
+    return groups.values.map(_AuditEvent.new).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  String _eventTitle(_AuditEvent event) {
+    final resource = event.resourceLabel ?? _tableLabel(event.tableName);
+    final action = switch (event.operation) {
+      'INSERT' => 'Se creó',
+      'SOFT_DELETE' => 'Se desactivó',
+      _
+          when event.details.any(
+            (detail) =>
+                detail.fieldName == 'is_active' && detail.newValue == 'true',
+          ) =>
+        'Se reactivó',
+      _ => 'Se actualizó',
+    };
+    return '$action $resource';
+  }
+
+  IconData _eventIcon(_AuditEvent event) => switch (event.operation) {
+    'INSERT' => Icons.add_circle_outline,
+    'SOFT_DELETE' => Icons.remove_circle_outline,
+    _ => Icons.edit_outlined,
+  };
+
+  String _tableLabel(String table) => switch (table) {
+    'products' => 'un producto',
+    'categories' => 'una categoría',
+    'bulk_promotions' => 'una promoción',
+    _ => table,
+  };
+
+  String _fieldLabel(String field) => switch (field) {
+    'name' => 'Nombre',
+    'sku' => 'Código del producto',
+    'description' => 'Descripción',
+    'category_id' => 'Categoría',
+    'unit_price' => 'Precio unitario',
+    'current_stock' => 'Stock',
+    'is_active' => 'Estado activo',
+    'image_url' => 'Imagen',
+    'packaging_type' => 'Presentación',
+    'minimum_sale_quantity' => 'Venta mínima',
+    'min_order_quantity' => 'MOQ de recompra',
+    'factory_cost' => 'Costo de fábrica',
+    'currency_code' => 'Moneda',
+    'cbm_per_moq' => 'CBM por MOQ',
+    'reorder_point' => 'Punto de reorden',
+    'promo_price' => 'Precio promocional',
+    'promo_text' => 'Texto de promoción',
+    'image_position_x' => 'Posición horizontal de imagen',
+    'image_position_y' => 'Posición vertical de imagen',
+    _ => field.replaceAll('_', ' '),
+  };
+
+  String _dateLabel(DateTime value) =>
+      '${value.day.toString().padLeft(2, '0')}/'
+      '${value.month.toString().padLeft(2, '0')}/${value.year}';
+}
+
+class _AuditEvent {
+  _AuditEvent(this.details);
+
+  final List<AuditEntry> details;
+  static const _technicalFields = {
+    'id',
+    'created_at',
+    'updated_at',
+    'deleted_at',
+    'created_by',
+    'updated_by',
+    'deleted_by',
+    'created_device_name',
+    'created_device_identifier',
+    'updated_device_name',
+    'updated_device_identifier',
+  };
+  AuditEntry get first => details.first;
+  String get tableName => first.tableName;
+  String get operation => details.any((detail) => detail.operation == 'INSERT')
+      ? 'INSERT'
+      : details.any((detail) => detail.operation == 'SOFT_DELETE')
+      ? 'SOFT_DELETE'
+      : 'UPDATE';
+  String? get actorName => first.actorName;
+  String? get deviceName => first.deviceName;
+  String? get resourceLabel => first.resourceLabel;
+  String? get resourcePath => first.resourcePath;
+  DateTime get createdAt => first.createdAt;
+  List<_AuditChange> get changes {
+    final grouped = <String, List<AuditEntry>>{};
+    for (final detail in details) {
+      if (_technicalFields.contains(detail.fieldName)) continue;
+      grouped.putIfAbsent(detail.fieldName, () => []).add(detail);
+    }
+    return [
+      for (final entry in grouped.entries)
+        _AuditChange(
+          fieldName: entry.key,
+          oldValue: entry.value.any((detail) => detail.oldValue == null)
+              ? null
+              : entry.value.first.oldValue,
+          newValue: _finalValue(entry.value),
+        ),
+    ];
+  }
+
+  static String? _finalValue(List<AuditEntry> details) {
+    final intermediateValues = details
+        .map((detail) => detail.oldValue)
+        .whereType<String>()
+        .toSet();
+    for (final detail in details) {
+      if (detail.newValue != null &&
+          !intermediateValues.contains(detail.newValue)) {
+        return detail.newValue;
+      }
+    }
+    return details.first.newValue;
+  }
+
+  String get searchable => [
+    tableName,
+    first.recordId,
+    operation,
+    resourceLabel,
+    actorName,
+    deviceName,
+    for (final detail in details) ...[
+      detail.fieldName,
+      detail.oldValue,
+      detail.newValue,
+    ],
+  ].whereType<String>().join(' ').toLowerCase();
+}
+
+class _AuditChange {
+  const _AuditChange({
+    required this.fieldName,
+    required this.oldValue,
+    required this.newValue,
+  });
+
+  final String fieldName;
+  final String? oldValue;
+  final String? newValue;
 }

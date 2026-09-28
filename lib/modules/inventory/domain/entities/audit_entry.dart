@@ -10,6 +10,8 @@ class AuditEntry {
     this.newValue,
     this.actorName,
     this.deviceName,
+    this.resourceLabel,
+    this.resourcePath,
   });
   final String id;
   final String tableName;
@@ -20,5 +22,7 @@ class AuditEntry {
   final String? newValue;
   final String? actorName;
   final String? deviceName;
+  final String? resourceLabel;
+  final String? resourcePath;
   final DateTime createdAt;
 }

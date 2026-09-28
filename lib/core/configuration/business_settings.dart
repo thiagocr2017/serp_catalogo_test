@@ -8,6 +8,9 @@ class BusinessSettings {
     required this.roundingIncrement,
     required this.companyName,
     required this.paymentMethods,
+    this.packagingUnitLabel = 'Unidad',
+    this.packagingBoxLabel = 'Caja',
+    this.packagingSetLabel = 'Set',
   });
   final String defaultCurrency;
   final int decimalPlaces;
@@ -17,4 +20,7 @@ class BusinessSettings {
   final double roundingIncrement;
   final String companyName;
   final String paymentMethods;
+  final String packagingUnitLabel;
+  final String packagingBoxLabel;
+  final String packagingSetLabel;
 }

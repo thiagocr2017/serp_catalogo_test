@@ -205,6 +205,8 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 - Precio unitario, precio por paquete y gestión de márgenes.
 - Compresión local de imágenes antes de subirlas.
 - La imagen se almacena como `<SKU>.JPG`; al reemplazarla se elimina el objeto anterior y la nueva URL incorpora una versión para evitar caché obsoleta.
+- Cada producto conserva un punto focal horizontal y vertical para controlar el recorte de su fotografía en la lista, ficha y catálogo.
+- En edición se puede activar nuevamente un producto inactivo; la reactivación limpia los metadatos de eliminación lógica.
 - El stock inicial genera una transacción `INITIAL_STOCK`; nunca escribe directamente en `current_stock`.
 
 ### Pantalla C: ficha técnica
@@ -213,12 +215,15 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 - Calculadora de precio basada en costo, importación y margen.
 - Historial de cambios de `factory_cost` mediante `audit_logs`.
 - Historial completo e inmutable de inventario.
+- Cuando el stock llega a cero, la ficha calcula y muestra la fecha en que se agotó a partir del libro de movimientos.
 - Promoción activa y regla de prioridad aplicada.
 - Espacios para futuros módulos de inventario avanzado, ventas, CRM y reportes.
 
 ### Pantalla de auditoría
 
 - Búsqueda local por tabla, registro, operación, campo, valores, usuario o dispositivo, con limpieza inmediata del filtro.
+- Las modificaciones del mismo registro y momento se consolidan en una acción expandible. Productos y categorías se muestran por SKU/nombre y los productos incluyen enlace a su ficha.
+- Filtro por fecha inicial y final.
 
 ### Pantalla D: generador avanzado de PDF
 
@@ -227,6 +232,10 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 - Empresa y métodos de pago provienen exclusivamente de Configuración; el generador mantiene sólo datos propios del documento, selección, diseño y colores.
 - Colores configurables mediante selector RGB o código hexadecimal `#RRGGBB`: fondo, tarjeta, elemento de diseño, fuente principal, fuente destacada, fuente secundaria, elemento de promoción y fuente de promoción.
 - Ajuste de fotografías configurable entre rellenar y recortar, mostrar la imagen completa o ajustar al ancho.
+- El punto focal configurado en cada producto también controla el recorte del PDF.
+- Los productos inactivos o agotados se excluyen tanto en la interfaz como dentro del servicio generador.
+- El usuario puede reordenar uno o varios productos dentro de su categoría; el PDF conserva ese orden y nunca divide visualmente una categoría con productos de otra.
+- Los colores promocionales separan distintivo/fuente, precio anterior, precio actual y texto de promoción.
 - Datos del agente y QR de WhatsApp generado localmente.
 - Portadas o separadores por categoría según el diseño.
 - SKU, descripción, precio unitario, empaque y MOQ.

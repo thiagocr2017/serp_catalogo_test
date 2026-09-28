@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import 'dart:typed_data';
 
+import '../../../../core/configuration/settings_providers.dart';
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
 import '../controllers/product_list_controller.dart';
@@ -35,6 +36,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   String? _categoryId;
   PackagingType _packagingType = PackagingType.unit;
   bool _saving = false;
+  bool _isActive = true;
+  double _imagePositionX = 0.5;
+  double _imagePositionY = 0.5;
   Uint8List? _imageBytes;
   Product? _existing;
   bool _loading = false;
@@ -75,6 +79,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       _reorderPoint.text = '${product.reorderPoint}';
       _categoryId = product.categoryId;
       _packagingType = product.packagingType;
+      _isActive = product.isActive;
+      _imagePositionX = product.imagePositionX;
+      _imagePositionY = product.imagePositionY;
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -140,6 +147,8 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
         cbmPerMoq: _decimal(_cbm.text),
         factoryCostInCents: _cents(_factoryCost.text),
         imageUrl: imageUrl,
+        imagePositionX: _imagePositionX,
+        imagePositionY: _imagePositionY,
         currentStock: _existing?.currentStock ?? 0,
         reorderPoint: int.parse(_reorderPoint.text),
         promotionPriceInCents: _promotionPrice.text.trim().isEmpty
@@ -151,7 +160,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
         promotionType: _promotionPrice.text.trim().isEmpty
             ? null
             : PromotionType.individual,
-        isActive: _existing?.isActive ?? true,
+        isActive: _isActive,
         createdAt: _existing?.createdAt ?? DateTime.now().toUtc(),
         updatedAt: _isEditing ? DateTime.now().toUtc() : null,
       );
@@ -183,6 +192,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   @override
   Widget build(BuildContext context) {
     final categories = ref.watch(categoriesProvider);
+    final settings = ref.watch(businessSettingsProvider).value;
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Editar producto' : 'Nuevo producto'),
@@ -224,7 +234,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                           : 'Imagen lista (${(_imageBytes!.length / 1024).round()} KB)',
                     ),
                   ),
-                  if (_imageBytes != null || _existing?.imageUrl != null)
+                  if (_imageBytes != null || _existing?.imageUrl != null) ...[
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Container(
@@ -241,20 +251,77 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                             color: Theme.of(context).colorScheme.outlineVariant,
                           ),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: _imageBytes != null
-                              ? Image.memory(_imageBytes!, fit: BoxFit.cover)
-                              : Image.network(
-                                  _existing!.imageUrl!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => const Center(
-                                    child: Icon(Icons.broken_image_outlined),
-                                  ),
+                        child: _imageBytes != null
+                            ? Image.memory(
+                                _imageBytes!,
+                                fit: BoxFit.cover,
+                                alignment: _imageAlignment,
+                              )
+                            : Image.network(
+                                _existing!.imageUrl!,
+                                fit: BoxFit.cover,
+                                alignment: _imageAlignment,
+                                errorBuilder: (_, _, _) => const Center(
+                                  child: Icon(Icons.broken_image_outlined),
                                 ),
-                        ),
+                              ),
                       ),
                     ),
+                    SizedBox(
+                      width: 560,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Reposicionar imagen',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const Text(
+                            'Mueve el punto focal; la vista previa muestra el recorte usado en pantallas y PDF.',
+                          ),
+                          Row(
+                            children: [
+                              const SizedBox(
+                                width: 82,
+                                child: Text('Horizontal'),
+                              ),
+                              Expanded(
+                                child: Slider(
+                                  value: _imagePositionX,
+                                  onChanged: (value) =>
+                                      setState(() => _imagePositionX = value),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              const SizedBox(
+                                width: 82,
+                                child: Text('Vertical'),
+                              ),
+                              Expanded(
+                                child: Slider(
+                                  value: _imagePositionY,
+                                  onChanged: (value) =>
+                                      setState(() => _imagePositionY = value),
+                                ),
+                              ),
+                            ],
+                          ),
+                          TextButton.icon(
+                            onPressed: () => setState(() {
+                              _imagePositionX = 0.5;
+                              _imagePositionY = 0.5;
+                            }),
+                            icon: const Icon(Icons.center_focus_strong),
+                            label: const Text('Centrar imagen'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   _section(
                     'Información general',
                     'Identificación y descripción del producto.',
@@ -330,18 +397,22 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                             labelText: 'Presentación de venta',
                             border: OutlineInputBorder(),
                           ),
-                          items: const [
+                          items: [
                             DropdownMenuItem(
                               value: PackagingType.unit,
-                              child: Text('Unidad'),
+                              child: Text(
+                                settings?.packagingUnitLabel ?? 'Unidad',
+                              ),
                             ),
                             DropdownMenuItem(
                               value: PackagingType.box,
-                              child: Text('Caja'),
+                              child: Text(
+                                settings?.packagingBoxLabel ?? 'Caja',
+                              ),
                             ),
                             DropdownMenuItem(
                               value: PackagingType.set,
-                              child: Text('Set'),
+                              child: Text(settings?.packagingSetLabel ?? 'Set'),
                             ),
                           ],
                           onChanged: (value) =>
@@ -404,6 +475,27 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                   ),
                   if (_isEditing && _existing != null)
                     _section(
+                      'Estado',
+                      'Un producto reactivado vuelve a aparecer entre los productos activos.',
+                      [
+                        SizedBox(
+                          width: 320,
+                          child: SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            value: _isActive,
+                            title: Text(
+                              _isActive
+                                  ? 'Producto activo'
+                                  : 'Producto inactivo',
+                            ),
+                            onChanged: (value) =>
+                                setState(() => _isActive = value),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (_isEditing && _existing != null)
+                    _section(
                       'Inventario',
                       'El stock es de solo lectura y cambia únicamente mediante movimientos.',
                       [
@@ -462,6 +554,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
             ),
     );
   }
+
+  Alignment get _imageAlignment =>
+      Alignment((_imagePositionX * 2) - 1, (_imagePositionY * 2) - 1);
 
   Widget _section(String title, String description, List<Widget> fields) {
     return Card(

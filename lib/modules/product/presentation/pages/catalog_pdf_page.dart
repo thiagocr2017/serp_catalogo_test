@@ -31,12 +31,20 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   String secondaryTextColor = '#616161';
   String promotionColor = '#C62828';
   String promotionTextColor = '#FFFFFF';
+  String promotionPreviousPriceColor = '#757575';
+  String promotionPriceColor = '#C62828';
+  String promotionDescriptionColor = '#C62828';
+  String packagingUnitLabel = 'Unidad';
+  String packagingBoxLabel = 'Caja';
+  String packagingSetLabel = 'Set';
   CatalogImageFit imageFit = CatalogImageFit.cover;
   int cards = 4;
   List<Product>? products;
   Map<String, String> categoryNames = const {};
   Uint8List? logoBytes;
   final selected = <String>{};
+  final reorderSelection = <String>{};
+  final catalogOrder = <String>[];
 
   @override
   void initState() {
@@ -52,17 +60,33 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     final settings = await ref.read(businessSettingsProvider.future);
     if (mounted) {
       final sharedSelection = ref.read(selectedProductIdsProvider);
+      final loadedCategoryNames = {
+        for (final category in categories) category.id: category.name,
+      };
+      final eligible =
+          data
+              .where((product) => product.isActive && !product.isOutOfStock)
+              .toList()
+            ..sort((a, b) {
+              final category = (loadedCategoryNames[a.categoryId] ?? '')
+                  .compareTo(loadedCategoryNames[b.categoryId] ?? '');
+              return category != 0 ? category : a.name.compareTo(b.name);
+            });
       setState(() {
-        products = data;
-        categoryNames = {
-          for (final category in categories) category.id: category.name,
-        };
+        products = eligible;
+        categoryNames = loadedCategoryNames;
         companyName = settings.companyName;
         paymentMethods = settings.paymentMethods;
+        packagingUnitLabel = settings.packagingUnitLabel;
+        packagingBoxLabel = settings.packagingBoxLabel;
+        packagingSetLabel = settings.packagingSetLabel;
+        catalogOrder
+          ..clear()
+          ..addAll(eligible.map((product) => product.id));
         selected.addAll(
           sharedSelection.isEmpty
-              ? data.map((p) => p.id)
-              : data
+              ? eligible.map((p) => p.id)
+              : eligible
                     .where((p) => sharedSelection.contains(p.id))
                     .map((p) => p.id),
         );
@@ -209,6 +233,24 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         onChanged: (value) =>
                             setState(() => promotionTextColor = value),
                       ),
+                      _TemplateColorField(
+                        label: 'Precio anterior (secundario)',
+                        value: promotionPreviousPriceColor,
+                        onChanged: (value) =>
+                            setState(() => promotionPreviousPriceColor = value),
+                      ),
+                      _TemplateColorField(
+                        label: 'Precio actual (principal)',
+                        value: promotionPriceColor,
+                        onChanged: (value) =>
+                            setState(() => promotionPriceColor = value),
+                      ),
+                      _TemplateColorField(
+                        label: 'Texto de promoción (principal)',
+                        value: promotionDescriptionColor,
+                        onChanged: (value) =>
+                            setState(() => promotionDescriptionColor = value),
+                      ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<CatalogImageFit>(
                         initialValue: imageFit,
@@ -250,6 +292,19 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                             )
                             .toList(),
                         onChanged: (v) => setState(() => cards = v!),
+                      ),
+                      const Divider(height: 32),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'Los productos inactivos o agotados se excluyen automáticamente del catálogo.',
+                        ),
                       ),
                       const Divider(height: 32),
                       Text(
@@ -305,6 +360,49 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                                 .replaceAll(selected);
                           }),
                         ),
+                      const Divider(height: 32),
+                      Text(
+                        'Orden dentro de cada categoría',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const Text(
+                        'Marca uno o varios productos y muévelos juntos. Las categorías siempre permanecen agrupadas.',
+                      ),
+                      Row(
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: reorderSelection.isEmpty
+                                ? null
+                                : () => _moveMarked(data, -1),
+                            icon: const Icon(Icons.arrow_upward),
+                            label: const Text('Subir'),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: reorderSelection.isEmpty
+                                ? null
+                                : () => _moveMarked(data, 1),
+                            icon: const Icon(Icons.arrow_downward),
+                            label: const Text('Bajar'),
+                          ),
+                        ],
+                      ),
+                      for (final product in _orderedProducts(data))
+                        if (selected.contains(product.id))
+                          CheckboxListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            value: reorderSelection.contains(product.id),
+                            title: Text(product.name),
+                            subtitle: Text(
+                              '${categoryNames[product.categoryId] ?? 'Sin categoría'} · ${product.sku}',
+                            ),
+                            onChanged: (value) => setState(() {
+                              value == true
+                                  ? reorderSelection.add(product.id)
+                                  : reorderSelection.remove(product.id);
+                            }),
+                          ),
                     ],
                   ),
                 ),
@@ -316,7 +414,9 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                     canDebug: false,
                     pdfFileName: 'catalogo_serp.pdf',
                     build: (_) => CatalogPdfService().generate(
-                      data.where((p) => selected.contains(p.id)).toList(),
+                      _orderedProducts(data)
+                          .where((p) => selected.contains(p.id))
+                          .toList(),
                       CatalogPdfOptions(
                         companyName: companyName,
                         paymentMethods: paymentMethods,
@@ -333,6 +433,15 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                         secondaryTextColor: secondaryTextColor,
                         promotionColor: promotionColor,
                         promotionTextColor: promotionTextColor,
+                        promotionPreviousPriceColor:
+                            promotionPreviousPriceColor,
+                        promotionPriceColor: promotionPriceColor,
+                        promotionDescriptionColor: promotionDescriptionColor,
+                        packagingLabels: {
+                          PackagingType.unit: packagingUnitLabel,
+                          PackagingType.box: packagingBoxLabel,
+                          PackagingType.set: packagingSetLabel,
+                        },
                         imageFit: imageFit,
                       ),
                     ),
@@ -341,6 +450,43 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
               ],
             ),
     );
+  }
+
+  List<Product> _orderedProducts(List<Product> data) {
+    final byId = {for (final product in data) product.id: product};
+    return [
+      for (final id in catalogOrder)
+        if (byId[id] != null) byId[id]!,
+    ];
+  }
+
+  void _moveMarked(List<Product> data, int direction) {
+    final byId = {for (final product in data) product.id: product};
+    setState(() {
+      if (direction < 0) {
+        for (var index = 1; index < catalogOrder.length; index++) {
+          final current = catalogOrder[index];
+          final previous = catalogOrder[index - 1];
+          if (reorderSelection.contains(current) &&
+              !reorderSelection.contains(previous) &&
+              byId[current]?.categoryId == byId[previous]?.categoryId) {
+            catalogOrder[index - 1] = current;
+            catalogOrder[index] = previous;
+          }
+        }
+      } else {
+        for (var index = catalogOrder.length - 2; index >= 0; index--) {
+          final current = catalogOrder[index];
+          final next = catalogOrder[index + 1];
+          if (reorderSelection.contains(current) &&
+              !reorderSelection.contains(next) &&
+              byId[current]?.categoryId == byId[next]?.categoryId) {
+            catalogOrder[index + 1] = current;
+            catalogOrder[index] = next;
+          }
+        }
+      }
+    });
   }
 }
 

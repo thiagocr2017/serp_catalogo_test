@@ -37,6 +37,15 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
   late final increment = TextEditingController(
     text: widget.initial.roundingIncrement.toStringAsFixed(2),
   );
+  late final packagingUnit = TextEditingController(
+    text: widget.initial.packagingUnitLabel,
+  );
+  late final packagingBox = TextEditingController(
+    text: widget.initial.packagingBoxLabel,
+  );
+  late final packagingSet = TextEditingController(
+    text: widget.initial.packagingSetLabel,
+  );
   late String currency = widget.initial.defaultCurrency;
   late int decimals = widget.initial.decimalPlaces;
   late bool includesTax = widget.initial.pricesIncludeTax;
@@ -47,6 +56,9 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     payments.dispose();
     tax.dispose();
     increment.dispose();
+    packagingUnit.dispose();
+    packagingBox.dispose();
+    packagingSet.dispose();
     super.dispose();
   }
 
@@ -74,6 +86,37 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
           labelText: 'Métodos de pago',
           border: OutlineInputBorder(),
         ),
+      ),
+      const SizedBox(height: 28),
+      Text(
+        'Nombres de presentaciones',
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        'Estos nombres se usan en la ficha del producto y en el catálogo.',
+      ),
+      const SizedBox(height: 16),
+      Wrap(
+        spacing: 16,
+        runSpacing: 16,
+        children: [
+          for (final field in [
+            (packagingUnit, 'Unidad'),
+            (packagingBox, 'Caja'),
+            (packagingSet, 'Set'),
+          ])
+            SizedBox(
+              width: 260,
+              child: TextField(
+                controller: field.$1,
+                decoration: InputDecoration(
+                  labelText: field.$2,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ),
+        ],
       ),
       const SizedBox(height: 28),
       Text(
@@ -178,6 +221,15 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
             roundingIncrement: double.parse(increment.text),
             companyName: company.text.trim(),
             paymentMethods: payments.text.trim(),
+            packagingUnitLabel: packagingUnit.text.trim().isEmpty
+                ? 'Unidad'
+                : packagingUnit.text.trim(),
+            packagingBoxLabel: packagingBox.text.trim().isEmpty
+                ? 'Caja'
+                : packagingBox.text.trim(),
+            packagingSetLabel: packagingSet.text.trim().isEmpty
+                ? 'Set'
+                : packagingSet.text.trim(),
           ),
         );
     ref.invalidate(businessSettingsProvider);

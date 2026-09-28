@@ -3,6 +3,34 @@ import 'package:serp/modules/product/domain/entities/product.dart';
 import 'package:serp/modules/product/services/catalog_pdf_service.dart';
 
 void main() {
+  test('catalog excludes inactive and out-of-stock products', () {
+    Product product(String id, {required bool active, required int stock}) =>
+        Product(
+          id: id,
+          sku: 'SKU-$id',
+          name: 'Producto $id',
+          description: 'Descripción',
+          categoryId: 'category-id',
+          unitPriceInCents: 100,
+          minimumOrderQuantity: 1,
+          packagingType: PackagingType.unit,
+          cbmPerMoq: 0,
+          factoryCostInCents: 50,
+          currentStock: stock,
+          reorderPoint: 1,
+          isActive: active,
+          createdAt: DateTime.utc(2026),
+        );
+
+    final eligible = eligibleCatalogProducts([
+      product('active', active: true, stock: 2),
+      product('inactive', active: false, stock: 2),
+      product('empty', active: true, stock: 0),
+    ]);
+
+    expect(eligible.map((product) => product.id), ['active']);
+  });
+
   test('generates a local PDF with category sections', () async {
     final product = Product(
       id: 'product-id',

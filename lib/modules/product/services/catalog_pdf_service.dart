@@ -8,6 +8,10 @@ import '../domain/entities/product.dart';
 
 enum CatalogImageFit { contain, cover, fitWidth }
 
+List<Product> eligibleCatalogProducts(Iterable<Product> products) => products
+    .where((product) => product.isActive && !product.isOutOfStock)
+    .toList();
+
 class CatalogPdfOptions {
   const CatalogPdfOptions({
     required this.companyName,
@@ -25,6 +29,14 @@ class CatalogPdfOptions {
     this.secondaryTextColor = '#616161',
     this.promotionColor = '#C62828',
     this.promotionTextColor = '#FFFFFF',
+    this.promotionPreviousPriceColor = '#757575',
+    this.promotionPriceColor = '#C62828',
+    this.promotionDescriptionColor = '#C62828',
+    this.packagingLabels = const {
+      PackagingType.unit: 'Unidad',
+      PackagingType.box: 'Caja',
+      PackagingType.set: 'Set',
+    },
     this.imageFit = CatalogImageFit.cover,
   });
   final String companyName;
@@ -42,6 +54,10 @@ class CatalogPdfOptions {
   final String secondaryTextColor;
   final String promotionColor;
   final String promotionTextColor;
+  final String promotionPreviousPriceColor;
+  final String promotionPriceColor;
+  final String promotionDescriptionColor;
+  final Map<PackagingType, String> packagingLabels;
   final CatalogImageFit imageFit;
 }
 
@@ -50,6 +66,7 @@ class CatalogPdfService {
     List<Product> products,
     CatalogPdfOptions options,
   ) async {
+    products = eligibleCatalogProducts(products);
     final background = PdfColor.fromHex(options.backgroundColor);
     final card = PdfColor.fromHex(options.cardColor);
     final accent = PdfColor.fromHex(options.accentColor);
@@ -58,6 +75,13 @@ class CatalogPdfService {
     final secondaryText = PdfColor.fromHex(options.secondaryTextColor);
     final promotion = PdfColor.fromHex(options.promotionColor);
     final promotionText = PdfColor.fromHex(options.promotionTextColor);
+    final promotionPreviousPrice = PdfColor.fromHex(
+      options.promotionPreviousPriceColor,
+    );
+    final promotionPrice = PdfColor.fromHex(options.promotionPriceColor);
+    final promotionDescription = PdfColor.fromHex(
+      options.promotionDescriptionColor,
+    );
     final images = <String, pw.ImageProvider>{};
     for (final product in products) {
       final url = product.imageUrl;
@@ -156,25 +180,35 @@ class CatalogPdfService {
     final compact = options.cardsPerPage == 0;
     if (!compact) {
       final perPage = options.cardsPerPage;
-      for (var start = 0; start < products.length; start += perPage) {
-        final end = (start + perPage).clamp(0, products.length);
-        final pageProducts = products.sublist(start, end);
-        document.addPage(
-          _productsPage(
-            pageProducts,
-            options: options,
-            images: images,
-            backgroundColor: background,
-            cardColor: card,
-            accentColor: accent,
-            textColor: textColor,
-            highlightTextColor: highlightText,
-            secondaryTextColor: secondaryText,
-            promotionColor: promotion,
-            promotionTextColor: promotionText,
-            pageNumber: (start ~/ perPage) + 2,
-          ),
-        );
+      final groups = <String, List<Product>>{};
+      for (final product in products) {
+        groups.putIfAbsent(product.categoryId, () => []).add(product);
+      }
+      var pageNumber = 2;
+      for (final entry in groups.entries) {
+        for (var start = 0; start < entry.value.length; start += perPage) {
+          final end = (start + perPage).clamp(0, entry.value.length);
+          document.addPage(
+            _productsPage(
+              entry.value.sublist(start, end),
+              categoryName: options.categoryNames[entry.key] ?? 'Sin categoría',
+              options: options,
+              images: images,
+              backgroundColor: background,
+              cardColor: card,
+              accentColor: accent,
+              textColor: textColor,
+              highlightTextColor: highlightText,
+              secondaryTextColor: secondaryText,
+              promotionColor: promotion,
+              promotionTextColor: promotionText,
+              promotionPreviousPriceColor: promotionPreviousPrice,
+              promotionPriceColor: promotionPrice,
+              promotionDescriptionColor: promotionDescription,
+              pageNumber: pageNumber++,
+            ),
+          );
+        }
       }
       return document.save();
     }
@@ -243,6 +277,12 @@ class CatalogPdfService {
                     secondaryTextColor: secondaryText,
                     promotionColor: promotion,
                     promotionTextColor: promotionText,
+                    promotionPreviousPriceColor: promotionPreviousPrice,
+                    promotionPriceColor: promotionPrice,
+                    promotionDescriptionColor: promotionDescription,
+                    packagingLabel:
+                        options.packagingLabels[product.packagingType] ??
+                        product.packagingType.name,
                     imageFit: options.imageFit,
                   ),
                 ),
@@ -256,6 +296,7 @@ class CatalogPdfService {
 
   pw.Page _productsPage(
     List<Product> products, {
+    required String categoryName,
     required CatalogPdfOptions options,
     required Map<String, pw.ImageProvider> images,
     required PdfColor backgroundColor,
@@ -266,6 +307,9 @@ class CatalogPdfService {
     required PdfColor secondaryTextColor,
     required PdfColor promotionColor,
     required PdfColor promotionTextColor,
+    required PdfColor promotionPreviousPriceColor,
+    required PdfColor promotionPriceColor,
+    required PdfColor promotionDescriptionColor,
     required int pageNumber,
   }) {
     final perPage = options.cardsPerPage;
@@ -307,6 +351,19 @@ class CatalogPdfService {
             ],
           ),
           pw.SizedBox(height: 12),
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            color: accentColor,
+            child: pw.Text(
+              categoryName,
+              style: pw.TextStyle(
+                color: PdfColors.white,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+          ),
+          pw.SizedBox(height: 10),
           pw.Expanded(
             child: pw.Column(
               children: [
@@ -327,12 +384,6 @@ class CatalogPdfService {
                                             .id],
                                     compact: false,
                                     imageHeight: imageHeight,
-                                    categoryName:
-                                        options.categoryNames[products[row *
-                                                    columns +
-                                                column]
-                                            .categoryId] ??
-                                        'Sin categoría',
                                     cardColor: cardColor,
                                     accentColor: accentColor,
                                     textColor: textColor,
@@ -340,6 +391,19 @@ class CatalogPdfService {
                                     secondaryTextColor: secondaryTextColor,
                                     promotionColor: promotionColor,
                                     promotionTextColor: promotionTextColor,
+                                    promotionPreviousPriceColor:
+                                        promotionPreviousPriceColor,
+                                    promotionPriceColor: promotionPriceColor,
+                                    promotionDescriptionColor:
+                                        promotionDescriptionColor,
+                                    packagingLabel:
+                                        options.packagingLabels[products[row *
+                                                    columns +
+                                                column]
+                                            .packagingType] ??
+                                        products[row * columns + column]
+                                            .packagingType
+                                            .name,
                                     imageFit: options.imageFit,
                                   )
                                 : pw.SizedBox(),
@@ -393,12 +457,20 @@ class CatalogPdfService {
     PdfColor? secondaryTextColor,
     PdfColor? promotionColor,
     PdfColor? promotionTextColor,
+    PdfColor? promotionPreviousPriceColor,
+    PdfColor? promotionPriceColor,
+    PdfColor? promotionDescriptionColor,
+    String? packagingLabel,
     CatalogImageFit imageFit = CatalogImageFit.cover,
   }) {
     final highlight = highlightTextColor ?? accentColor;
     final secondary = secondaryTextColor ?? PdfColors.grey700;
     final promoBackground = promotionColor ?? accentColor;
     final promoText = promotionTextColor ?? PdfColors.white;
+    final previousPrice = promotionPreviousPriceColor ?? secondary;
+    final currentPromotionPrice = promotionPriceColor ?? promoBackground;
+    final promotionDescription =
+        promotionDescriptionColor ?? currentPromotionPrice;
     final hasPromotion = product.promotionPriceInCents != null;
     final finalPrice = hasPromotion
         ? product.promotionPriceInCents!
@@ -432,7 +504,14 @@ class CatalogPdfService {
               pw.Container(
                 height: imageHeight ?? 90,
                 width: double.infinity,
-                child: pw.Image(image, fit: _pdfImageFit(imageFit)),
+                child: pw.Image(
+                  image,
+                  fit: _pdfImageFit(imageFit),
+                  alignment: pw.Alignment(
+                    (product.imagePositionX * 2) - 1,
+                    (product.imagePositionY * 2) - 1,
+                  ),
+                ),
               ),
               pw.SizedBox(height: dense ? 4 : 8),
             ],
@@ -480,16 +559,16 @@ class CatalogPdfService {
             ],
             if (compact) pw.SizedBox(height: 6) else pw.Spacer(),
             pw.Text(
-              'Presentación ${product.packagingType.name.toUpperCase()} - Venta mínima ${product.minimumSaleQuantity}',
+              'Presentación ${packagingLabel ?? product.packagingType.name} - Venta mínima ${product.minimumSaleQuantity}',
               maxLines: 1,
               style: pw.TextStyle(fontSize: dense ? 7 : 9, color: secondary),
             ),
             if (hasPromotion)
               pw.Text(
                 'Antes: USD ${(product.unitPriceInCents / 100).toStringAsFixed(2)}',
-                style: const pw.TextStyle(
+                style: pw.TextStyle(
                   fontSize: 9,
-                  color: PdfColors.grey600,
+                  color: previousPrice,
                   decoration: pw.TextDecoration.lineThrough,
                 ),
               ),
@@ -498,13 +577,13 @@ class CatalogPdfService {
               style: pw.TextStyle(
                 fontSize: dense ? 14 : 18,
                 fontWeight: pw.FontWeight.bold,
-                color: hasPromotion ? highlight : textColor,
+                color: hasPromotion ? currentPromotionPrice : textColor,
               ),
             ),
             if (product.promotionText != null)
               pw.Text(
                 product.promotionText!,
-                style: pw.TextStyle(fontSize: 8, color: highlight),
+                style: pw.TextStyle(fontSize: 8, color: promotionDescription),
               ),
           ],
         ),

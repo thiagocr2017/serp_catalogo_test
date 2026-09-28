@@ -372,7 +372,11 @@ class _ProductTable extends StatelessWidget {
                     ),
                   ),
                   DataCell(
-                    _ProductThumbnail(product: product, size: 52),
+                    _ProductThumbnail(
+                      product: product,
+                      size: 44,
+                      verticalPadding: 5,
+                    ),
                     onTap: () => context.go('/products/${product.id}'),
                   ),
                   DataCell(
@@ -521,28 +525,40 @@ class _ProductGrid extends StatelessWidget {
 }
 
 class _ProductThumbnail extends StatelessWidget {
-  const _ProductThumbnail({required this.product, required this.size});
+  const _ProductThumbnail({
+    required this.product,
+    required this.size,
+    this.verticalPadding = 0,
+  });
   final Product product;
   final double size;
+  final double verticalPadding;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    clipBehavior: Clip.antiAlias,
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(size * .22),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.symmetric(vertical: verticalPadding),
+    child: Container(
+      width: size,
+      height: size,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(size * .22),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: product.imageUrl == null
+          ? Icon(Icons.inventory_2_outlined, size: size * .45)
+          : Image.network(
+              product.imageUrl!,
+              fit: BoxFit.cover,
+              alignment: Alignment(
+                (product.imagePositionX * 2) - 1,
+                (product.imagePositionY * 2) - 1,
+              ),
+              errorBuilder: (_, _, _) =>
+                  Icon(Icons.broken_image_outlined, size: size * .45),
+            ),
     ),
-    child: product.imageUrl == null
-        ? Icon(Icons.inventory_2_outlined, size: size * .45)
-        : Image.network(
-            product.imageUrl!,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) =>
-                Icon(Icons.broken_image_outlined, size: size * .45),
-          ),
   );
 }
 
