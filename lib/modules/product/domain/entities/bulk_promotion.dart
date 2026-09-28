@@ -9,6 +9,9 @@ class BulkPromotion {
     required this.isActive,
     this.startDate,
     this.badgeImageUrl,
+    this.productIds = const {},
+    this.categoryIds = const {},
+    this.productConditions = const {},
   });
   final String id;
   final String name;
@@ -19,6 +22,9 @@ class BulkPromotion {
   final DateTime endDate;
   final bool appliesToAllProducts;
   final bool isActive;
+  final Set<String> productIds;
+  final Set<String> categoryIds;
+  final Map<String, String> productConditions;
   bool get isCurrentlyActive {
     final now = DateTime.now();
     return isActive &&

@@ -30,7 +30,7 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Promociones')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _create(context, ref),
+        onPressed: () => _openEditor(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('Nueva promoción'),
       ),
@@ -81,25 +81,42 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
                         separatorBuilder: (_, _) => const Divider(),
                         itemBuilder: (_, i) {
                           final p = filtered[i];
-                          return SwitchListTile(
-                            value: p.isActive,
-                            onChanged: (value) async {
-                              await ref
-                                  .read(promotionRepositoryProvider)
-                                  .setActive(p.id, isActive: value);
-                              ref.invalidate(promotionsProvider);
-                            },
+                          final scopeLabel = p.appliesToAllProducts
+                              ? 'Todos los productos'
+                              : p.categoryIds.isNotEmpty
+                              ? '${p.categoryIds.length} categoría(s), incluyendo productos futuros'
+                              : '${p.productIds.length} producto(s) seleccionado(s)';
+                          return ListTile(
                             title: Text(
                               '${p.name} · ${p.discountPercentage.toStringAsFixed(2)}%',
                             ),
                             subtitle: Text(
-                              '${p.appliesToAllProducts ? 'Todos los productos' : 'Selección específica'} · Hasta ${p.endDate.toLocal()}\n${p.conditionsText}',
+                              '$scopeLabel · Hasta ${p.endDate.toLocal()}\n${p.conditionsText}',
                             ),
                             isThreeLine: true,
-                            secondary: Icon(
+                            leading: Icon(
                               p.isCurrentlyActive
                                   ? Icons.local_offer
                                   : Icons.event_busy,
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Switch(
+                                  value: p.isActive,
+                                  onChanged: (value) async {
+                                    await ref
+                                        .read(promotionRepositoryProvider)
+                                        .setActive(p.id, isActive: value);
+                                    ref.invalidate(promotionsProvider);
+                                  },
+                                ),
+                                IconButton(
+                                  tooltip: 'Editar promoción',
+                                  onPressed: () => _openEditor(context, ref, p),
+                                  icon: const Icon(Icons.edit_outlined),
+                                ),
+                              ],
                             ),
                           );
                         },
@@ -112,26 +129,46 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
     );
   }
 
-  Future<void> _create(BuildContext context, WidgetRef ref) async {
+  Future<void> _openEditor(
+    BuildContext context,
+    WidgetRef ref, [
+    BulkPromotion? existing,
+  ]) async {
     final products = await ref.read(getProductsProvider)(
       const ProductQuery(isActive: true),
     );
     final categories = await ref.read(categoriesProvider.future);
     if (!context.mounted) return;
-    final name = TextEditingController();
-    final discount = TextEditingController();
-    final conditions = TextEditingController();
+    final name = TextEditingController(text: existing?.name ?? '');
+    final discount = TextEditingController(
+      text: existing?.discountPercentage.toStringAsFixed(2) ?? '',
+    );
+    final conditions = TextEditingController(
+      text: existing?.conditionsText ?? '',
+    );
     final listSelection = ref.read(selectedProductIdsProvider);
-    var scope = listSelection.isEmpty ? 'all' : 'manual';
-    final categoryIds = <String>{};
-    final selected = <String>{...listSelection};
-    final productConditions = <String, String>{};
-    var endDate = DateTime.now().add(const Duration(days: 30));
+    var scope = existing == null
+        ? (listSelection.isEmpty ? 'all' : 'manual')
+        : existing.appliesToAllProducts
+        ? 'all'
+        : existing.categoryIds.isNotEmpty
+        ? 'category'
+        : 'manual';
+    final categoryIds = <String>{...?existing?.categoryIds};
+    final selected = <String>{
+      if (existing == null) ...listSelection,
+      ...?existing?.productIds,
+    };
+    final productConditions = <String, String>{...?existing?.productConditions};
+    var endDate =
+        existing?.endDate ?? DateTime.now().add(const Duration(days: 30));
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Nueva promoción masiva'),
+          title: Text(
+            existing == null ? 'Nueva promoción masiva' : 'Editar promoción',
+          ),
           content: SizedBox(
             width: 560,
             height: 520,
@@ -172,12 +209,15 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
                     scope = value!;
                     selected.clear();
                     categoryIds.clear();
+                    productConditions.clear();
                   }),
                 ),
                 if (scope == 'category') ...[
                   const Padding(
                     padding: EdgeInsets.only(top: 12),
-                    child: Text('Categorías incluidas (selección congelada)'),
+                    child: Text(
+                      'Categorías incluidas (también aplica a productos futuros)',
+                    ),
                   ),
                   for (final category in categories)
                     CheckboxListTile(
@@ -187,15 +227,6 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
                         value!
                             ? categoryIds.add(category.id)
                             : categoryIds.remove(category.id);
-                        selected
-                          ..clear()
-                          ..addAll(
-                            products
-                                .where(
-                                  (p) => categoryIds.contains(p.categoryId),
-                                )
-                                .map((p) => p.id),
-                          );
                       }),
                     ),
                 ],
@@ -220,7 +251,10 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
                   children: [
                     for (final product in products.where(
                       (product) =>
-                          scope == 'all' || selected.contains(product.id),
+                          scope == 'all' ||
+                          selected.contains(product.id) ||
+                          (scope == 'category' &&
+                              categoryIds.contains(product.categoryId)),
                     ))
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
@@ -272,14 +306,17 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Crear'),
+              child: Text(existing == null ? 'Crear' : 'Guardar cambios'),
             ),
           ],
         ),
       ),
     );
     final percentage = double.tryParse(discount.text.replaceAll(',', '.'));
-    final validSelection = scope == 'all' || selected.isNotEmpty;
+    final validSelection =
+        scope == 'all' ||
+        (scope == 'category' && categoryIds.isNotEmpty) ||
+        (scope == 'manual' && selected.isNotEmpty);
     if (accepted == true &&
         name.text.trim().isNotEmpty &&
         percentage != null &&
@@ -287,21 +324,48 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
         percentage <= 100 &&
         validSelection) {
       final promotion = BulkPromotion(
-        id: const Uuid().v4(),
+        id: existing?.id ?? const Uuid().v4(),
         name: name.text.trim(),
         discountPercentage: percentage,
         conditionsText: conditions.text.trim(),
         endDate: endDate,
         appliesToAllProducts: scope == 'all',
-        isActive: true,
+        isActive: existing?.isActive ?? true,
       );
-      await ref
-          .read(promotionRepositoryProvider)
-          .createPromotion(
-            promotion,
-            productIds: scope == 'all' ? const <String>{} : selected,
-            productConditions: productConditions,
-          );
+      final repository = ref.read(promotionRepositoryProvider);
+      final productIds = scope == 'manual' ? selected : const <String>{};
+      final categories = scope == 'category' ? categoryIds : const <String>{};
+      final allowedConditionIds = products
+          .where(
+            (product) =>
+                scope == 'all' ||
+                (scope == 'manual' && selected.contains(product.id)) ||
+                (scope == 'category' &&
+                    categoryIds.contains(product.categoryId)),
+          )
+          .map((product) => product.id)
+          .toSet();
+      final savedProductConditions = {
+        for (final entry in productConditions.entries)
+          if (allowedConditionIds.contains(entry.key) &&
+              entry.value.trim().isNotEmpty)
+            entry.key: entry.value.trim(),
+      };
+      if (existing == null) {
+        await repository.createPromotion(
+          promotion,
+          productIds: productIds,
+          categoryIds: categories,
+          productConditions: savedProductConditions,
+        );
+      } else {
+        await repository.updatePromotion(
+          promotion,
+          productIds: productIds,
+          categoryIds: categories,
+          productConditions: savedProductConditions,
+        );
+      }
       ref.invalidate(promotionsProvider);
     } else if (accepted == true && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
