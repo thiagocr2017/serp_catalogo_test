@@ -8,7 +8,8 @@ class SupabaseInventoryDataSource {
     var query = _client
         .from('inventory_transactions')
         .select(
-          '*, products(sku), warehouses(name), inventory_locations(name)',
+          '*, products(sku), warehouses(name), '
+          'inventory_locations!inventory_transactions_location_id_fkey(name)',
         );
     if (productId != null) query = query.eq('product_id', productId);
     return query.order('created_at', ascending: false);
@@ -36,7 +37,10 @@ class SupabaseInventoryDataSource {
 
   Future<Map<String, dynamic>> transaction(String id) => _client
       .from('inventory_transactions')
-      .select('*, products(sku), warehouses(name), inventory_locations(name)')
+      .select(
+        '*, products(sku), warehouses(name), '
+        'inventory_locations!inventory_transactions_location_id_fkey(name)',
+      )
       .eq('id', id)
       .single();
 
@@ -52,7 +56,8 @@ class SupabaseInventoryDataSource {
     var query = _client
         .from('inventory_balances')
         .select(
-          '*, products(sku), warehouses(name), inventory_locations(name)',
+          '*, products(sku), warehouses(name), '
+          'inventory_locations!inventory_balances_location_id_fkey(name)',
         );
     if (productId != null) query = query.eq('product_id', productId);
     return query.order('updated_at', ascending: false);

@@ -107,6 +107,7 @@ class DesktopShellWidget extends StatelessWidget {
                         '/inventory',
                         'Movimientos',
                         Icons.swap_vert_outlined,
+                        exact: true,
                       ),
                       _item(
                         context,
@@ -138,10 +139,11 @@ class DesktopShellWidget extends StatelessWidget {
     BuildContext context,
     String path,
     String label,
-    IconData icon,
-  ) => ListTile(
+    IconData icon, {
+    bool exact = false,
+  }) => ListTile(
     dense: true,
-    selected: _selected(path),
+    selected: exact ? currentLocation == path : _selected(path),
     selectedTileColor: Theme.of(context).colorScheme.secondaryContainer,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     leading: Icon(icon),
