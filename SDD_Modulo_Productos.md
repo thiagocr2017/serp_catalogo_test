@@ -1,8 +1,11 @@
-# SDD - Módulo 1: Gestión de Productos, Catálogos e Inventario Base
+# SDD - Módulo 1: Gestión de Productos y Catálogos
 
 ## 1. Descripción general
 
-El Módulo 1 permite gestionar el ciclo de vida del producto mediante CRUD con eliminación lógica, mantener trazabilidad estricta, gestionar promociones individuales y masivas y generar PDF dinámicos con personalización temática. También establece las bases aisladas del futuro módulo de inventario.
+El Módulo 1 permite gestionar productos, categorías, promociones individuales y
+masivas, importaciones y exportaciones y catálogos PDF personalizados. El stock
+y sus movimientos pertenecen al módulo independiente de Inventario; Productos
+consume su API para mostrar existencias e historiales relacionados.
 
 Todas las tablas, columnas y variables del código se escriben en inglés. La interfaz y la documentación funcional se mantienen en español.
 
@@ -16,8 +19,14 @@ Todas las tablas, columnas y variables del código se escriben en inglés. La in
 - Los PDF se procesan localmente en la Mac y no se suben a la nube.
 - Las imágenes optimizadas se almacenan en Supabase Storage.
 - PostgreSQL es la fuente de verdad de productos, movimientos, promociones y auditoría.
-- `audit_logs` registra los cambios de las tablas importantes, incluyendo `products`, `inventory_transactions` y `bulk_promotions`.
+- `audit_logs` registra cambios en productos, categorías y promociones. Los
+  movimientos de inventario forman un libro inmutable propio, según
+  `SDD_Modulo_Inventario.md`.
 - Los módulos siguen la estructura definida en `MODULE_STRUCTURE.md` y se comunican exclusivamente mediante sus API públicas.
+
+La última regla representa la arquitectura objetivo. Durante la etapa actual
+persisten dependencias internas entre Productos e Inventario, registradas como
+deuda técnica en `MODULE_STRUCTURE.md`.
 
 ## 3. Reglas transversales
 
@@ -68,7 +77,17 @@ La configuración futura debe contemplar, como mínimo: `default_currency`, `dec
 |---|---|---|
 | `id` | UUID, PK | Identificador único. |
 | `name` | String | Nombre de la categoría. |
-| Metadatos comunes | Varios | Creación, modificación y eliminación lógica. |
+| Metadatos comunes | Varios | Creación y modificación; la eliminación de categorías es física y auditada. |
+
+#### Gestión y eliminación de categorías
+
+Una categoría es una agrupación modificable de productos y no representa un
+documento comercial histórico. Por decisión funcional, su eliminación es
+física. Antes de eliminar una categoría que contiene productos, el usuario debe
+seleccionar otra categoría activa y todos los productos se reasignan de forma
+atómica. No se permite eliminar la última categoría activa. También se eliminan
+sus relaciones con promociones masivas y se registra una acción legible en
+`audit_logs`; los productos nunca se eliminan junto con la categoría.
 
 ### 4.2 `products`
 
@@ -85,9 +104,14 @@ La configuración futura debe contemplar, como mínimo: `default_currency`, `dec
 | `min_order_quantity` | Integer | Cantidad mínima de compra. |
 | `minimum_sale_quantity` | Integer | Cantidad mínima que se vende al cliente; es independiente del MOQ de recompra. |
 | `packaging_type` | String | Tipo de empaque: caja, set o unidad. |
+| `packaging_presentation_id` | UUID, FK, nullable | Presentación configurable, por ejemplo Unidad, Caja, Set o Cartón. |
 | `cbm_per_moq` | Decimal | Volumen correspondiente al MOQ. |
 | `factory_cost` | Numeric(18,2) | Costo de fábrica antes de importación. |
 | `image_url` | String, nullable | URL de la imagen optimizada en Supabase Storage. |
+| `image_position_x` | Decimal | Punto focal horizontal de la fotografía. |
+| `image_position_y` | Decimal | Punto focal vertical de la fotografía. |
+| `image_scale` | Decimal | Zoom persistente aplicado a la fotografía. |
+| `catalog_sort_order` | Integer | Posición del producto dentro de su categoría en el catálogo. |
 | `current_stock` | Integer | Valor de solo lectura actualizado por movimientos de inventario. |
 | `reorder_point` | Integer | Límite de alerta para recomprar stock. |
 | `promo_price` | Numeric(18,2), nullable | Precio de promoción individual. |
@@ -104,38 +128,15 @@ new current_stock = previous current_stock + transaction.quantity
 
 La inserción de la transacción y la actualización del stock deben ejecutarse dentro de una única transacción de PostgreSQL. Preferentemente, una función y un trigger de PostgreSQL realizarán la actualización automática para garantizar que cualquier origen de datos respete la misma regla.
 
-### 4.3 `inventory_transactions`
+### 4.3 Referencia a `inventory_transactions`
 
-Esta tabla es el libro contable inmutable del inventario.
+Esta tabla es el libro contable inmutable del módulo de Inventario. Su esquema,
+reglas y flujos se definen en `SDD_Modulo_Inventario.md`; se conserva aquí solo
+la referencia necesaria para explicar `products.current_stock`.
 
-- Las ventas se registran siempre como cantidades negativas.
-- Las compras y devoluciones se registran siempre como cantidades positivas.
-- Los ajustes conservan el signo introducido para permitir aumentos y disminuciones explícitas.
-- Cada movimiento se presenta junto con el SKU del producto relacionado.
-
-| Columna | Tipo | Descripción |
-|---|---|---|
-| `id` | UUID, PK | Identificador de la transacción. |
-| `product_id` | UUID, FK | Producto afectado. |
-| `quantity` | Integer | Positivo para una entrada y negativo para una salida. No puede ser cero. |
-| `reason` | Enum | `INITIAL_STOCK`, `PURCHASE`, `SALE`, `ADJUSTMENT`, `RETURN` o `REVERSAL`. |
-| `reversal_of_transaction_id` | UUID, FK, nullable | Movimiento original que este registro corrige. |
-| `notes` | Text, nullable | Justificación o referencia del movimiento. |
-| `actor_user_id` | UUID, nullable | Usuario autenticado futuro. |
-| `actor_name` | String, nullable | Nombre del actor cuando esté disponible. |
-| `device_name` | String | Computadora que originó el movimiento. |
-| `device_identifier` | String | Identificador de la computadora. |
-| `created_at` | Timestamp | Momento del movimiento. |
-
-#### Inmutabilidad
-
-- Solo se permite `INSERT`; se bloquean `UPDATE` y `DELETE` en PostgreSQL.
-- Un error se corrige creando una transacción compensatoria, nunca editando el historial.
-- Una corrección debe usar `reversal_of_transaction_id` para enlazar el movimiento original cuando corresponda.
-- No existen `updated_at`, `deleted_at`, `updated_by` ni `deleted_by` en esta tabla.
-- La operación que inserta el movimiento también actualiza `products.current_stock` de manera atómica.
-
-Ejemplo: si se registraron `+100` unidades y debían ser `+10`, se conserva el movimiento original y se registra una corrección de `-90`.
+Productos solo necesita conocer que cada movimiento válido actualiza el stock de
+forma atómica y que el historial se consulta mediante la API pública de
+Inventario.
 
 ### 4.4 `bulk_promotions`
 
@@ -157,7 +158,24 @@ Al crear una promoción, la interfaz permitirá seleccionar todos los productos,
 
 Las selecciones se guardan mediante las tablas de relación `bulk_promotion_products` (`promotion_id`, `product_id`) y `bulk_promotion_categories` (`promotion_id`, `category_id`).
 
-La selección por una o varias categorías utiliza semántica **congelada**: al crear la promoción se guardan en `bulk_promotion_products` los productos que pertenecen a las categorías seleccionadas en ese momento. Los productos agregados posteriormente no entran automáticamente en la campaña. Esta decisión evita incorporaciones accidentales y conserva el alcance comercial original.
+La selección por una o varias categorías utiliza semántica **dinámica**. La
+relación se conserva en `bulk_promotion_categories`; mientras la promoción esté
+activa, cualquier producto que pertenezca posteriormente a una de esas
+categorías también recibe la promoción. La selección manual sí conserva una
+lista explícita en `bulk_promotion_products`.
+
+`bulk_promotion_products.conditions_text` permite guardar una condición
+particular para un producto, adicional a la condición general de la campaña.
+
+#### Validación del editor de promociones
+
+- El nombre es obligatorio.
+- El descuento solo acepta números con hasta dos decimales, usando punto o coma.
+- El porcentaje debe ser mayor que cero y menor o igual que cien.
+- El alcance manual exige al menos un producto y el alcance por categoría exige
+  al menos una categoría.
+- Un error de validación o persistencia se muestra dentro del formulario y no lo
+  cierra; durante el guardado se impiden envíos duplicados.
 
 ### 4.6 Prioridad de promociones
 
@@ -200,12 +218,13 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 ### Pantalla B: formulario de producto
 
 - Código de barras, SKU, nombre, categoría y descripción.
-- Tipo de empaque y cantidad mínima de venta para el catálogo.
+- Presentación configurable y cantidad mínima de venta para el catálogo.
 - MOQ de recompra, CBM y costo de fábrica como información interna de abastecimiento.
 - Precio unitario, precio por paquete y gestión de márgenes.
 - Compresión local de imágenes antes de subirlas.
 - La imagen se almacena como `<SKU>.JPG`; al reemplazarla se elimina el objeto anterior y la nueva URL incorpora una versión para evitar caché obsoleta.
-- Cada producto conserva un punto focal horizontal y vertical para controlar el recorte de su fotografía en la lista, ficha y catálogo.
+- Cada producto conserva punto focal horizontal, punto focal vertical y zoom
+  para controlar su fotografía en la lista, ficha y catálogo.
 - En edición se puede activar nuevamente un producto inactivo; la reactivación limpia los metadatos de eliminación lógica.
 - El stock inicial genera una transacción `INITIAL_STOCK`; nunca escribe directamente en `current_stock`.
 
@@ -228,7 +247,8 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 ### Pantalla D: generador avanzado de PDF
 
 - Diseños de 1, 2, 4 o 6 tarjetas por página y lista compacta. La cuadrícula reserva automáticamente una página completa, media página, un cuarto o un sexto para cada producto, y escala la fotografía según ese espacio.
-- Portada con logo, nombre de empresa y métodos de pago.
+- Portada con logo, nombre de empresa y métodos de pago. El logo se administra
+  exclusivamente desde Configuración.
 - Empresa y métodos de pago provienen exclusivamente de Configuración; el generador mantiene sólo datos propios del documento, selección, diseño y colores.
 - Colores configurables mediante selector RGB o código hexadecimal `#RRGGBB`: fondo, tarjeta, elemento de diseño, fuente principal, fuente destacada, fuente secundaria, elemento de promoción y fuente de promoción.
 - Ajuste de fotografías configurable entre rellenar y recortar, mostrar la imagen completa o ajustar al ancho.
@@ -241,6 +261,22 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 - SKU, descripción, precio unitario, empaque y MOQ.
 - Sello promocional sobre la imagen.
 - Precio anterior tachado, precio final destacado y condiciones de promoción.
+- El diseño, los colores, la cantidad de tarjetas, el ajuste de imagen, el logo
+  y el agente seleccionado se conservan en `app_settings`.
+- El catálogo conserva el orden persistente de categorías y productos.
+- Las listas extensas de selección y orden incluyen búsqueda, desplazamiento y
+  limpieza de selección.
+- La acción final guarda el PDF en una ubicación elegida por el usuario.
+
+### Pantalla E: importación y exportación masiva
+
+- Exportación e importación de productos mediante CSV compatible con hojas de
+  cálculo.
+- Validación de filas, campos obligatorios, categorías y presentaciones.
+- Asociación y transporte masivo de imágenes mediante un paquete comprimido.
+- Los errores deben identificar la fila y el campo afectado sin interrumpir la
+  revisión del resto del archivo.
+- SKU y código de barras deben respetar sus restricciones de unicidad.
 
 ## 6. Integridad: base de datos frente a aplicación
 
@@ -250,9 +286,22 @@ Esto no reemplaza las validaciones de la aplicación. La aplicación valida para
 
 ## 7. Estado de decisiones de implementación
 
-- Selección por categorías: resuelta como selección congelada de productos.
+- Selección promocional por categorías: dinámica; incluye productos que entren
+  posteriormente en una categoría seleccionada.
 - Impuestos y redondeo: configurables mediante `app_settings`; la aplicación conserva USD y dos decimales como valores iniciales.
 - RLS: existen políticas locales provisionales para los roles `anon` y `authenticated`; deben reemplazarse por políticas basadas en roles al incorporar autenticación.
 - Identificación provisional: la aplicación obtiene el nombre del equipo y la primera dirección MAC disponible; si el sistema no permite leerla, usa el nombre del equipo como identificador de respaldo.
 - Tratamiento de salidas que intentarían dejar el stock por debajo de cero.
 - Estrategia de sincronización y recuperación ante pérdida de conexión.
+
+## 8. Estado y deuda técnica
+
+- El módulo está funcional, pero todavía consume providers y entidades internos
+  de Inventario. Debe migrarse a la API pública de ese módulo.
+- Las operaciones que guardan una promoción y luego reemplazan sus relaciones de
+  productos o categorías todavía deben consolidarse en una transacción atómica
+  de PostgreSQL.
+- Las presentaciones dinámicas conviven temporalmente con `packaging_type` para
+  mantener compatibilidad con datos anteriores.
+- Configuración de empresa, pagos, logo y preferencias del catálogo permanece
+  temporalmente en `core/configuration` hasta definir el módulo Configuración.

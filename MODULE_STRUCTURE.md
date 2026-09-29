@@ -26,13 +26,15 @@ lib/
 │   └── widgets/
 └── modules/
     ├── product/
-    └── inventory/
+    ├── inventory/
+    └── sales/
 
 test/
 ├── core/
 └── modules/
     ├── product/
-    └── inventory/
+    ├── inventory/
+    └── sales/
 ```
 
 `core` y `shared` no son módulos de negocio. Solo deben contener elementos genuinamente reutilizables por varios módulos.
@@ -118,6 +120,17 @@ Esto permite cambiar el almacenamiento o la gestión de estado de un módulo sin
 5. `di` conecta las interfaces con sus implementaciones.
 6. Las interacciones entre módulos se realizan exclusivamente mediante `api/`.
 
+### Composición de la aplicación
+
+`main.dart` es la raíz de composición y puede construir las implementaciones de
+repositorios e inyectarlas en Riverpod. El router global puede registrar rutas
+públicas ofrecidas por cada módulo. Estas excepciones no autorizan que un módulo
+importe el `data/`, `di/` o `presentation/` interno de otro módulo.
+
+Cada módulo debe exponer los contratos, modelos públicos y rutas que necesiten
+otros módulos desde `api/`. Un cambio interno no debe obligar a modificar a sus
+consumidores.
+
 ## 7. Pruebas
 
 Las pruebas viven en el directorio estándar `test/` y reflejan la estructura de `lib/`:
@@ -152,9 +165,52 @@ Esto mantiene separados los módulos y permite ejecutar todas las pruebas con `f
 - Una integración utilizada solo por un módulo debe permanecer dentro de ese módulo.
 - Una integración compartida por varios módulos puede vivir en `core`, siempre que no contenga reglas específicas de negocio.
 
-## 10. Notas de cambio
+## 10. Documentación por módulo
+
+Cada módulo funcional debe contar con un documento de diseño en la raíz del
+proyecto, usando la convención `SDD_Modulo_<Nombre>.md`. El documento debe
+distinguir expresamente:
+
+- comportamiento implementado;
+- decisiones vigentes;
+- alcance futuro;
+- deuda técnica o decisiones pendientes.
+
+Una función futura no debe describirse como implementada. Cuando el código se
+aparte temporalmente de estas convenciones, la diferencia se registra como
+deuda técnica y no como una nueva regla arquitectónica.
+
+## 11. Estado modular actual
+
+| Módulo o área | Estado funcional | Documento | Conformidad estructural |
+|---|---|---|---|
+| Productos | Funcional | `SDD_Modulo_Productos.md` | Parcial |
+| Inventario | Funcional | `SDD_Modulo_Inventario.md` | Parcial |
+| Ventas | Inicial: gestión de agentes | `SDD_Modulo_Ventas.md` | Incompleta |
+| Configuración | Funcional dentro de `core` | Incluida transversalmente | Transitoria |
+
+### Deuda técnica reconocida
+
+- `product` e `inventory` todavía contienen importaciones directas de providers,
+  controladores o entidades internas del otro módulo.
+- `sales` solo cuenta inicialmente con su pantalla de agentes; debe recibir sus
+  capas `api`, `domain`, `data`, `di` y su archivo índice.
+- Los agentes y otras reglas comerciales permanecen temporalmente en
+  `core/configuration`; los agentes deben trasladarse a `sales`.
+- Los índices públicos de Productos e Inventario aún exportan entidades de
+  `domain/` y sus API no cubren todas las operaciones compartidas.
+- El router todavía importa páginas concretas. Cada módulo deberá ofrecer su
+  contrato de rutas durante el trabajo de aislamiento.
+
+Estas diferencias se corregirán de manera incremental, conservando pruebas y
+puntos de restauración en Git antes de cada cambio estructural.
+
+## 12. Notas de cambio
 
 - Se corrigió el título anterior «Módulo de Convección» por «Convenciones de Estructura Modular».
 - Se eliminó la duplicación entre `model`, `repository`, `data` y `widgets`.
 - Se trasladaron las pruebas al directorio estándar `test/`, conservando la separación por módulo.
 - Se restringió la interfaz pública para impedir dependencias entre módulos sobre implementaciones internas.
+- Se incorporaron Inventario y Ventas al mapa modular y se documentó el estado
+  transitorio previo a su aislamiento completo.
+- Se estableció un SDD obligatorio por módulo funcional.

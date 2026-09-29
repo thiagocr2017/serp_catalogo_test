@@ -44,7 +44,23 @@ generan en la computadora y no se suben a Supabase.
 
 ## Arquitectura
 
-Los módulos se encuentran en `lib/modules/` y mantienen las capas `api`,
+Los módulos se encuentran en `lib/modules/` y deben mantener las capas `api`,
 `domain`, `data`, `presentation` y `di`. Las pruebas reflejan esa estructura en
-`test/modules/`. Consulta `MODULE_STRUCTURE.md` y `SDD_Modulo_Productos.md` para
-las convenciones y reglas funcionales completas.
+`test/modules/`.
+
+Estado actual:
+
+- Productos: funcional, con aislamiento modular pendiente.
+- Inventario y auditoría: funcionales, con aislamiento modular pendiente.
+- Ventas: fase inicial; actualmente administra agentes para el catálogo.
+- Configuración: área transitoria dentro de `core`.
+
+Documentación:
+
+- [`MODULE_STRUCTURE.md`](MODULE_STRUCTURE.md): convenciones y deuda técnica.
+- [`SDD_Modulo_Productos.md`](SDD_Modulo_Productos.md): productos, categorías,
+  promociones, importación/exportación y catálogo PDF.
+- [`SDD_Modulo_Inventario.md`](SDD_Modulo_Inventario.md): movimientos, stock y
+  auditoría.
+- [`SDD_Modulo_Ventas.md`](SDD_Modulo_Ventas.md): agentes implementados y
+  alcance futuro de ventas.
