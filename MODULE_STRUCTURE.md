@@ -196,6 +196,7 @@ deuda técnica y no como una nueva regla arquitectónica.
 | Inventario | Funcional | `SDD_Modulo_Inventario.md` | Aislado mediante API pública |
 | Ventas | Inicial: gestión de agentes | `SDD_Modulo_Ventas.md` | Estructura base completa |
 | Configuración | Funcional | `SDD_Modulo_Configuracion.md` | Aislado mediante API pública |
+| Pagos y Recibos | Diseño aprobado, no implementado | `SDD_Modulo_Pagos.md` | Módulo futuro |
 
 ### Deuda técnica reconocida
 

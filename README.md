@@ -60,6 +60,7 @@ Estado actual:
 - Ventas: estructura modular inicial completa; administra agentes del catálogo.
 - Configuración: funcional y expuesta mediante API pública; administra empresa,
   catálogo y presentaciones de producto.
+- Pagos y Recibos: diseño funcional aprobado; todavía no implementado.
 
 Documentación:
 
@@ -72,3 +73,5 @@ Documentación:
   alcance futuro de ventas.
 - [`SDD_Modulo_Configuracion.md`](SDD_Modulo_Configuracion.md): parámetros de
   empresa, catálogo, presentaciones y límites administrativos.
+- [`SDD_Modulo_Pagos.md`](SDD_Modulo_Pagos.md): cobros, anticipos, créditos,
+  recibos, cuentas monetarias, gastos, reembolsos y operación offline.
