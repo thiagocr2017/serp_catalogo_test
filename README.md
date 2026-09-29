@@ -55,7 +55,8 @@ Los módulos se encuentran en `lib/modules/` y deben mantener las capas `api`,
 Estado actual:
 
 - Productos: funcional y comunicado con otros módulos mediante API pública.
-- Inventario y auditoría: funcionales y comunicados mediante API pública.
+- Inventario y auditoría: funcionales y comunicados mediante API pública, con
+  bodegas, ubicaciones, saldos por ubicación y comandos idempotentes.
 - Ventas: estructura modular inicial completa; administra agentes del catálogo.
 - Configuración: funcional y expuesta mediante API pública; administra empresa,
   catálogo y presentaciones de producto.

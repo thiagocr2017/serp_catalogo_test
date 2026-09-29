@@ -23,7 +23,12 @@ class InventoryTransaction {
     required this.quantity,
     required this.reason,
     required this.createdAt,
+    required this.warehouseId,
+    required this.locationId,
+    required this.commandId,
     this.productSku,
+    this.warehouseName,
+    this.locationName,
     this.notes,
     this.reversalOfTransactionId,
   });
@@ -32,6 +37,11 @@ class InventoryTransaction {
   final String? productSku;
   final int quantity;
   final InventoryReason reason;
+  final String warehouseId;
+  final String locationId;
+  final String commandId;
+  final String? warehouseName;
+  final String? locationName;
   final String? notes;
   final String? reversalOfTransactionId;
   final DateTime createdAt;

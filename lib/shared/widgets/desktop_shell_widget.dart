@@ -23,6 +23,7 @@ class DesktopShellWidget extends StatelessWidget {
       '/product-transfer',
     ].any(_selected);
     final salesModuleSelected = _selected('/sales');
+    final inventoryModuleSelected = _selected('/inventory');
     return Scaffold(
       body: Row(
         children: [
@@ -95,11 +96,25 @@ class DesktopShellWidget extends StatelessWidget {
                       ),
                     ],
                   ),
-                  _item(
-                    context,
-                    '/inventory',
-                    'Inventario',
-                    Icons.swap_vert_circle_outlined,
+                  ExpansionTile(
+                    initiallyExpanded: inventoryModuleSelected,
+                    leading: const Icon(Icons.swap_vert_circle_outlined),
+                    title: const Text('Inventario'),
+                    childrenPadding: const EdgeInsets.only(left: 16),
+                    children: [
+                      _item(
+                        context,
+                        '/inventory',
+                        'Movimientos',
+                        Icons.swap_vert_outlined,
+                      ),
+                      _item(
+                        context,
+                        '/inventory/warehouses',
+                        'Bodegas y ubicaciones',
+                        Icons.warehouse_outlined,
+                      ),
+                    ],
                   ),
                   _item(context, '/audit', 'Auditoría', Icons.history_outlined),
                   _item(

@@ -11,6 +11,10 @@ final inventoryTransactionsProvider =
       ref.watch(inventoryDataRevisionProvider);
       return ref.watch(inventoryRepositoryProvider).getTransactions();
     });
+final warehousesProvider = FutureProvider<List<Warehouse>>((ref) {
+  ref.watch(inventoryDataRevisionProvider);
+  return ref.watch(inventoryRepositoryProvider).getWarehouses();
+});
 final auditEntriesProvider = FutureProvider<List<AuditEntry>>((ref) {
   ref.watch(inventoryDataRevisionProvider);
   return ref.watch(inventoryRepositoryProvider).getAuditEntries();

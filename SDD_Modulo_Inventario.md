@@ -20,6 +20,10 @@ Se encuentran implementados:
 - historial general y por producto, ordenado del más reciente al más antiguo;
 - búsqueda por SKU, motivo, notas, cantidad o fecha;
 - consulta de auditoría con búsqueda, fechas, consolidación y enlaces a recursos.
+- bodegas y ubicaciones dinámicas, con una bodega y ubicación predeterminadas;
+- saldos físicos por producto y ubicación;
+- selección obligatoria de ubicación al registrar movimientos;
+- comandos públicos idempotentes para movimientos y reversiones.
 
 ## 3. Arquitectura
 
@@ -37,6 +41,9 @@ revisión, sin importar providers o controladores internos.
 |---|---|---|
 | `id` | UUID | Identificador único. |
 | `product_id` | UUID, FK | Producto afectado. |
+| `warehouse_id` | UUID, FK | Bodega afectada. |
+| `location_id` | UUID, FK | Ubicación afectada y perteneciente a la bodega. |
+| `command_id` | UUID, único | Identificador idempotente del comando. |
 | `quantity` | Integer | No puede ser cero. |
 | `reason` | Enum | `INITIAL_STOCK`, `PURCHASE`, `SALE`, `ADJUSTMENT`, `RETURN` o `REVERSAL`. |
 | `reversal_of_transaction_id` | UUID, nullable | Movimiento corregido por una reversión. |
@@ -59,15 +66,21 @@ revisión, sin importar providers o controladores internos.
 
 ## 6. Stock actual y atomicidad
 
-`products.current_stock` es una proyección persistida de solo lectura:
+`inventory_balances.quantity` conserva el saldo físico por producto y ubicación.
+`products.current_stock` es la suma global persistida de solo lectura:
 
 ```text
 nuevo stock = stock anterior + cantidad del movimiento
 ```
 
-La aplicación no modifica directamente este valor. Un trigger PostgreSQL lo
-actualiza después de insertar la transacción, dentro de la misma operación de
-base de datos. Si el producto no existe, toda la operación falla.
+La aplicación no modifica directamente ninguno de estos valores. Un trigger
+PostgreSQL actualiza el saldo de ubicación y el stock global después de insertar
+la transacción, dentro de la misma operación. Si alguna actualización falla,
+toda la operación se revierte.
+
+`command_id` impide duplicar un movimiento cuando otro módulo, la cola offline o
+un usuario reintenta el mismo comando. El reintento devuelve el movimiento ya
+creado sin volver a afectar el stock.
 
 ## 7. Inmutabilidad y correcciones
 
@@ -92,6 +105,14 @@ consolidado.
 - Mensajes de error legibles sin perder la información capturada.
 - Búsqueda y lista desplazable.
 - Acción de corrección disponible solo para movimientos reversibles.
+- Bodega y ubicación visibles en cada movimiento.
+
+### Bodegas y ubicaciones
+
+- Pantalla propia para crear y editar bodegas.
+- Ubicaciones administradas dentro de cada bodega.
+- Bodega principal y ubicación general creadas durante la migración.
+- Búsqueda de saldos por producto disponible mediante la API pública.
 
 ### Historial en la ficha del producto
 
@@ -119,11 +140,13 @@ Se permite que una salida produzca stock negativo. La operación no se descarta
 ni se oculta: la interfaz debe mostrar una alerta visible y permitir localizar
 los productos, bodegas y documentos responsables del faltante.
 
-### 9.2 Bodegas y ubicaciones
+### 9.2 Bodegas y ubicaciones — implementado
 
 El inventario se administrará por bodega y, opcionalmente, por ubicación dentro
 de la bodega. El stock global será la suma de existencias físicas por ubicación.
-Todo movimiento deberá identificar bodega de origen o destino según corresponda.
+Todo movimiento identifica la ubicación y la bodega correspondiente. Los
+movimientos históricos fueron asignados a la ubicación general de la bodega
+principal. La API permite consultar saldos por ubicación.
 
 ### 9.3 Reservas para pedidos
 
@@ -201,11 +224,13 @@ transaccionales de PostgreSQL.
 
 ## 10. Deuda técnica
 
-- `InventoryApi` expone las consultas compartidas; sus comandos de escritura
-  continúan internos y deberán publicarse antes de integrar Ventas o Compras.
+- `InventoryApi` ya expone comandos idempotentes para registrar y revertir
+  movimientos. Faltan los comandos especializados de reservas, transferencias,
+  conteos y documentos comerciales.
 - Las API públicas exponen temporalmente entidades del dominio como modelos
   estables y podrán incorporar DTO propios si los contratos evolucionan.
-- Deben añadirse pruebas de repositorio, triggers, reversión y errores de
-  concurrencia además de las pruebas actuales de signo de cantidades.
-- Faltan los modelos persistentes de bodegas, ubicaciones, reservas,
-  transferencias, conteos físicos, cola offline e idempotencia.
+- Se validaron triggers, saldos por ubicación, reversión e idempotencia mediante
+  una prueba transaccional local con `ROLLBACK`. Aún deben automatizarse estas
+  pruebas y añadirse escenarios concurrentes.
+- Bodegas, ubicaciones e idempotencia ya son persistentes. Faltan reservas,
+  transferencias, conteos físicos y la cola offline.

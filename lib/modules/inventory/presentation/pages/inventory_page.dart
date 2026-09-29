@@ -100,7 +100,9 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                               '${item.quantity > 0 ? '+' : ''}${item.quantity} · ${_reason(item.reason)}',
                             ),
                             subtitle: Text(
-                              '${item.notes ?? 'Sin notas'}\n${item.createdAt.toLocal()}',
+                              '${item.warehouseName ?? 'Bodega'} · '
+                              '${item.locationName ?? 'Ubicación'}\n'
+                              '${item.notes ?? 'Sin notas'} · ${item.createdAt.toLocal()}',
                             ),
                             isThreeLine: true,
                             trailing:
@@ -137,8 +139,25 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
     final products = await ref
         .read(productApiProvider)
         .getProducts(const ProductQuery(isActive: true));
+    final warehouses = await ref.read(warehousesProvider.future);
     if (!context.mounted) return;
     String? productId = products.isEmpty ? null : products.first.id;
+    final locations = warehouses
+        .expand(
+          (warehouse) => warehouse.locations
+              .where((location) => location.isActive)
+              .map((location) => (warehouse, location)),
+        )
+        .toList();
+    String? locationId = locations.isEmpty
+        ? null
+        : locations
+              .firstWhere(
+                (entry) => entry.$1.isDefault && entry.$2.isDefault,
+                orElse: () => locations.first,
+              )
+              .$2
+              .id;
     var reason = InventoryReason.purchase;
     final quantity = TextEditingController();
     final notes = TextEditingController();
@@ -163,6 +182,21 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                       ),
                   ],
                   onChanged: (v) => setState(() => productId = v),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: locationId,
+                  decoration: const InputDecoration(
+                    labelText: 'Bodega y ubicación',
+                  ),
+                  items: [
+                    for (final entry in locations)
+                      DropdownMenuItem(
+                        value: entry.$2.id,
+                        child: Text('${entry.$1.name} · ${entry.$2.name}'),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => locationId = value),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<InventoryReason>(
@@ -232,7 +266,7 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
         ),
       ),
     );
-    if (accepted == true && productId != null) {
+    if (accepted == true && productId != null && locationId != null) {
       final entered = int.tryParse(quantity.text.trim());
       if (entered == null || entered == 0) {
         if (context.mounted) {
@@ -254,6 +288,7 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                 productId: productId!,
                 quantity: signed,
                 reason: reason,
+                locationId: locationId!,
                 notes: notes.text.trim(),
               );
           ref.read(inventoryDataRevisionProvider.notifier).notifyChanged();
