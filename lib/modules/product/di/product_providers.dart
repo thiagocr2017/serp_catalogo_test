@@ -2,9 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../inventory/inventory_module.dart';
 
-import '../api/product_api.dart';
 import '../domain/entities/product.dart';
-import '../domain/entities/product_query.dart';
 import '../domain/entities/category.dart';
 import '../domain/repositories/product_repository.dart';
 import '../domain/use_cases/deactivate_product.dart';
@@ -66,50 +64,24 @@ class SelectedProductIds extends Notifier<Set<String>> {
   void clear() => state = <String>{};
 }
 
-final productInventoryApiProvider = Provider<InventoryApi>(
-  (ref) => throw StateError('InventoryApi must be overridden.'),
-);
-
 final productTransactionsProvider =
-    FutureProvider.family<List<InventoryTransaction>, String>(
-      (ref, productId) => ref
-          .watch(productInventoryApiProvider)
-          .getTransactions(productId: productId),
-    );
+    FutureProvider.family<List<InventoryTransaction>, String>((ref, productId) {
+      ref.watch(inventoryDataRevisionProvider);
+      return ref
+          .watch(inventoryApiProvider)
+          .getTransactions(productId: productId);
+    });
 
-final productAuditProvider = FutureProvider.family<List<AuditEntry>, String>(
-  (ref, productId) => ref
-      .watch(productInventoryApiProvider)
-      .getAuditEntries(tableName: 'products', recordId: productId),
-);
+final productAuditProvider = FutureProvider.family<List<AuditEntry>, String>((
+  ref,
+  productId,
+) {
+  ref.watch(inventoryDataRevisionProvider);
+  return ref
+      .watch(inventoryApiProvider)
+      .getAuditEntries(tableName: 'products', recordId: productId);
+});
 
 final productImageServiceProvider = Provider<ProductImageService>(
   (ref) => throw StateError('ProductImageService must be overridden.'),
 );
-
-final productApiProvider = Provider<ProductApi>((ref) {
-  return _ProductApiAdapter(
-    getProductsUseCase: ref.watch(getProductsProvider),
-    getProductByIdUseCase: ref.watch(getProductByIdProvider),
-  );
-});
-
-class _ProductApiAdapter implements ProductApi {
-  const _ProductApiAdapter({
-    required this.getProductsUseCase,
-    required this.getProductByIdUseCase,
-  });
-
-  final GetProducts getProductsUseCase;
-  final GetProductById getProductByIdUseCase;
-
-  @override
-  Future<List<Product>> getProducts([
-    ProductQuery query = const ProductQuery(),
-  ]) {
-    return getProductsUseCase(query);
-  }
-
-  @override
-  Future<Product?> getProductById(String id) => getProductByIdUseCase(id);
-}

@@ -1,15 +1,3 @@
-class CatalogAgent {
-  const CatalogAgent({
-    required this.id,
-    required this.name,
-    required this.phone,
-  });
-
-  final String id;
-  final String name;
-  final String phone;
-}
-
 class CatalogPreferences {
   const CatalogPreferences({
     this.cardsPerPage = 4,

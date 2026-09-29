@@ -10,6 +10,7 @@ import 'package:printing/printing.dart';
 
 import '../../../../core/configuration/settings_providers.dart';
 import '../../../../core/configuration/catalog_preferences.dart';
+import '../../../sales/sales_module.dart';
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_query.dart';
@@ -46,7 +47,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   Map<String, String> categoryNames = const {};
   Uint8List? logoBytes;
   String? logoUrl;
-  List<CatalogAgent> catalogAgents = const [];
+  List<SalesAgent> catalogAgents = const [];
   String? selectedAgentId;
   Timer? _preferencesTimer;
   bool _savingPreferences = false;
@@ -76,7 +77,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     final settings = await ref.read(businessSettingsProvider.future);
     final settingsRepository = ref.read(settingsRepositoryProvider);
     final preferences = await settingsRepository.getCatalogPreferences();
-    final agents = await settingsRepository.getCatalogAgents();
+    final agents = await ref.read(salesApiProvider).getAgents();
     final storedLogo = await settingsRepository.downloadCatalogLogo(
       preferences.logoUrl,
     );

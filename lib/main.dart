@@ -10,12 +10,18 @@ import 'core/device/device_identity.dart';
 import 'modules/product/data/data_sources/supabase_product_data_source.dart';
 import 'modules/product/data/repositories/supabase_product_repository.dart';
 import 'modules/product/di/product_providers.dart';
+import 'modules/product/product_module.dart';
 import 'modules/product/services/product_image_service.dart';
 import 'modules/product/data/repositories/supabase_promotion_repository.dart';
 import 'modules/product/di/promotion_providers.dart';
 import 'modules/inventory/data/data_sources/supabase_inventory_data_source.dart';
 import 'modules/inventory/data/repositories/supabase_inventory_repository.dart';
 import 'modules/inventory/di/inventory_providers.dart';
+import 'modules/inventory/inventory_module.dart';
+import 'modules/sales/data/data_sources/supabase_sales_data_source.dart';
+import 'modules/sales/data/repositories/supabase_sales_repository.dart';
+import 'modules/sales/di/sales_providers.dart';
+import 'modules/sales/sales_module.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,16 +47,23 @@ Future<void> main() async {
     device,
   );
   final imageService = ProductImageService(Supabase.instance.client);
+  final salesRepository = SupabaseSalesRepository(
+    SupabaseSalesDataSource(Supabase.instance.client),
+    device,
+  );
 
   runApp(
     ProviderScope(
       overrides: [
         productRepositoryProvider.overrideWithValue(repository),
+        productApiProvider.overrideWithValue(repository),
         inventoryRepositoryProvider.overrideWithValue(inventoryRepository),
-        productInventoryApiProvider.overrideWithValue(inventoryRepository),
+        inventoryApiProvider.overrideWithValue(inventoryRepository),
         promotionRepositoryProvider.overrideWithValue(promotionRepository),
         settingsRepositoryProvider.overrideWithValue(settingsRepository),
         productImageServiceProvider.overrideWithValue(imageService),
+        salesRepositoryProvider.overrideWithValue(salesRepository),
+        salesApiProvider.overrideWithValue(salesRepository),
       ],
       child: const SerpApp(),
     ),

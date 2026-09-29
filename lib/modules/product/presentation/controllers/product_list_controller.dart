@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../di/product_providers.dart';
-import '../../domain/entities/product.dart';
-import '../../domain/entities/product_query.dart';
+import '../../api/product_api.dart';
 
 final productListControllerProvider =
     AsyncNotifierProvider<ProductListController, List<Product>>(
@@ -14,6 +13,7 @@ class ProductListController extends AsyncNotifier<List<Product>> {
 
   @override
   Future<List<Product>> build() {
+    ref.watch(productDataRevisionProvider);
     return ref.watch(getProductsProvider)(_query);
   }
 

@@ -1,19 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/entities/audit_entry.dart';
-import '../domain/entities/inventory_transaction.dart';
+import '../api/inventory_api.dart';
 import '../domain/repositories/inventory_repository.dart';
 
 final inventoryRepositoryProvider = Provider<InventoryRepository>(
   (ref) => throw StateError('InventoryRepository must be overridden.'),
 );
 final inventoryTransactionsProvider =
-    FutureProvider<List<InventoryTransaction>>(
-      (ref) => ref.watch(inventoryRepositoryProvider).getTransactions(),
-    );
-final auditEntriesProvider = FutureProvider<List<AuditEntry>>(
-  (ref) => ref.watch(inventoryRepositoryProvider).getAuditEntries(),
-);
+    FutureProvider<List<InventoryTransaction>>((ref) {
+      ref.watch(inventoryDataRevisionProvider);
+      return ref.watch(inventoryRepositoryProvider).getTransactions();
+    });
+final auditEntriesProvider = FutureProvider<List<AuditEntry>>((ref) {
+  ref.watch(inventoryDataRevisionProvider);
+  return ref.watch(inventoryRepositoryProvider).getAuditEntries();
+});
 final productTransactionsProvider =
     FutureProvider.family<List<InventoryTransaction>, String>(
       (ref, productId) => ref

@@ -1,15 +1,8 @@
 import 'package:go_router/go_router.dart';
 
-import '../../modules/product/presentation/pages/product_form_page.dart';
-import '../../modules/product/presentation/pages/category_page.dart';
-import '../../modules/product/presentation/pages/product_list_page.dart';
-import '../../modules/inventory/presentation/pages/inventory_page.dart';
-import '../../modules/inventory/presentation/pages/audit_page.dart';
-import '../../modules/product/presentation/pages/promotion_page.dart';
-import '../../modules/product/presentation/pages/catalog_pdf_page.dart';
-import '../../modules/product/presentation/pages/product_profile_page.dart';
-import '../../modules/product/presentation/pages/product_transfer_page.dart';
-import '../../modules/sales/presentation/pages/agent_page.dart';
+import '../../modules/inventory/inventory_module.dart';
+import '../../modules/product/product_module.dart';
+import '../../modules/sales/sales_module.dart';
 import '../configuration/settings_page.dart';
 import '../../shared/widgets/desktop_shell_widget.dart';
 
@@ -20,56 +13,12 @@ final appRouter = GoRouter(
       builder: (context, state, child) =>
           DesktopShellWidget(currentLocation: state.uri.path, child: child),
       routes: [
-        GoRoute(
-          path: '/products',
-          builder: (context, state) => const ProductListPage(),
-          routes: [
-            GoRoute(
-              path: 'new',
-              builder: (context, state) => const ProductFormPage(),
-            ),
-            GoRoute(
-              path: ':productId/edit',
-              builder: (context, state) => ProductFormPage(
-                productId: state.pathParameters['productId']!,
-              ),
-            ),
-            GoRoute(
-              path: ':productId',
-              builder: (context, state) => ProductProfilePage(
-                productId: state.pathParameters['productId']!,
-              ),
-            ),
-          ],
-        ),
-        GoRoute(
-          path: '/categories',
-          builder: (context, state) => const CategoryPage(),
-        ),
-        GoRoute(
-          path: '/inventory',
-          builder: (context, state) => const InventoryPage(),
-        ),
-        GoRoute(path: '/audit', builder: (context, state) => const AuditPage()),
-        GoRoute(
-          path: '/promotions',
-          builder: (context, state) => const PromotionPage(),
-        ),
-        GoRoute(
-          path: '/catalog-export',
-          builder: (context, state) => const CatalogPdfPage(),
-        ),
-        GoRoute(
-          path: '/product-transfer',
-          builder: (context, state) => const ProductTransferPage(),
-        ),
+        ...productRoutes,
+        ...inventoryRoutes,
+        ...salesRoutes,
         GoRoute(
           path: '/settings',
           builder: (context, state) => const SettingsPage(),
-        ),
-        GoRoute(
-          path: '/sales/agents',
-          builder: (context, state) => const AgentPage(),
         ),
       ],
     ),

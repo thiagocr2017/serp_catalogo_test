@@ -24,9 +24,9 @@ Todas las tablas, columnas y variables del código se escriben en inglés. La in
   `SDD_Modulo_Inventario.md`.
 - Los módulos siguen la estructura definida en `MODULE_STRUCTURE.md` y se comunican exclusivamente mediante sus API públicas.
 
-La última regla representa la arquitectura objetivo. Durante la etapa actual
-persisten dependencias internas entre Productos e Inventario, registradas como
-deuda técnica en `MODULE_STRUCTURE.md`.
+Productos e Inventario se comunican mediante sus índices y API públicas. Los
+providers de revisión pública notifican cambios de stock o historial sin
+importar el `di/` o la presentación interna del otro módulo.
 
 ## 3. Reglas transversales
 
@@ -296,8 +296,7 @@ Esto no reemplaza las validaciones de la aplicación. La aplicación valida para
 
 ## 8. Estado y deuda técnica
 
-- El módulo está funcional, pero todavía consume providers y entidades internos
-  de Inventario. Debe migrarse a la API pública de ese módulo.
+- El módulo consume Inventario mediante `inventory_module.dart` y su API pública.
 - Las operaciones que guardan una promoción y luego reemplazan sus relaciones de
   productos o categorías todavía deben consolidarse en una transacción atómica
   de PostgreSQL.

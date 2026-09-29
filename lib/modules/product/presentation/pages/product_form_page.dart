@@ -6,7 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'dart:typed_data';
 
 import '../../../../core/configuration/settings_providers.dart';
-import '../../../inventory/di/inventory_providers.dart' as inventory;
+import '../../../inventory/inventory_module.dart' as inventory;
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
 import '../controllers/product_list_controller.dart';
@@ -187,8 +187,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
             .create(product, initialStock: int.parse(_initialStock.text));
       }
       ref.invalidate(productListControllerProvider);
-      ref.invalidate(inventory.inventoryTransactionsProvider);
-      ref.invalidate(inventory.auditEntriesProvider);
+      ref
+          .read(inventory.inventoryDataRevisionProvider.notifier)
+          .notifyChanged();
       ref.invalidate(productTransactionsProvider(productId));
       ref.invalidate(productAuditProvider(productId));
       if (mounted) {

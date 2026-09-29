@@ -97,14 +97,13 @@ atómicas en PostgreSQL o mediante una función transaccional equivalente.
   tenían al emitirse, aunque la configuración cambie posteriormente.
 - Una venta confirmada no se corrige borrando movimientos de inventario.
 
-## 8. Deuda técnica actual
+## 8. Estado arquitectónico y deuda técnica
 
-- Solo existe `sales/presentation/pages/agent_page.dart`.
-- `CatalogAgent`, el repositorio, providers y persistencia están todavía dentro
-  de `core/configuration`.
+- Ventas dispone de API pública, contrato de repositorio, fuente Supabase,
+  modelo de datos, repositorio, DI, presentación, rutas e índice público.
+- Productos obtiene los agentes mediante `SalesApi`, sin depender de internals.
 - La tabla se llama provisionalmente `catalog_agents`; deberá decidirse si se
   renombra a `sales_agents` antes de que existan documentos dependientes.
-- No existen aún API pública, dominio, repositorio propio, DI ni pruebas del
-  módulo.
-- La integración con Catálogo se realiza mediante Configuración y debe migrarse
-  a un contrato público de Ventas.
+- Faltan pruebas específicas para el repositorio y la pantalla de agentes.
+- Los casos de uso crecerán cuando se incorporen documentos comerciales; el CRUD
+  inicial utiliza directamente el contrato del repositorio desde su API.

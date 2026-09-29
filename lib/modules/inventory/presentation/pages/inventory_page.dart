@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../product/di/product_providers.dart';
-import '../../../product/domain/entities/product_query.dart';
-import '../../../product/presentation/controllers/product_list_controller.dart';
+import '../../../product/product_module.dart';
+import '../../api/inventory_api.dart';
 import '../../di/inventory_providers.dart';
-import '../../domain/entities/inventory_transaction.dart';
 
 class InventoryPage extends ConsumerStatefulWidget {
   const InventoryPage({super.key});
@@ -133,9 +131,9 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
   };
 
   Future<void> _add(BuildContext context, WidgetRef ref) async {
-    final products = await ref.read(getProductsProvider)(
-      const ProductQuery(isActive: true),
-    );
+    final products = await ref
+        .read(productApiProvider)
+        .getProducts(const ProductQuery(isActive: true));
     if (!context.mounted) return;
     String? productId = products.isEmpty ? null : products.first.id;
     var reason = InventoryReason.purchase;
@@ -255,8 +253,8 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                 reason: reason,
                 notes: notes.text.trim(),
               );
-          ref.invalidate(inventoryTransactionsProvider);
-          ref.invalidate(productListControllerProvider);
+          ref.read(inventoryDataRevisionProvider.notifier).notifyChanged();
+          ref.read(productDataRevisionProvider.notifier).notifyChanged();
         } catch (error) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -302,8 +300,8 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
       await ref
           .read(inventoryRepositoryProvider)
           .reverseTransaction(item, notes: notes.text.trim());
-      ref.invalidate(inventoryTransactionsProvider);
-      ref.invalidate(productListControllerProvider);
+      ref.read(inventoryDataRevisionProvider.notifier).notifyChanged();
+      ref.read(productDataRevisionProvider.notifier).notifyChanged();
     }
     notes.dispose();
   }

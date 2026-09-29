@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/configuration/settings_providers.dart';
-import '../../../inventory/domain/entities/audit_entry.dart';
-import '../../../inventory/domain/entities/inventory_transaction.dart';
+import '../../../inventory/inventory_module.dart';
 import '../../di/product_providers.dart';
 import '../../di/promotion_providers.dart';
 import '../../domain/entities/product.dart';

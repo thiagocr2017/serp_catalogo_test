@@ -1,17 +1,18 @@
-import '../../domain/entities/product.dart';
+import '../../api/product_api.dart';
 import '../../domain/entities/category.dart';
-import '../../domain/entities/product_query.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../data_sources/supabase_product_data_source.dart';
 import '../mappers/product_mapper.dart';
 
-class SupabaseProductRepository implements ProductRepository {
+class SupabaseProductRepository implements ProductRepository, ProductApi {
   const SupabaseProductRepository(this._dataSource);
 
   final SupabaseProductDataSource _dataSource;
 
   @override
-  Future<List<Product>> getProducts(ProductQuery query) async {
+  Future<List<Product>> getProducts([
+    ProductQuery query = const ProductQuery(),
+  ]) async {
     final products = await _dataSource.getProducts(query);
     return products.map((product) => product.toDomain()).toList();
   }

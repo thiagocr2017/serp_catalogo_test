@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/configuration/catalog_preferences.dart';
-import '../../../../core/configuration/settings_providers.dart';
+import '../../api/sales_api.dart';
 
 class AgentPage extends ConsumerWidget {
   const AgentPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final agents = ref.watch(catalogAgentsProvider);
+    final agents = ref.watch(salesAgentsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Agentes de ventas')),
       floatingActionButton: FloatingActionButton.extended(
@@ -71,7 +70,7 @@ class AgentPage extends ConsumerWidget {
   Future<void> _edit(
     BuildContext context,
     WidgetRef ref, [
-    CatalogAgent? existing,
+    SalesAgent? existing,
   ]) async {
     final name = TextEditingController(text: existing?.name ?? '');
     final phone = TextEditingController(text: existing?.phone ?? '+506');
@@ -114,17 +113,17 @@ class AgentPage extends ConsumerWidget {
       ),
     );
     if (accepted == true) {
-      final repository = ref.read(settingsRepositoryProvider);
+      final api = ref.read(salesApiProvider);
       if (existing == null) {
-        await repository.createCatalogAgent(name: name.text, phone: phone.text);
+        await api.createAgent(name: name.text, phone: phone.text);
       } else {
-        await repository.updateCatalogAgent(
+        await api.updateAgent(
           id: existing.id,
           name: name.text,
           phone: phone.text,
         );
       }
-      ref.invalidate(catalogAgentsProvider);
+      ref.invalidate(salesAgentsProvider);
     }
     name.dispose();
     phone.dispose();
@@ -133,7 +132,7 @@ class AgentPage extends ConsumerWidget {
   Future<void> _deactivate(
     BuildContext context,
     WidgetRef ref,
-    CatalogAgent agent,
+    SalesAgent agent,
   ) async {
     final accepted = await showDialog<bool>(
       context: context,
@@ -155,10 +154,8 @@ class AgentPage extends ConsumerWidget {
       ),
     );
     if (accepted == true) {
-      await ref
-          .read(settingsRepositoryProvider)
-          .deactivateCatalogAgent(agent.id);
-      ref.invalidate(catalogAgentsProvider);
+      await ref.read(salesApiProvider).deactivateAgent(agent.id);
+      ref.invalidate(salesAgentsProvider);
     }
   }
 }

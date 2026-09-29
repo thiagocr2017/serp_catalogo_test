@@ -50,9 +50,9 @@ Los módulos se encuentran en `lib/modules/` y deben mantener las capas `api`,
 
 Estado actual:
 
-- Productos: funcional, con aislamiento modular pendiente.
-- Inventario y auditoría: funcionales, con aislamiento modular pendiente.
-- Ventas: fase inicial; actualmente administra agentes para el catálogo.
+- Productos: funcional y comunicado con otros módulos mediante API pública.
+- Inventario y auditoría: funcionales y comunicados mediante API pública.
+- Ventas: estructura modular inicial completa; administra agentes del catálogo.
 - Configuración: área transitoria dentro de `core`.
 
 Documentación:

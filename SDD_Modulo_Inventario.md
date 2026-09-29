@@ -27,9 +27,9 @@ El módulo vive en `lib/modules/inventory/` y sigue la estructura definida en
 `MODULE_STRUCTURE.md`. PostgreSQL es la fuente de verdad. Riverpod conecta la
 interfaz `InventoryRepository` con `SupabaseInventoryRepository`.
 
-La arquitectura objetivo prohíbe importar providers, controladores o entidades
-internas de Productos. La implementación actual todavía presenta estas
-dependencias y debe migrarse a contratos dentro de `product/api/`.
+Inventario obtiene productos mediante `product_module.dart` y su API pública.
+Los cambios de stock notifican a Productos mediante un provider público de
+revisión, sin importar providers o controladores internos.
 
 ## 4. Entidad `inventory_transactions`
 
@@ -120,11 +120,9 @@ consolidado.
 
 ## 10. Deuda técnica
 
-- La pantalla de Inventario consume directamente providers y controladores de
-  Productos.
-- Productos consume providers y entidades internas de Inventario para mostrar
-  sus historiales.
-- `InventoryApi` expone consultas, pero todavía debe ofrecer los comandos y
-  modelos públicos necesarios para eliminar esas dependencias.
+- `InventoryApi` expone las consultas compartidas; sus comandos de escritura
+  continúan internos hasta que otro módulo, como Ventas, necesite invocarlos.
+- Las API públicas exponen temporalmente entidades del dominio como modelos
+  estables y podrán incorporar DTO propios si los contratos evolucionan.
 - Deben añadirse pruebas de repositorio, triggers, reversión y errores de
   concurrencia además de las pruebas actuales de signo de cantidades.

@@ -184,23 +184,21 @@ deuda técnica y no como una nueva regla arquitectónica.
 
 | Módulo o área | Estado funcional | Documento | Conformidad estructural |
 |---|---|---|---|
-| Productos | Funcional | `SDD_Modulo_Productos.md` | Parcial |
-| Inventario | Funcional | `SDD_Modulo_Inventario.md` | Parcial |
-| Ventas | Inicial: gestión de agentes | `SDD_Modulo_Ventas.md` | Incompleta |
+| Productos | Funcional | `SDD_Modulo_Productos.md` | Aislado mediante API pública |
+| Inventario | Funcional | `SDD_Modulo_Inventario.md` | Aislado mediante API pública |
+| Ventas | Inicial: gestión de agentes | `SDD_Modulo_Ventas.md` | Estructura base completa |
 | Configuración | Funcional dentro de `core` | Incluida transversalmente | Transitoria |
 
 ### Deuda técnica reconocida
 
-- `product` e `inventory` todavía contienen importaciones directas de providers,
-  controladores o entidades internas del otro módulo.
-- `sales` solo cuenta inicialmente con su pantalla de agentes; debe recibir sus
-  capas `api`, `domain`, `data`, `di` y su archivo índice.
-- Los agentes y otras reglas comerciales permanecen temporalmente en
-  `core/configuration`; los agentes deben trasladarse a `sales`.
-- Los índices públicos de Productos e Inventario aún exportan entidades de
-  `domain/` y sus API no cubren todas las operaciones compartidas.
-- El router todavía importa páginas concretas. Cada módulo deberá ofrecer su
-  contrato de rutas durante el trabajo de aislamiento.
+- Las API públicas de Productos e Inventario exponen temporalmente algunas
+  entidades de dominio como modelos estables; podrán sustituirse por DTO
+  públicos si ambos dominios divergen.
+- `main.dart`, como raíz de composición autorizada, todavía construye las
+  implementaciones Supabase y registra sus overrides de Riverpod.
+- La tabla de agentes conserva el nombre histórico `catalog_agents`; debe
+  decidirse si se renombra antes de que existan documentos de venta.
+- Configuración continúa en `core/configuration` hasta definir su módulo propio.
 
 Estas diferencias se corregirán de manera incremental, conservando pruebas y
 puntos de restauración en Git antes de cada cambio estructural.
@@ -214,3 +212,5 @@ puntos de restauración en Git antes de cada cambio estructural.
 - Se incorporaron Inventario y Ventas al mapa modular y se documentó el estado
   transitorio previo a su aislamiento completo.
 - Se estableció un SDD obligatorio por módulo funcional.
+- Se aislaron Productos, Inventario y Ventas mediante API y rutas públicas; los
+  agentes fueron trasladados desde Configuración al módulo de Ventas.
