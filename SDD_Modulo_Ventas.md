@@ -75,6 +75,7 @@ Las siguientes capacidades están previstas, pero no implementadas:
 - moneda, impuestos y redondeo conservados históricamente;
 - métodos y condiciones de pago;
 - salida de inventario al confirmar la operación;
+- reserva de inventario para pedidos;
 - cancelaciones mediante movimientos compensatorios;
 - búsqueda, filtros, reportes y auditoría de documentos.
 
@@ -86,8 +87,10 @@ Las siguientes capacidades están previstas, pero no implementadas:
 - **Autenticación:** sustituirá la identificación provisional del equipo por el
   usuario y sus permisos.
 
-Las operaciones que confirmen una venta y descuenten inventario deberán ser
-atómicas en PostgreSQL o mediante una función transaccional equivalente.
+Las operaciones que confirmen una venta y descuenten inventario serán atómicas
+en PostgreSQL. Una confirmación guardará conjuntamente el documento, sus líneas,
+la liberación de reservas, el movimiento `SALE`, el stock por bodega y la
+auditoría. Si falla cualquiera de esas acciones, ninguna se confirma.
 
 ## 7. Reglas iniciales
 
@@ -96,6 +99,12 @@ atómicas en PostgreSQL o mediante una función transaccional equivalente.
 - Los documentos deben conservar el nombre, moneda, impuestos y precios que
   tenían al emitirse, aunque la configuración cambie posteriormente.
 - Una venta confirmada no se corrige borrando movimientos de inventario.
+- Un pedido reserva inventario sin disminuir el stock físico.
+- Anular un pedido libera su reserva.
+- Confirmar una venta libera la reserva y crea la salida física en una única
+  transacción.
+- Una venta sincronizada desde operación offline debe utilizar un identificador
+  idempotente para impedir duplicados.
 
 ## 8. Estado arquitectónico y deuda técnica
 

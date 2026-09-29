@@ -291,8 +291,9 @@ Esto no reemplaza las validaciones de la aplicación. La aplicación valida para
 - Impuestos y redondeo: configurables mediante `app_settings`; la aplicación conserva USD y dos decimales como valores iniciales.
 - RLS: existen políticas locales provisionales para los roles `anon` y `authenticated`; deben reemplazarse por políticas basadas en roles al incorporar autenticación.
 - Identificación provisional: la aplicación obtiene el nombre del equipo y la primera dirección MAC disponible; si el sistema no permite leerla, usa el nombre del equipo como identificador de respaldo.
-- Tratamiento de salidas que intentarían dejar el stock por debajo de cero.
-- Estrategia de sincronización y recuperación ante pérdida de conexión.
+- Stock negativo y operación sin conexión: permitidos conforme a las reglas de
+  alerta, idempotencia y resolución de conflictos de
+  `SDD_Modulo_Inventario.md`.
 
 ## 8. Estado y deuda técnica
 
