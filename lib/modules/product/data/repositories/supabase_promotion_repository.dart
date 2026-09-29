@@ -51,10 +51,36 @@ class SupabasePromotionRepository implements PromotionRepository {
     required Set<String> productIds,
     Set<String> categoryIds = const {},
     Map<String, String> productConditions = const {},
+  }) => _savePromotion(
+    promotion,
+    productIds: productIds,
+    categoryIds: categoryIds,
+    productConditions: productConditions,
+  );
+
+  @override
+  Future<BulkPromotion> updatePromotion(
+    BulkPromotion promotion, {
+    required Set<String> productIds,
+    Set<String> categoryIds = const {},
+    Map<String, String> productConditions = const {},
+  }) => _savePromotion(
+    promotion,
+    productIds: productIds,
+    categoryIds: categoryIds,
+    productConditions: productConditions,
+  );
+
+  Future<BulkPromotion> _savePromotion(
+    BulkPromotion promotion, {
+    required Set<String> productIds,
+    required Set<String> categoryIds,
+    required Map<String, String> productConditions,
   }) async {
-    final row = await _client
-        .from('bulk_promotions')
-        .insert({
+    final response = await _client.rpc(
+      'save_bulk_promotion',
+      params: {
+        'p_promotion': {
           'id': promotion.id,
           'name': promotion.name,
           'discount_percentage': promotion.discountPercentage,
@@ -64,94 +90,21 @@ class SupabasePromotionRepository implements PromotionRepository {
           'end_date': promotion.endDate.toUtc().toIso8601String(),
           'applies_to_all_products': promotion.appliesToAllProducts,
           'is_active': promotion.isActive,
-          'created_by': _device.actorName,
-          'created_device_name': _device.name,
-          'created_device_identifier': _device.identifier,
-        })
-        .select()
-        .single();
-    await _saveTargets(
-      promotion,
-      productIds: productIds,
-      categoryIds: categoryIds,
-      productConditions: productConditions,
-    );
-    return _map(row);
-  }
-
-  @override
-  Future<BulkPromotion> updatePromotion(
-    BulkPromotion promotion, {
-    required Set<String> productIds,
-    Set<String> categoryIds = const {},
-    Map<String, String> productConditions = const {},
-  }) async {
-    final row = await _client
-        .from('bulk_promotions')
-        .update({
-          'name': promotion.name,
-          'discount_percentage': promotion.discountPercentage,
-          'conditions_text': promotion.conditionsText,
-          'badge_image_url': promotion.badgeImageUrl,
-          'start_date': promotion.startDate?.toUtc().toIso8601String(),
-          'end_date': promotion.endDate.toUtc().toIso8601String(),
-          'applies_to_all_products': promotion.appliesToAllProducts,
-          'is_active': promotion.isActive,
-          'updated_by': _device.actorName,
-          'updated_device_name': _device.name,
-          'updated_device_identifier': _device.identifier,
-        })
-        .eq('id', promotion.id)
-        .select()
-        .single();
-    await _client
-        .from('bulk_promotion_products')
-        .delete()
-        .eq('promotion_id', promotion.id);
-    await _client
-        .from('bulk_promotion_categories')
-        .delete()
-        .eq('promotion_id', promotion.id);
-    await _saveTargets(
-      promotion,
-      productIds: productIds,
-      categoryIds: categoryIds,
-      productConditions: productConditions,
+        },
+        'p_product_ids': productIds.toList(),
+        'p_category_ids': categoryIds.toList(),
+        'p_product_conditions': productConditions,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
     );
     return _map(
-      row,
+      Map<String, dynamic>.from(response as Map),
       productIds: productIds,
       categoryIds: categoryIds,
       productConditions: productConditions,
     );
-  }
-
-  Future<void> _saveTargets(
-    BulkPromotion promotion, {
-    required Set<String> productIds,
-    required Set<String> categoryIds,
-    required Map<String, String> productConditions,
-  }) async {
-    final linkedProductIds = {
-      if (!promotion.appliesToAllProducts && categoryIds.isEmpty) ...productIds,
-      ...productConditions.keys,
-    };
-    if (linkedProductIds.isNotEmpty) {
-      await _client.from('bulk_promotion_products').insert([
-        for (final id in linkedProductIds)
-          {
-            'promotion_id': promotion.id,
-            'product_id': id,
-            'conditions_text': productConditions[id]?.trim() ?? '',
-          },
-      ]);
-    }
-    if (categoryIds.isNotEmpty) {
-      await _client.from('bulk_promotion_categories').insert([
-        for (final id in categoryIds)
-          {'promotion_id': promotion.id, 'category_id': id},
-      ]);
-    }
   }
 
   @override

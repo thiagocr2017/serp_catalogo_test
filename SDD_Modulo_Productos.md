@@ -298,9 +298,9 @@ Esto no reemplaza las validaciones de la aplicación. La aplicación valida para
 ## 8. Estado y deuda técnica
 
 - El módulo consume Inventario mediante `inventory_module.dart` y su API pública.
-- Las operaciones que guardan una promoción y luego reemplazan sus relaciones de
-  productos o categorías todavía deben consolidarse en una transacción atómica
-  de PostgreSQL.
+- Crear o editar una promoción, su alcance y sus condiciones particulares se
+  ejecuta mediante `save_bulk_promotion` en una única transacción PostgreSQL.
+  Cualquier fallo revierte toda la operación y conserva el estado anterior.
 - Las presentaciones dinámicas conviven temporalmente con `packaging_type` para
   mantener compatibilidad con datos anteriores.
 - Configuración de empresa, pagos, logo y preferencias del catálogo permanece
