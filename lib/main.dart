@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/configuration/app_configuration.dart';
-import 'core/configuration/settings_providers.dart';
-import 'core/configuration/settings_repository.dart';
 import 'core/configuration/theme_mode_controller.dart';
 import 'core/navigation/app_router.dart';
 import 'core/device/device_identity.dart';
+import 'modules/configuration/configuration_module.dart';
+import 'modules/configuration/data/repositories/supabase_configuration_repository.dart';
 import 'modules/product/data/data_sources/supabase_product_data_source.dart';
 import 'modules/product/data/repositories/supabase_product_repository.dart';
 import 'modules/product/di/product_providers.dart';
@@ -44,7 +44,7 @@ Future<void> main() async {
     Supabase.instance.client,
     device,
   );
-  final settingsRepository = SettingsRepository(
+  final configurationRepository = SupabaseConfigurationRepository(
     Supabase.instance.client,
     device,
   );
@@ -62,7 +62,9 @@ Future<void> main() async {
         inventoryRepositoryProvider.overrideWithValue(inventoryRepository),
         inventoryApiProvider.overrideWithValue(inventoryRepository),
         promotionRepositoryProvider.overrideWithValue(promotionRepository),
-        settingsRepositoryProvider.overrideWithValue(settingsRepository),
+        configurationRepositoryProvider.overrideWithValue(
+          configurationRepository,
+        ),
         productImageServiceProvider.overrideWithValue(imageService),
         salesRepositoryProvider.overrideWithValue(salesRepository),
         salesApiProvider.overrideWithValue(salesRepository),

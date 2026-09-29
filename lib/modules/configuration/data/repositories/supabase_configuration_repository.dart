@@ -3,16 +3,18 @@ import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../device/device_identity.dart';
-import 'business_settings.dart';
-import 'catalog_preferences.dart';
-import 'packaging_presentation.dart';
+import '../../../../core/device/device_identity.dart';
+import '../../domain/entities/business_settings.dart';
+import '../../domain/entities/catalog_preferences.dart';
+import '../../domain/entities/packaging_presentation.dart';
+import '../../domain/repositories/configuration_repository.dart';
 
-class SettingsRepository {
-  const SettingsRepository(this._client, this._device);
+class SupabaseConfigurationRepository implements ConfigurationRepository {
+  const SupabaseConfigurationRepository(this._client, this._device);
   final SupabaseClient _client;
   final DeviceIdentity _device;
 
+  @override
   Future<BusinessSettings> get() async {
     var row = await _client.from('app_settings').select().single();
     if (row['superadmin_device_identifier'] == null) {
@@ -37,6 +39,7 @@ class SettingsRepository {
     );
   }
 
+  @override
   Future<void> save(BusinessSettings value) => _client
       .from('app_settings')
       .update({
@@ -55,6 +58,7 @@ class SettingsRepository {
       })
       .eq('id', true);
 
+  @override
   Future<void> purgeTestDataAndGoProduction() => _client.rpc<void>(
     'purge_test_data_and_go_production',
     params: {
@@ -63,6 +67,7 @@ class SettingsRepository {
     },
   );
 
+  @override
   Future<CatalogPreferences> getCatalogPreferences() async {
     final row = await _client.from('app_settings').select().single();
     return CatalogPreferences(
@@ -91,6 +96,7 @@ class SettingsRepository {
     );
   }
 
+  @override
   Future<void> saveCatalogPreferences(CatalogPreferences value) async {
     await _client
         .from('app_settings')
@@ -122,6 +128,7 @@ class SettingsRepository {
         .single();
   }
 
+  @override
   Future<void> setCatalogLogoUrl(String url) => _client
       .from('app_settings')
       .update({
@@ -133,6 +140,7 @@ class SettingsRepository {
       })
       .eq('id', true);
 
+  @override
   Future<String> uploadCatalogLogo(Uint8List bytes, String extension) async {
     final safeExtension = extension.toLowerCase() == 'png' ? 'png' : 'jpg';
     final path = 'catalog-logo.$safeExtension';
@@ -150,6 +158,7 @@ class SettingsRepository {
     return '$url?v=${DateTime.now().millisecondsSinceEpoch}';
   }
 
+  @override
   Future<Uint8List?> downloadCatalogLogo(String? url) async {
     if (url == null || url.isEmpty) return null;
     final client = HttpClient();
@@ -167,6 +176,7 @@ class SettingsRepository {
     }
   }
 
+  @override
   Future<List<PackagingPresentation>> getPackagingPresentations() async {
     final rows = await _client
         .from('packaging_presentations')
@@ -186,6 +196,7 @@ class SettingsRepository {
         .toList();
   }
 
+  @override
   Future<PackagingPresentation> savePackagingPresentation({
     String? id,
     required String name,

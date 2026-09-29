@@ -1,9 +1,9 @@
 import 'package:go_router/go_router.dart';
 
+import '../../modules/configuration/configuration_module.dart';
 import '../../modules/inventory/inventory_module.dart';
 import '../../modules/product/product_module.dart';
 import '../../modules/sales/sales_module.dart';
-import '../configuration/settings_page.dart';
 import '../../shared/widgets/desktop_shell_widget.dart';
 
 final appRouter = GoRouter(
@@ -16,10 +16,7 @@ final appRouter = GoRouter(
         ...productRoutes,
         ...inventoryRoutes,
         ...salesRoutes,
-        GoRoute(
-          path: '/settings',
-          builder: (context, state) => const SettingsPage(),
-        ),
+        ...configurationRoutes,
       ],
     ),
   ],

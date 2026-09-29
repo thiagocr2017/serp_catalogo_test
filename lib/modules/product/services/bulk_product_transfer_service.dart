@@ -9,7 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../domain/entities/category.dart';
 import '../domain/entities/product.dart';
 import '../domain/repositories/product_repository.dart';
-import '../../../core/configuration/packaging_presentation.dart';
+import '../../configuration/configuration_module.dart';
 import 'product_image_service.dart';
 
 class BulkProductTransferService {

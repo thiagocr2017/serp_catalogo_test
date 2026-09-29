@@ -8,8 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 
-import '../../../../core/configuration/settings_providers.dart';
-import '../../../../core/configuration/catalog_preferences.dart';
+import '../../../configuration/configuration_module.dart';
 import '../../../sales/sales_module.dart';
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
@@ -72,7 +71,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     );
     final categories = await ref.read(categoriesProvider.future);
     final settings = await ref.read(businessSettingsProvider.future);
-    final settingsRepository = ref.read(settingsRepositoryProvider);
+    final settingsRepository = ref.read(configurationRepositoryProvider);
     final preferences = await settingsRepository.getCatalogPreferences();
     final agents = await ref.read(salesApiProvider).getAgents();
     final storedLogo = await settingsRepository.downloadCatalogLogo(
@@ -191,7 +190,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     if (mounted) setState(() => _savingPreferences = true);
     try {
       await ref
-          .read(settingsRepositoryProvider)
+          .read(configurationRepositoryProvider)
           .saveCatalogPreferences(
             CatalogPreferences(
               cardsPerPage: cards,

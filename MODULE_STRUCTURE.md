@@ -27,14 +27,16 @@ lib/
 └── modules/
     ├── product/
     ├── inventory/
-    └── sales/
+    ├── sales/
+    └── configuration/
 
 test/
 ├── core/
 └── modules/
     ├── product/
     ├── inventory/
-    └── sales/
+    ├── sales/
+    └── configuration/
 ```
 
 `core` y `shared` no son módulos de negocio. Solo deben contener elementos genuinamente reutilizables por varios módulos.
@@ -193,7 +195,7 @@ deuda técnica y no como una nueva regla arquitectónica.
 | Productos | Funcional | `SDD_Modulo_Productos.md` | Aislado mediante API pública |
 | Inventario | Funcional | `SDD_Modulo_Inventario.md` | Aislado mediante API pública |
 | Ventas | Inicial: gestión de agentes | `SDD_Modulo_Ventas.md` | Estructura base completa |
-| Configuración | Funcional dentro de `core` | Incluida transversalmente | Transitoria |
+| Configuración | Funcional | `SDD_Modulo_Configuracion.md` | Aislado mediante API pública |
 
 ### Deuda técnica reconocida
 
@@ -204,7 +206,8 @@ deuda técnica y no como una nueva regla arquitectónica.
   implementaciones Supabase y registra sus overrides de Riverpod.
 - La tabla de agentes conserva el nombre histórico `catalog_agents`; debe
   decidirse si se renombra antes de que existan documentos de venta.
-- Configuración continúa en `core/configuration` hasta definir su módulo propio.
+- La preferencia de tema y la configuración técnica de conexión permanecen en
+  `core/configuration`; no son datos comerciales del módulo Configuración.
 
 Estas diferencias se corregirán de manera incremental, conservando pruebas y
 puntos de restauración en Git antes de cada cambio estructural.
@@ -220,3 +223,5 @@ puntos de restauración en Git antes de cada cambio estructural.
 - Se estableció un SDD obligatorio por módulo funcional.
 - Se aislaron Productos, Inventario y Ventas mediante API y rutas públicas; los
   agentes fueron trasladados desde Configuración al módulo de Ventas.
+- Se extrajeron empresa, catálogo, logo y presentaciones al módulo Configuración;
+  `core/configuration` quedó reservado para preferencias técnicas locales.

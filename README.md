@@ -57,7 +57,8 @@ Estado actual:
 - Productos: funcional y comunicado con otros módulos mediante API pública.
 - Inventario y auditoría: funcionales y comunicados mediante API pública.
 - Ventas: estructura modular inicial completa; administra agentes del catálogo.
-- Configuración: área transitoria dentro de `core`.
+- Configuración: funcional y expuesta mediante API pública; administra empresa,
+  catálogo y presentaciones de producto.
 
 Documentación:
 
@@ -68,3 +69,5 @@ Documentación:
   auditoría.
 - [`SDD_Modulo_Ventas.md`](SDD_Modulo_Ventas.md): agentes implementados y
   alcance futuro de ventas.
+- [`SDD_Modulo_Configuracion.md`](SDD_Modulo_Configuracion.md): parámetros de
+  empresa, catálogo, presentaciones y límites administrativos.

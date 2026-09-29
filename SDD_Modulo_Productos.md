@@ -303,5 +303,6 @@ Esto no reemplaza las validaciones de la aplicación. La aplicación valida para
 - Las presentaciones se administran exclusivamente mediante
   `packaging_presentations`; los productos anteriores fueron migrados y el enum
   fijo `packaging_type` fue retirado.
-- Configuración de empresa, pagos, logo y preferencias del catálogo permanece
-  temporalmente en `core/configuration` hasta definir el módulo Configuración.
+- Empresa, pagos, logo, preferencias del catálogo y presentaciones pertenecen
+  al módulo Configuración. Productos los consume exclusivamente mediante
+  `configuration_module.dart`.

@@ -7,7 +7,7 @@ import 'package:serp/modules/product/domain/entities/category.dart';
 import 'package:serp/modules/product/services/bulk_product_transfer_service.dart';
 import 'package:serp/modules/product/services/product_image_service.dart';
 import 'package:serp/core/device/device_identity.dart';
-import 'package:serp/core/configuration/packaging_presentation.dart';
+import 'package:serp/modules/configuration/configuration_module.dart';
 
 void main() {
   test('Excel CSV template can be parsed with BOM and semicolon delimiter', () {

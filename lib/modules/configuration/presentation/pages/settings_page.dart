@@ -4,10 +4,10 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'business_settings.dart';
-import 'packaging_presentation.dart';
-import 'settings_providers.dart';
-import 'theme_mode_controller.dart';
+import '../../../../core/configuration/theme_mode_controller.dart';
+import '../../di/configuration_providers.dart';
+import '../../domain/entities/business_settings.dart';
+import '../../domain/entities/packaging_presentation.dart';
 
 class _ThemeModeSection extends ConsumerWidget {
   const _ThemeModeSection();
@@ -93,7 +93,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
   }
 
   Future<void> _loadLogo() async {
-    final repository = ref.read(settingsRepositoryProvider);
+    final repository = ref.read(configurationRepositoryProvider);
     final preferences = await repository.getCatalogPreferences();
     final bytes = await repository.downloadCatalogLogo(preferences.logoUrl);
     if (mounted) {
@@ -348,7 +348,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
   );
   Future<void> _save() async {
     await ref
-        .read(settingsRepositoryProvider)
+        .read(configurationRepositoryProvider)
         .save(
           BusinessSettings(
             defaultCurrency: currency,
@@ -382,7 +382,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     );
     if (file == null) return;
     final bytes = await file.readAsBytes();
-    final repository = ref.read(settingsRepositoryProvider);
+    final repository = ref.read(configurationRepositoryProvider);
     final url = await repository.uploadCatalogLogo(
       bytes,
       file.name.split('.').last,
@@ -430,7 +430,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     );
     if (accepted == true) {
       await ref
-          .read(settingsRepositoryProvider)
+          .read(configurationRepositoryProvider)
           .savePackagingPresentation(id: existing?.id, name: controller.text);
       ref.invalidate(packagingPresentationsProvider);
     }
@@ -477,7 +477,9 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     );
     confirmation.dispose();
     if (accepted != true) return;
-    await ref.read(settingsRepositoryProvider).purgeTestDataAndGoProduction();
+    await ref
+        .read(configurationRepositoryProvider)
+        .purgeTestDataAndGoProduction();
     ref.invalidate(businessSettingsProvider);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
