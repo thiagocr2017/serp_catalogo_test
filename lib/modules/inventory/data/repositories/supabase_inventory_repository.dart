@@ -18,6 +18,8 @@ class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
     InventoryReason.adjustment: 'ADJUSTMENT',
     InventoryReason.returnItem: 'RETURN',
     InventoryReason.reversal: 'REVERSAL',
+    InventoryReason.transferOut: 'TRANSFER_OUT',
+    InventoryReason.transferIn: 'TRANSFER_IN',
   };
 
   @override
@@ -56,15 +58,41 @@ class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
       .toList();
 
   @override
-  Future<InventoryTransaction> recordTransaction(
-    InventoryTransactionCommand command,
-  ) async => _transaction(
-    await _source.recordTransaction({
+  Future<List<InventoryDocument>> getDocuments() async =>
+      (await _source.documents()).map(_document).toList();
+
+  @override
+  Future<InventoryDocument?> getDocument(String id) async {
+    final row = await _source.document(id);
+    return row == null ? null : _document(row);
+  }
+
+  @override
+  Future<InventoryDocument> createAndConfirmDocument(
+    InventoryDocumentCommand command,
+  ) async => _document(
+    await _source.createAndConfirmDocument({
       'p_command_id': command.commandId,
-      'p_product_id': command.productId,
-      'p_location_id': command.locationId,
-      'p_quantity': command.quantity,
-      'p_reason': _reasonToDatabase[command.reason],
+      'p_document_type': switch (command.type) {
+        InventoryDocumentType.adjustment => 'ADJUSTMENT',
+        InventoryDocumentType.transfer => 'TRANSFER',
+        _ => throw ArgumentError('Tipo de documento no disponible manualmente'),
+      },
+      'p_lines': [
+        for (final line in command.lines)
+          {
+            'product_id': line.productId,
+            'quantity': line.quantity,
+            'notes': line.notes,
+          },
+      ],
+      'p_origin_warehouse_id': command.type == InventoryDocumentType.adjustment
+          ? command.destinationWarehouseId
+          : command.originWarehouseId,
+      'p_origin_location_id': command.originLocationId,
+      'p_destination_warehouse_id': command.destinationWarehouseId,
+      'p_destination_location_id': command.destinationLocationId,
+      'p_external_reference': command.externalReference,
       'p_notes': command.notes,
       'p_actor_name': _device.actorName,
       'p_device_name': _device.name,
@@ -72,14 +100,36 @@ class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
     }),
   );
 
-  @override
-  Future<InventoryTransaction> reverseInventoryTransaction(
-    InventoryReversalCommand command,
-  ) async => _transaction(
+  Future<InventoryTransaction> _recordTransaction({
+    required String commandId,
+    required String productId,
+    required String locationId,
+    required int quantity,
+    required InventoryReason reason,
+    String? notes,
+  }) async => _transaction(
+    await _source.recordTransaction({
+      'p_command_id': commandId,
+      'p_product_id': productId,
+      'p_location_id': locationId,
+      'p_quantity': quantity,
+      'p_reason': _reasonToDatabase[reason],
+      'p_notes': notes,
+      'p_actor_name': _device.actorName,
+      'p_device_name': _device.name,
+      'p_device_identifier': _device.identifier,
+    }),
+  );
+
+  Future<InventoryTransaction> _reverseInventoryTransaction({
+    required String commandId,
+    required String originalTransactionId,
+    required String notes,
+  }) async => _transaction(
     await _source.reverseTransaction({
-      'p_command_id': command.commandId,
-      'p_original_transaction_id': command.originalTransactionId,
-      'p_notes': command.notes,
+      'p_command_id': commandId,
+      'p_original_transaction_id': originalTransactionId,
+      'p_notes': notes,
       'p_actor_name': _device.actorName,
       'p_device_name': _device.name,
       'p_device_identifier': _device.identifier,
@@ -93,27 +143,23 @@ class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
     required InventoryReason reason,
     required String locationId,
     String? notes,
-  }) => recordTransaction(
-    InventoryTransactionCommand(
-      commandId: const Uuid().v4(),
-      productId: productId,
-      locationId: locationId,
-      quantity: quantity,
-      reason: reason,
-      notes: notes,
-    ),
+  }) => _recordTransaction(
+    commandId: const Uuid().v4(),
+    productId: productId,
+    locationId: locationId,
+    quantity: quantity,
+    reason: reason,
+    notes: notes,
   );
 
   @override
   Future<InventoryTransaction> reverseTransaction(
     InventoryTransaction original, {
     required String notes,
-  }) => reverseInventoryTransaction(
-    InventoryReversalCommand(
-      commandId: const Uuid().v4(),
-      originalTransactionId: original.id,
-      notes: notes,
-    ),
+  }) => _reverseInventoryTransaction(
+    commandId: const Uuid().v4(),
+    originalTransactionId: original.id,
+    notes: notes,
   );
 
   @override
@@ -222,7 +268,9 @@ class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
           'SALE' => InventoryReason.sale,
           'ADJUSTMENT' => InventoryReason.adjustment,
           'RETURN' => InventoryReason.returnItem,
-          _ => InventoryReason.reversal,
+          'REVERSAL' => InventoryReason.reversal,
+          'TRANSFER_OUT' => InventoryReason.transferOut,
+          _ => InventoryReason.transferIn,
         },
         warehouseId: row['warehouse_id'] as String,
         locationId: row['location_id'] as String,
@@ -234,8 +282,56 @@ class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
                 as String?,
         notes: row['notes'] as String?,
         reversalOfTransactionId: row['reversal_of_transaction_id'] as String?,
+        documentId: row['document_id'] as String?,
+        documentNumber:
+            (row['inventory_documents']
+                    as Map<String, dynamic>?)?['document_number']
+                as String?,
         createdAt: DateTime.parse(row['created_at'] as String),
       );
+
+  InventoryDocument _document(Map<String, dynamic> row) => InventoryDocument(
+    id: row['id'] as String,
+    number: row['document_number'] as String,
+    type: switch (row['document_type'] as String) {
+      'OPENING' => InventoryDocumentType.opening,
+      'ADJUSTMENT' => InventoryDocumentType.adjustment,
+      'TRANSFER' => InventoryDocumentType.transfer,
+      'PURCHASE_RECEIPT' => InventoryDocumentType.purchaseReceipt,
+      'SALE_DISPATCH' => InventoryDocumentType.saleDispatch,
+      'CUSTOMER_RETURN' => InventoryDocumentType.customerReturn,
+      'SUPPLIER_RETURN' => InventoryDocumentType.supplierReturn,
+      _ => InventoryDocumentType.consignment,
+    },
+    status: row['status'] as String,
+    createdAt: DateTime.parse(row['created_at'] as String),
+    originWarehouseName:
+        (row['origin_warehouse'] as Map<String, dynamic>?)?['name'] as String?,
+    originLocationName:
+        (row['origin_location'] as Map<String, dynamic>?)?['name'] as String?,
+    destinationWarehouseName:
+        (row['destination_warehouse'] as Map<String, dynamic>?)?['name']
+            as String?,
+    destinationLocationName:
+        (row['destination_location'] as Map<String, dynamic>?)?['name']
+            as String?,
+    externalReference: row['external_reference'] as String?,
+    notes: row['notes'] as String?,
+    lines: ((row['inventory_document_lines'] as List<dynamic>?) ?? const [])
+        .map((value) {
+          final line = value as Map<String, dynamic>;
+          final product = line['products'] as Map<String, dynamic>?;
+          return InventoryDocumentLine(
+            id: line['id'] as String,
+            productId: line['product_id'] as String,
+            quantity: line['quantity'] as int,
+            productSku: product?['sku'] as String?,
+            productName: product?['name'] as String?,
+            notes: line['notes'] as String?,
+          );
+        })
+        .toList(),
+  );
 
   Warehouse _warehouse(Map<String, dynamic> row) => Warehouse(
     id: row['id'] as String,

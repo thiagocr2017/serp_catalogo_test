@@ -1,31 +1,37 @@
-import '../domain/entities/inventory_transaction.dart';
+import '../domain/entities/inventory_document.dart';
 
-class InventoryTransactionCommand {
-  const InventoryTransactionCommand({
+class InventoryDocumentCommand {
+  const InventoryDocumentCommand({
     required this.commandId,
-    required this.productId,
-    required this.locationId,
-    required this.quantity,
-    required this.reason,
+    required this.type,
+    required this.lines,
+    this.originWarehouseId,
+    this.originLocationId,
+    this.destinationWarehouseId,
+    this.destinationLocationId,
+    this.externalReference,
     this.notes,
   });
 
   final String commandId;
-  final String productId;
-  final String locationId;
-  final int quantity;
-  final InventoryReason reason;
+  final InventoryDocumentType type;
+  final List<InventoryDocumentLineCommand> lines;
+  final String? originWarehouseId;
+  final String? originLocationId;
+  final String? destinationWarehouseId;
+  final String? destinationLocationId;
+  final String? externalReference;
   final String? notes;
 }
 
-class InventoryReversalCommand {
-  const InventoryReversalCommand({
-    required this.commandId,
-    required this.originalTransactionId,
-    required this.notes,
+class InventoryDocumentLineCommand {
+  const InventoryDocumentLineCommand({
+    required this.productId,
+    required this.quantity,
+    this.notes,
   });
 
-  final String commandId;
-  final String originalTransactionId;
-  final String notes;
+  final String productId;
+  final int quantity;
+  final String? notes;
 }

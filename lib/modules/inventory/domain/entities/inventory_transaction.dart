@@ -5,13 +5,15 @@ enum InventoryReason {
   adjustment,
   returnItem,
   reversal,
+  transferOut,
+  transferIn,
 }
 
 int signedInventoryQuantity({
   required int enteredQuantity,
   required InventoryReason reason,
 }) => switch (reason) {
-  InventoryReason.sale => -enteredQuantity.abs(),
+  InventoryReason.sale || InventoryReason.transferOut => -enteredQuantity.abs(),
   InventoryReason.adjustment => enteredQuantity,
   _ => enteredQuantity.abs(),
 };
@@ -31,6 +33,8 @@ class InventoryTransaction {
     this.locationName,
     this.notes,
     this.reversalOfTransactionId,
+    this.documentId,
+    this.documentNumber,
   });
   final String id;
   final String productId;
@@ -44,5 +48,7 @@ class InventoryTransaction {
   final String? locationName;
   final String? notes;
   final String? reversalOfTransactionId;
+  final String? documentId;
+  final String? documentNumber;
   final DateTime createdAt;
 }

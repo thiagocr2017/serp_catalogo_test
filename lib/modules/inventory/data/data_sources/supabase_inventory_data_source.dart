@@ -9,7 +9,8 @@ class SupabaseInventoryDataSource {
         .from('inventory_transactions')
         .select(
           '*, products(sku), warehouses(name), '
-          'inventory_locations!inventory_transactions_location_id_fkey(name)',
+          'inventory_locations!inventory_transactions_location_id_fkey(name), '
+          'inventory_documents(document_number)',
         );
     if (productId != null) query = query.eq('product_id', productId);
     return query.order('created_at', ascending: false);
@@ -39,7 +40,8 @@ class SupabaseInventoryDataSource {
       .from('inventory_transactions')
       .select(
         '*, products(sku), warehouses(name), '
-        'inventory_locations!inventory_transactions_location_id_fkey(name)',
+        'inventory_locations!inventory_transactions_location_id_fkey(name), '
+        'inventory_documents(document_number)',
       )
       .eq('id', id)
       .single();
@@ -61,6 +63,36 @@ class SupabaseInventoryDataSource {
         );
     if (productId != null) query = query.eq('product_id', productId);
     return query.order('updated_at', ascending: false);
+  }
+
+  static const _documentSelect = '''
+    *,
+    origin_warehouse:warehouses!inventory_documents_origin_warehouse_id_fkey(name),
+    origin_location:inventory_locations!inventory_documents_origin_location_id_fkey(name),
+    destination_warehouse:warehouses!inventory_documents_destination_warehouse_id_fkey(name),
+    destination_location:inventory_locations!inventory_documents_destination_location_id_fkey(name),
+    inventory_document_lines(*, products(sku, name))
+  ''';
+
+  Future<List<Map<String, dynamic>>> documents() => _client
+      .from('inventory_documents')
+      .select(_documentSelect)
+      .order('created_at', ascending: false);
+
+  Future<Map<String, dynamic>?> document(String id) => _client
+      .from('inventory_documents')
+      .select(_documentSelect)
+      .eq('id', id)
+      .maybeSingle();
+
+  Future<Map<String, dynamic>> createAndConfirmDocument(
+    Map<String, dynamic> parameters,
+  ) async {
+    final created = await _client.rpc<Map<String, dynamic>>(
+      'create_and_confirm_inventory_document',
+      params: parameters,
+    );
+    return (await document(created['id'] as String))!;
   }
 
   Future<Map<String, dynamic>> saveWarehouse(

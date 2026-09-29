@@ -21,18 +21,26 @@ values
    (select id from public.packaging_presentations where name = 'Set'),
    0.032000, 4.10, 6, 'local-seed', 'Supabase Local', 'seed');
 
-insert into public.inventory_transactions (
-  product_id, warehouse_id, location_id, command_id, quantity, reason,
-  notes, actor_name, device_name, device_identifier
-)
-values
-  ('20000000-0000-0000-0000-000000000001',
-   '30000000-0000-0000-0000-000000000001',
-   '31000000-0000-0000-0000-000000000001',
-   '32000000-0000-0000-0000-000000000001',
-   48, 'INITIAL_STOCK', 'Datos iniciales locales', 'local-seed', 'Supabase Local', 'seed'),
-  ('20000000-0000-0000-0000-000000000002',
-   '30000000-0000-0000-0000-000000000001',
-   '31000000-0000-0000-0000-000000000001',
-   '32000000-0000-0000-0000-000000000002',
-   18, 'INITIAL_STOCK', 'Datos iniciales locales', 'local-seed', 'Supabase Local', 'seed');
+select public.create_and_confirm_inventory_document(
+  '32000000-0000-0000-0000-000000000001', 'OPENING',
+  jsonb_build_array(jsonb_build_object(
+    'product_id', '20000000-0000-0000-0000-000000000001',
+    'quantity', 48,
+    'notes', 'Datos iniciales locales'
+  )),
+  null, null, '30000000-0000-0000-0000-000000000001', null,
+  'SEED-HJ300-1', 'Apertura de inventario local',
+  'local-seed', 'Supabase Local', 'seed'
+);
+
+select public.create_and_confirm_inventory_document(
+  '32000000-0000-0000-0000-000000000002', 'OPENING',
+  jsonb_build_array(jsonb_build_object(
+    'product_id', '20000000-0000-0000-0000-000000000002',
+    'quantity', 18,
+    'notes', 'Datos iniciales locales'
+  )),
+  null, null, '30000000-0000-0000-0000-000000000001', null,
+  'SEED-KT100-1', 'Apertura de inventario local',
+  'local-seed', 'Supabase Local', 'seed'
+);

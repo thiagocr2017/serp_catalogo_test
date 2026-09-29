@@ -280,6 +280,8 @@ class _Profile extends ConsumerWidget {
     InventoryReason.adjustment => 'Ajuste',
     InventoryReason.returnItem => 'Devolución',
     InventoryReason.reversal => 'Reversión',
+    InventoryReason.transferOut => 'Salida por traslado',
+    InventoryReason.transferIn => 'Entrada por traslado',
   };
 
   bool _isUsefulProductChange(AuditEntry entry) =>

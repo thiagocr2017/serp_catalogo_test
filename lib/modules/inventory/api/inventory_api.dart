@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/entities/audit_entry.dart';
 import '../domain/entities/inventory_transaction.dart';
 import '../domain/entities/inventory_balance.dart';
+import '../domain/entities/inventory_document.dart';
 import '../domain/entities/warehouse.dart';
 import 'inventory_commands.dart';
 
 export '../domain/entities/audit_entry.dart';
 export '../domain/entities/inventory_transaction.dart';
 export '../domain/entities/inventory_balance.dart';
+export '../domain/entities/inventory_document.dart';
 export '../domain/entities/warehouse.dart';
 export 'inventory_commands.dart';
 
@@ -33,12 +35,12 @@ abstract interface class InventoryApi {
 
   Future<List<InventoryBalance>> getLocationBalances({String? productId});
 
-  Future<InventoryTransaction> recordTransaction(
-    InventoryTransactionCommand command,
-  );
+  Future<List<InventoryDocument>> getDocuments();
 
-  Future<InventoryTransaction> reverseInventoryTransaction(
-    InventoryReversalCommand command,
+  Future<InventoryDocument?> getDocument(String id);
+
+  Future<InventoryDocument> createAndConfirmDocument(
+    InventoryDocumentCommand command,
   );
 
   Future<List<AuditEntry>> getAuditEntries({

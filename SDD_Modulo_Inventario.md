@@ -23,7 +23,11 @@ Se encuentran implementados:
 - bodegas y ubicaciones dinámicas, con una bodega y ubicación predeterminadas;
 - saldos físicos por producto y ubicación;
 - selección obligatoria de ubicación al registrar movimientos;
-- comandos públicos idempotentes para movimientos y reversiones.
+- comando público idempotente para confirmar documentos de inventario;
+- documentos multiproducto de ajuste y traslado;
+- numeración automática y confirmación transaccional de documentos;
+- histórico de movimientos de solo lectura con enlace al documento de origen;
+- documentos automáticos de apertura para el stock inicial de productos.
 
 ## 3. Arquitectura
 
@@ -98,14 +102,25 @@ consolidado.
 
 ### Movimientos
 
-- Selector de producto activo mostrando SKU y nombre.
-- Motivo del movimiento.
-- Cantidad con ayuda contextual sobre el signo.
-- Notas opcionales.
-- Mensajes de error legibles sin perder la información capturada.
+- Histórico de solo lectura; la interfaz no inserta movimientos aislados.
 - Búsqueda y lista desplazable.
-- Acción de corrección disponible solo para movimientos reversibles.
 - Bodega y ubicación visibles en cada movimiento.
+- Enlace principal hacia el documento que originó el movimiento.
+
+### Documentos de inventario
+
+- Un documento admite uno o varios productos.
+- El número, fecha, actor, equipo y ubicación predeterminada se completan
+  automáticamente.
+- Ajustes: aceptan cantidades positivas y negativas para varios productos.
+- Traslados: el usuario selecciona bodegas; el sistema elige sus ubicaciones
+  predeterminadas y genera `TRANSFER_OUT` y `TRANSFER_IN` por línea.
+- Documento, líneas, movimientos, saldos y stock global se confirman en una
+  única transacción PostgreSQL.
+- El stock inicial creado manualmente o por importación genera un documento de
+  apertura automático.
+- Los movimientos anteriores fueron asociados a documentos migrados para
+  conservar navegación y trazabilidad.
 
 ### Bodegas y ubicaciones
 
@@ -165,7 +180,7 @@ stock disponible = stock físico - stock reservado
 - Si una venta ya confirmada se anula, se genera `RETURN` o `REVERSAL` según la
   mercancía haya regresado o la salida haya sido un error.
 
-### 9.4 Transferencias entre bodegas
+### 9.4 Transferencias entre bodegas — base implementada
 
 Se permiten transferencias mediante un documento con estados:
 
@@ -173,10 +188,9 @@ Se permiten transferencias mediante un documento con estados:
 BORRADOR → DESPACHADA → EN_TRANSITO → RECIBIDA
 ```
 
-El despacho crea `TRANSFER_OUT` y la recepción crea `TRANSFER_IN`. Una
-transferencia inmediata debe guardar salida, entrada, documento y auditoría de
-forma atómica. Una transferencia en tránsito conserva trazabilidad de las
-unidades pendientes de recepción.
+El traslado inmediato confirmado crea `TRANSFER_OUT` y `TRANSFER_IN` y guarda
+salida, entrada, documento y auditoría de forma atómica. Todavía falta el flujo
+logístico diferido con borrador, despacho, tránsito, recepción y cancelación.
 
 ### 9.5 Conteos físicos y conciliación
 
@@ -224,9 +238,10 @@ transaccionales de PostgreSQL.
 
 ## 10. Deuda técnica
 
-- `InventoryApi` ya expone comandos idempotentes para registrar y revertir
-  movimientos. Faltan los comandos especializados de reservas, transferencias,
-  conteos y documentos comerciales.
+- `InventoryApi` expone creación documental idempotente y consultas. Los
+  comandos directos de movimientos quedaron internos para impedir que otros
+  módulos eviten los documentos. Faltan reservas, conteos y documentos
+  comerciales de Ventas y Compras.
 - Las API públicas exponen temporalmente entidades del dominio como modelos
   estables y podrán incorporar DTO propios si los contratos evolucionan.
 - Se validaron triggers, saldos por ubicación, reversión e idempotencia mediante

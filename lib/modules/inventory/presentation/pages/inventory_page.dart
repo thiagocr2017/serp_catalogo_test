@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../product/product_module.dart';
 import '../../api/inventory_api.dart';
 import '../../di/inventory_providers.dart';
 
@@ -26,21 +26,23 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
   Widget build(BuildContext context) {
     final transactions = ref.watch(inventoryTransactionsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Movimientos de inventario')),
+      appBar: AppBar(title: const Text('Histórico de inventario')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _add(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('Registrar movimiento'),
+        onPressed: () => context.go('/inventory/documents/new'),
+        icon: const Icon(Icons.description_outlined),
+        label: const Text('Nuevo documento'),
       ),
       body: transactions.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('No fue posible cargar: $e')),
+        error: (error, _) =>
+            Center(child: Text('No fue posible cargar: $error')),
         data: (items) {
           final query = _query.trim().toLowerCase();
           final filtered = items.where((item) {
             if (query.isEmpty) return true;
             return (item.productSku ?? '').toLowerCase().contains(query) ||
                 _reason(item.reason).toLowerCase().contains(query) ||
+                (item.documentNumber ?? '').toLowerCase().contains(query) ||
                 (item.notes ?? '').toLowerCase().contains(query) ||
                 item.quantity.toString().contains(query) ||
                 item.createdAt.toLocal().toString().toLowerCase().contains(
@@ -56,7 +58,7 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                   onChanged: (value) => setState(() => _query = value),
                   decoration: InputDecoration(
                     labelText: 'Buscar movimientos',
-                    hintText: 'Código, motivo, nota, cantidad o fecha',
+                    hintText: 'Código, documento, motivo, cantidad o fecha',
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _query.isEmpty
                         ? null
@@ -74,9 +76,7 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
               ),
               Expanded(
                 child: filtered.isEmpty
-                    ? const Center(
-                        child: Text('No hay movimientos que coincidan.'),
-                      )
+                    ? const Center(child: Text('No hay movimientos.'))
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(24, 8, 24, 96),
                         itemCount: filtered.length,
@@ -102,18 +102,18 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                             subtitle: Text(
                               '${item.warehouseName ?? 'Bodega'} · '
                               '${item.locationName ?? 'Ubicación'}\n'
-                              '${item.notes ?? 'Sin notas'} · ${item.createdAt.toLocal()}',
+                              '${item.documentNumber ?? item.notes ?? 'Movimiento anterior'} · '
+                              '${item.createdAt.toLocal()}',
                             ),
                             isThreeLine: true,
-                            trailing:
-                                item.reason == InventoryReason.reversal ||
-                                    item.reversalOfTransactionId != null
+                            trailing: item.documentId == null
                                 ? null
-                                : IconButton(
-                                    icon: const Icon(Icons.undo),
-                                    tooltip: 'Corregir con reversión',
-                                    onPressed: () =>
-                                        _reverse(context, ref, item),
+                                : TextButton.icon(
+                                    onPressed: () => context.go(
+                                      '/inventory/documents/${item.documentId}',
+                                    ),
+                                    icon: const Icon(Icons.open_in_new),
+                                    label: const Text('Ir al documento'),
                                   ),
                           );
                         },
@@ -133,214 +133,7 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
     InventoryReason.adjustment => 'Ajuste',
     InventoryReason.returnItem => 'Devolución',
     InventoryReason.reversal => 'Reversión',
+    InventoryReason.transferOut => 'Salida por traslado',
+    InventoryReason.transferIn => 'Entrada por traslado',
   };
-
-  Future<void> _add(BuildContext context, WidgetRef ref) async {
-    final products = await ref
-        .read(productApiProvider)
-        .getProducts(const ProductQuery(isActive: true));
-    final warehouses = await ref.read(warehousesProvider.future);
-    if (!context.mounted) return;
-    String? productId = products.isEmpty ? null : products.first.id;
-    final locations = warehouses
-        .expand(
-          (warehouse) => warehouse.locations
-              .where((location) => location.isActive)
-              .map((location) => (warehouse, location)),
-        )
-        .toList();
-    String? locationId = locations.isEmpty
-        ? null
-        : locations
-              .firstWhere(
-                (entry) => entry.$1.isDefault && entry.$2.isDefault,
-                orElse: () => locations.first,
-              )
-              .$2
-              .id;
-    var reason = InventoryReason.purchase;
-    final quantity = TextEditingController();
-    final notes = TextEditingController();
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Registrar movimiento'),
-          content: SizedBox(
-            width: 480,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  initialValue: productId,
-                  decoration: const InputDecoration(labelText: 'Producto'),
-                  items: [
-                    for (final p in products)
-                      DropdownMenuItem(
-                        value: p.id,
-                        child: Text('${p.sku} · ${p.name}'),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() => productId = v),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: locationId,
-                  decoration: const InputDecoration(
-                    labelText: 'Bodega y ubicación',
-                  ),
-                  items: [
-                    for (final entry in locations)
-                      DropdownMenuItem(
-                        value: entry.$2.id,
-                        child: Text('${entry.$1.name} · ${entry.$2.name}'),
-                      ),
-                  ],
-                  onChanged: (value) => setState(() => locationId = value),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<InventoryReason>(
-                  initialValue: reason,
-                  decoration: const InputDecoration(labelText: 'Motivo'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: InventoryReason.purchase,
-                      child: Text('Compra/entrada'),
-                    ),
-                    DropdownMenuItem(
-                      value: InventoryReason.sale,
-                      child: Text('Venta/salida'),
-                    ),
-                    DropdownMenuItem(
-                      value: InventoryReason.adjustment,
-                      child: Text('Ajuste'),
-                    ),
-                    DropdownMenuItem(
-                      value: InventoryReason.returnItem,
-                      child: Text('Devolución'),
-                    ),
-                  ],
-                  onChanged: (v) => setState(() => reason = v!),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: quantity,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    signed: true,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: reason == InventoryReason.adjustment
-                        ? 'Cantidad con signo (ej. -5 o 5)'
-                        : 'Cantidad',
-                    helperText: switch (reason) {
-                      InventoryReason.sale =>
-                        'Se registrará automáticamente como salida negativa.',
-                      InventoryReason.adjustment =>
-                        'Usa signo negativo para restar o positivo para sumar.',
-                      _ => 'Se registrará como entrada positiva.',
-                    },
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: notes,
-                  decoration: const InputDecoration(
-                    labelText: 'Notas',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Registrar'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (accepted == true && productId != null && locationId != null) {
-      final entered = int.tryParse(quantity.text.trim());
-      if (entered == null || entered == 0) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ingresa una cantidad entera distinta de cero.'),
-            ),
-          );
-        }
-      } else {
-        final signed = signedInventoryQuantity(
-          enteredQuantity: entered,
-          reason: reason,
-        );
-        try {
-          await ref
-              .read(inventoryRepositoryProvider)
-              .addTransaction(
-                productId: productId!,
-                quantity: signed,
-                reason: reason,
-                locationId: locationId!,
-                notes: notes.text.trim(),
-              );
-          ref.read(inventoryDataRevisionProvider.notifier).notifyChanged();
-          ref.read(productDataRevisionProvider.notifier).notifyChanged();
-        } catch (error) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('No fue posible registrar el movimiento: $error'),
-              ),
-            );
-          }
-        }
-      }
-    }
-    quantity.dispose();
-    notes.dispose();
-  }
-
-  Future<void> _reverse(
-    BuildContext context,
-    WidgetRef ref,
-    InventoryTransaction item,
-  ) async {
-    final notes = TextEditingController();
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Corregir movimiento'),
-        content: TextField(
-          controller: notes,
-          decoration: const InputDecoration(labelText: 'Motivo obligatorio'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Crear reversión'),
-          ),
-        ],
-      ),
-    );
-    if (accepted == true && notes.text.trim().isNotEmpty) {
-      await ref
-          .read(inventoryRepositoryProvider)
-          .reverseTransaction(item, notes: notes.text.trim());
-      ref.read(inventoryDataRevisionProvider.notifier).notifyChanged();
-      ref.read(productDataRevisionProvider.notifier).notifyChanged();
-    }
-    notes.dispose();
-  }
 }
