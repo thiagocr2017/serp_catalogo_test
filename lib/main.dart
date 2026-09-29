@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/configuration/app_configuration.dart';
 import 'core/configuration/settings_providers.dart';
 import 'core/configuration/settings_repository.dart';
+import 'core/configuration/theme_mode_controller.dart';
 import 'core/navigation/app_router.dart';
 import 'core/device/device_identity.dart';
 import 'modules/product/data/data_sources/supabase_product_data_source.dart';
@@ -22,6 +23,7 @@ import 'modules/sales/data/data_sources/supabase_sales_data_source.dart';
 import 'modules/sales/data/repositories/supabase_sales_repository.dart';
 import 'modules/sales/di/sales_providers.dart';
 import 'modules/sales/sales_module.dart';
+import 'shared/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -75,14 +77,14 @@ class SerpApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider).value ?? ThemeMode.dark;
     return MaterialApp.router(
       title: 'SERP',
       debugShowCheckedModeBanner: false,
       routerConfig: appRouter,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
     );
   }
 }

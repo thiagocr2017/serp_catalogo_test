@@ -39,6 +39,12 @@ test/
 
 `core` y `shared` no son módulos de negocio. Solo deben contener elementos genuinamente reutilizables por varios módulos.
 
+El tema visual vive en `shared/theme`. La preferencia claro/oscuro es una
+configuración local del equipo administrada desde `core/configuration`; no forma
+parte de los datos comerciales ni requiere conexión con Supabase. El modo
+predeterminado es oscuro y todo componente debe utilizar `ColorScheme` salvo
+colores semánticos con contraste explícito.
+
 ## 3. Estructura estándar de cada módulo
 
 ```text

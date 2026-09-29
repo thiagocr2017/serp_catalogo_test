@@ -4,6 +4,10 @@ Aplicación de escritorio Flutter para gestión de productos, inventario base,
 promociones, auditoría y generación local de catálogos PDF. Usa Riverpod 3,
 GoRouter y una instancia local de Supabase/PostgreSQL como fuente de verdad.
 
+La interfaz utiliza modo oscuro de forma predeterminada. El usuario puede
+cambiar entre modo oscuro y claro desde Configuración y la elección se conserva
+localmente en el equipo.
+
 ## Requisitos
 
 - Flutter estable con soporte para macOS.

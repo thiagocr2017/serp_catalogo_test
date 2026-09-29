@@ -1104,7 +1104,9 @@ class _TemplateColorFieldState extends State<_TemplateColorField> {
                     height: 80,
                     decoration: BoxDecoration(
                       color: color,
-                      border: Border.all(color: Colors.black26),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
@@ -1157,7 +1159,9 @@ class _TemplateColorFieldState extends State<_TemplateColorField> {
                 height: 24,
                 decoration: BoxDecoration(
                   color: _color,
-                  border: Border.all(color: Colors.black26),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                   borderRadius: BorderRadius.circular(6),
                 ),
               ),

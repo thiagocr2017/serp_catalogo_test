@@ -599,13 +599,33 @@ class _StockBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = product.isOutOfStock
-        ? ('Agotado', Colors.red)
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final (label, color, background) = product.isOutOfStock
+        ? (
+            'Agotado',
+            dark ? Colors.red.shade200 : Colors.red.shade900,
+            dark
+                ? Colors.red.shade900.withValues(alpha: .35)
+                : Colors.red.shade50,
+          )
         : product.requiresRestock
-        ? ('Stock bajo', Colors.orange)
-        : ('Disponible', Colors.green);
+        ? (
+            'Stock bajo',
+            dark ? Colors.orange.shade200 : Colors.orange.shade900,
+            dark
+                ? Colors.orange.shade900.withValues(alpha: .35)
+                : Colors.orange.shade50,
+          )
+        : (
+            'Disponible',
+            dark ? Colors.green.shade200 : Colors.green.shade900,
+            dark
+                ? Colors.green.shade900.withValues(alpha: .35)
+                : Colors.green.shade50,
+          );
     return Chip(
-      label: Text(label),
+      label: Text(label, style: TextStyle(color: color)),
+      backgroundColor: background,
       side: BorderSide(color: color),
       visualDensity: VisualDensity.compact,
     );

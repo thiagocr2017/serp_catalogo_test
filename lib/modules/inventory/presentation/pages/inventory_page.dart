@@ -90,6 +90,9 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                                   : Colors.red.shade100,
                               child: Icon(
                                 item.quantity > 0 ? Icons.add : Icons.remove,
+                                color: item.quantity > 0
+                                    ? Colors.green.shade900
+                                    : Colors.red.shade900,
                               ),
                             ),
                             title: Text(

@@ -7,6 +7,44 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'business_settings.dart';
 import 'packaging_presentation.dart';
 import 'settings_providers.dart';
+import 'theme_mode_controller.dart';
+
+class _ThemeModeSection extends ConsumerWidget {
+  const _ThemeModeSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(themeModeProvider).value ?? ThemeMode.dark;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Apariencia', style: Theme.of(context).textTheme.headlineSmall),
+        const SizedBox(height: 8),
+        const Text(
+          'El modo oscuro se utiliza inicialmente. Tu elección se conserva en este equipo.',
+        ),
+        const SizedBox(height: 12),
+        SegmentedButton<ThemeMode>(
+          segments: const [
+            ButtonSegment(
+              value: ThemeMode.dark,
+              icon: Icon(Icons.dark_mode_outlined),
+              label: Text('Oscuro'),
+            ),
+            ButtonSegment(
+              value: ThemeMode.light,
+              icon: Icon(Icons.light_mode_outlined),
+              label: Text('Claro'),
+            ),
+          ],
+          selected: {selected},
+          onSelectionChanged: (values) =>
+              ref.read(themeModeProvider.notifier).setThemeMode(values.first),
+        ),
+      ],
+    );
+  }
+}
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -79,6 +117,8 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(28),
     children: [
+      const _ThemeModeSection(),
+      const SizedBox(height: 28),
       Text(
         'Empresa y documentos',
         style: Theme.of(context).textTheme.headlineSmall,
