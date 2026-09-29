@@ -113,8 +113,10 @@ consolidado.
 - El número, fecha, actor, equipo y ubicación predeterminada se completan
   automáticamente.
 - Ajustes: aceptan cantidades positivas y negativas para varios productos.
-- El selector permite buscar productos por SKU, nombre o descripción y muestra
-  el stock actual antes de agregarlos.
+- Cada línea funciona como buscador/autocompletado por SKU, nombre o descripción
+  y muestra el stock actual en los resultados, sin abrir otra ventana.
+- La tecla Tab desde la cantidad de la última línea crea y enfoca la próxima;
+  también existe un botón `+` general y otro por línea.
 - Traslados: el sistema propone la ubicación predeterminada de origen; el
   usuario selecciona la bodega y ubicación exacta de destino. Se generan
   `TRANSFER_OUT` y `TRANSFER_IN` por línea.

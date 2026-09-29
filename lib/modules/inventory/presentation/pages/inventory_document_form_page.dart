@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
@@ -147,7 +148,7 @@ class _InventoryDocumentFormPageState
           Text('Productos', style: Theme.of(context).textTheme.titleLarge),
           const Spacer(),
           OutlinedButton.icon(
-            onPressed: () => setState(() => _lines.add(_DocumentLineDraft())),
+            onPressed: _addLine,
             icon: const Icon(Icons.add),
             label: const Text('Agregar producto'),
           ),
@@ -163,22 +164,41 @@ class _InventoryDocumentFormPageState
               children: [
                 Expanded(
                   flex: 3,
-                  child: _productField(context, products, _lines[index]),
+                  child: _productField(products, _lines[index]),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
-                    controller: _lines[index].quantity,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      signed: true,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: 'Cantidad',
-                      helperText: _type == InventoryDocumentType.adjustment
-                          ? '+ suma / − resta'
-                          : 'Cantidad a trasladar',
+                  child: Focus(
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent &&
+                          event.logicalKey == LogicalKeyboardKey.tab &&
+                          index == _lines.length - 1 &&
+                          _lines[index].productId != null &&
+                          int.tryParse(_lines[index].quantity.text) != null) {
+                        _addLine();
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: TextField(
+                      focusNode: _lines[index].quantityFocus,
+                      controller: _lines[index].quantity,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        signed: true,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Cantidad',
+                        helperText: _type == InventoryDocumentType.adjustment
+                            ? '+ suma / − resta'
+                            : 'Cantidad a trasladar',
+                      ),
                     ),
                   ),
+                ),
+                IconButton(
+                  tooltip: 'Agregar línea después',
+                  onPressed: () => _addLine(afterIndex: index),
+                  icon: const Icon(Icons.add_circle_outline),
                 ),
                 IconButton(
                   tooltip: 'Quitar línea',
@@ -256,121 +276,81 @@ class _InventoryDocumentFormPageState
     );
   }
 
-  Widget _productField(
-    BuildContext context,
-    List<Product> products,
-    _DocumentLineDraft line,
-  ) {
-    final selected = products.where((product) => product.id == line.productId);
-    final product = selected.isEmpty ? null : selected.first;
-    return InkWell(
-      onTap: () async {
-        final value = await _pickProduct(context, products, line.productId);
-        if (value != null) setState(() => line.productId = value);
-      },
-      borderRadius: BorderRadius.circular(4),
-      child: InputDecorator(
-        decoration: const InputDecoration(
-          labelText: 'Producto',
-          prefixIcon: Icon(Icons.search),
-          suffixIcon: Icon(Icons.arrow_drop_down),
-        ),
-        child: Text(
-          product == null
-              ? 'Buscar por código, nombre o descripción'
-              : '${product.sku} · ${product.name}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    );
-  }
-
-  Future<String?> _pickProduct(
-    BuildContext context,
-    List<Product> products,
-    String? selectedId,
-  ) async {
-    final search = TextEditingController();
-    var query = '';
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final normalized = query.trim().toLowerCase();
-          final filtered = products.where((product) {
-            if (normalized.isEmpty) return true;
-            return product.sku.toLowerCase().contains(normalized) ||
-                product.name.toLowerCase().contains(normalized) ||
-                product.description.toLowerCase().contains(normalized);
-          }).toList();
-          return AlertDialog(
-            title: const Text('Buscar producto'),
-            content: SizedBox(
-              width: 680,
-              height: 480,
-              child: Column(
-                children: [
-                  TextField(
-                    controller: search,
-                    autofocus: true,
-                    onChanged: (value) => setDialogState(() => query = value),
-                    decoration: InputDecoration(
-                      labelText: 'Código, nombre o descripción',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: query.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Limpiar búsqueda',
-                              onPressed: () {
-                                search.clear();
-                                setDialogState(() => query = '');
-                              },
-                              icon: const Icon(Icons.close),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? const Center(
-                            child: Text('No se encontraron productos.'),
-                          )
-                        : ListView.builder(
-                            itemCount: filtered.length,
-                            itemBuilder: (context, index) {
-                              final item = filtered[index];
-                              return ListTile(
-                                selected: item.id == selectedId,
-                                title: Text('${item.sku} · ${item.name}'),
-                                subtitle: Text(
-                                  item.description.isEmpty
-                                      ? 'Sin descripción'
-                                      : item.description,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                trailing: Text('Stock ${item.currentStock}'),
-                                onTap: () => Navigator.pop(context, item.id),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar'),
-              ),
-            ],
+  Widget _productField(List<Product> products, _DocumentLineDraft line) =>
+      RawAutocomplete<Product>(
+        textEditingController: line.productSearch,
+        focusNode: line.productFocus,
+        displayStringForOption: (product) => '${product.sku} · ${product.name}',
+        optionsBuilder: (value) {
+          final query = value.text.trim().toLowerCase();
+          if (query.isEmpty) return const Iterable<Product>.empty();
+          return products.where(
+            (product) =>
+                product.sku.toLowerCase().contains(query) ||
+                product.name.toLowerCase().contains(query) ||
+                product.description.toLowerCase().contains(query),
           );
         },
-      ),
-    );
-    search.dispose();
-    return result;
+        onSelected: (product) {
+          line.productId = product.id;
+          line.quantityFocus.requestFocus();
+        },
+        fieldViewBuilder: (context, controller, focusNode, onSubmitted) =>
+            TextField(
+              controller: controller,
+              focusNode: focusNode,
+              onChanged: (_) => line.productId = null,
+              onSubmitted: (_) => onSubmitted(),
+              decoration: const InputDecoration(
+                labelText: 'Producto',
+                hintText: 'Código, nombre o descripción',
+                prefixIcon: Icon(Icons.search),
+              ),
+            ),
+        optionsViewBuilder: (context, onSelected, options) => Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720, maxHeight: 320),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final product = options.elementAt(index);
+                  return ListTile(
+                    title: Text('${product.sku} · ${product.name}'),
+                    subtitle: Text(
+                      product.description.isEmpty
+                          ? 'Sin descripción'
+                          : product.description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: Text('Stock ${product.currentStock}'),
+                    onTap: () => onSelected(product),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+  void _addLine({int? afterIndex}) {
+    final line = _DocumentLineDraft();
+    setState(() {
+      if (afterIndex == null) {
+        _lines.add(line);
+      } else {
+        _lines.insert(afterIndex + 1, line);
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) line.productFocus.requestFocus();
+    });
   }
 
   Warehouse? _defaultWarehouse(List<Warehouse> warehouses) {
@@ -472,7 +452,15 @@ class _InventoryDocumentFormPageState
 
 class _DocumentLineDraft {
   String? productId;
+  final productSearch = TextEditingController();
   final quantity = TextEditingController();
+  final productFocus = FocusNode();
+  final quantityFocus = FocusNode();
 
-  void dispose() => quantity.dispose();
+  void dispose() {
+    productSearch.dispose();
+    quantity.dispose();
+    productFocus.dispose();
+    quantityFocus.dispose();
+  }
 }
