@@ -55,8 +55,7 @@ class BulkProductTransferService {
               ? ''
               : product.packagePriceInCents! / 100,
           product.minimumSaleQuantity,
-          product.packagingPresentationName ??
-              product.packagingType.name.toUpperCase(),
+          product.packagingPresentationName ?? 'Sin presentación',
           product.minimumOrderQuantity,
           product.cbmPerMoq,
           product.factoryCostInCents / 100,
@@ -133,11 +132,12 @@ class BulkProductTransferService {
       try {
         final presentation =
             presentationByName[value('presentacion').toLowerCase()];
-        final packaging = switch (value('presentacion').toUpperCase()) {
-          'CAJA' || 'BOX' => PackagingType.box,
-          'SET' => PackagingType.set,
-          _ => PackagingType.unit,
-        };
+        if (presentation == null) {
+          errors.add(
+            'Fila $line: la presentación "${value('presentacion')}" no existe.',
+          );
+          continue;
+        }
         parsed.add(
           BulkProductRow(
             line: line,
@@ -155,9 +155,8 @@ class BulkProductTransferService {
               value('venta_minima'),
               fallback: 1,
             ),
-            packagingType: packaging,
-            packagingPresentationId: presentation?.id,
-            packagingPresentationName: presentation?.name,
+            packagingPresentationId: presentation.id,
+            packagingPresentationName: presentation.name,
             minimumOrderQuantity: _positiveInt(
               value('moq_recompra'),
               fallback: 1,
@@ -233,9 +232,7 @@ class BulkProductTransferService {
           packagePriceInCents: row.packagePriceInCents,
           minimumOrderQuantity: row.minimumOrderQuantity,
           minimumSaleQuantity: row.minimumSaleQuantity,
-          packagingType: row.packagingType,
-          packagingPresentationId:
-              row.packagingPresentationId ?? existing?.packagingPresentationId,
+          packagingPresentationId: row.packagingPresentationId,
           packagingPresentationName:
               row.packagingPresentationName ??
               existing?.packagingPresentationName,
@@ -330,8 +327,7 @@ class BulkProductRow {
     required this.unitPriceInCents,
     required this.packagePriceInCents,
     required this.minimumSaleQuantity,
-    required this.packagingType,
-    this.packagingPresentationId,
+    required this.packagingPresentationId,
     this.packagingPresentationName,
     required this.minimumOrderQuantity,
     required this.cbmPerMoq,
@@ -351,8 +347,7 @@ class BulkProductRow {
   final int unitPriceInCents;
   final int? packagePriceInCents;
   final int minimumSaleQuantity;
-  final PackagingType packagingType;
-  final String? packagingPresentationId;
+  final String packagingPresentationId;
   final String? packagingPresentationName;
   final int minimumOrderQuantity;
   final double cbmPerMoq;

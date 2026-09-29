@@ -38,9 +38,6 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   String promotionPreviousPriceColor = '#757575';
   String promotionPriceColor = '#C62828';
   String promotionDescriptionColor = '#C62828';
-  String packagingUnitLabel = 'Unidad';
-  String packagingBoxLabel = 'Caja';
-  String packagingSetLabel = 'Set';
   CatalogImageFit imageFit = CatalogImageFit.cover;
   int cards = 4;
   List<Product>? products;
@@ -109,9 +106,6 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
         categoryNames = loadedCategoryNames;
         companyName = settings.companyName;
         paymentMethods = settings.paymentMethods;
-        packagingUnitLabel = settings.packagingUnitLabel;
-        packagingBoxLabel = settings.packagingBoxLabel;
-        packagingSetLabel = settings.packagingSetLabel;
         cards = preferences.cardsPerPage;
         backgroundColor = preferences.backgroundColor;
         cardColor = preferences.cardColor;
@@ -793,11 +787,6 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
           promotionPreviousPriceColor: promotionPreviousPriceColor,
           promotionPriceColor: promotionPriceColor,
           promotionDescriptionColor: promotionDescriptionColor,
-          packagingLabels: {
-            PackagingType.unit: packagingUnitLabel,
-            PackagingType.box: packagingBoxLabel,
-            PackagingType.set: packagingSetLabel,
-          },
           imageFit: imageFit,
         ),
       );

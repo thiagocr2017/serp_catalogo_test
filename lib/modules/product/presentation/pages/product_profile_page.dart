@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/configuration/settings_providers.dart';
 import '../../../inventory/inventory_module.dart';
 import '../../di/product_providers.dart';
 import '../../di/promotion_providers.dart';
@@ -38,14 +37,8 @@ class _Profile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final transactions = ref.watch(productTransactionsProvider(product.id));
     final audit = ref.watch(productAuditProvider(product.id));
-    final settings = ref.watch(businessSettingsProvider).value;
     final packagingLabel =
-        product.packagingPresentationName ??
-        switch (product.packagingType) {
-          PackagingType.unit => settings?.packagingUnitLabel ?? 'Unidad',
-          PackagingType.box => settings?.packagingBoxLabel ?? 'Caja',
-          PackagingType.set => settings?.packagingSetLabel ?? 'Set',
-        };
+        product.packagingPresentationName ?? 'Presentación no disponible';
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -434,7 +427,6 @@ class _Profile extends ConsumerWidget {
         unitPriceInCents: cents(price.text),
         packagePriceInCents: product.packagePriceInCents,
         minimumOrderQuantity: product.minimumOrderQuantity,
-        packagingType: product.packagingType,
         packagingPresentationId: product.packagingPresentationId,
         packagingPresentationName: product.packagingPresentationName,
         cbmPerMoq: product.cbmPerMoq,
@@ -508,7 +500,6 @@ class _Profile extends ConsumerWidget {
           packagePriceInCents: product.packagePriceInCents,
           minimumOrderQuantity: product.minimumOrderQuantity,
           minimumSaleQuantity: product.minimumSaleQuantity,
-          packagingType: product.packagingType,
           packagingPresentationId: product.packagingPresentationId,
           packagingPresentationName: product.packagingPresentationName,
           cbmPerMoq: product.cbmPerMoq,

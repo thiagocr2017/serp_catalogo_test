@@ -8,9 +8,6 @@ class BusinessSettings {
     required this.roundingIncrement,
     required this.companyName,
     required this.paymentMethods,
-    this.packagingUnitLabel = 'Unidad',
-    this.packagingBoxLabel = 'Caja',
-    this.packagingSetLabel = 'Set',
     this.appMode = 'TEST',
     this.isSuperAdmin = false,
   });
@@ -22,9 +19,6 @@ class BusinessSettings {
   final double roundingIncrement;
   final String companyName;
   final String paymentMethods;
-  final String packagingUnitLabel;
-  final String packagingBoxLabel;
-  final String packagingSetLabel;
   final String appMode;
   final bool isSuperAdmin;
 }

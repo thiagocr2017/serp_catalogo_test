@@ -1,5 +1,3 @@
-enum PackagingType { unit, box, set }
-
 enum PromotionType { individual, bulk }
 
 class Product {
@@ -12,8 +10,7 @@ class Product {
     required this.unitPriceInCents,
     required this.minimumOrderQuantity,
     this.minimumSaleQuantity = 1,
-    required this.packagingType,
-    this.packagingPresentationId,
+    required this.packagingPresentationId,
     this.packagingPresentationName,
     required this.cbmPerMoq,
     required this.factoryCostInCents,
@@ -49,8 +46,7 @@ class Product {
   final int? packagePriceInCents;
   final int minimumOrderQuantity;
   final int minimumSaleQuantity;
-  final PackagingType packagingType;
-  final String? packagingPresentationId;
+  final String packagingPresentationId;
   final String? packagingPresentationName;
   final double cbmPerMoq;
   final int factoryCostInCents;

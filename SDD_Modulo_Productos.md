@@ -103,8 +103,7 @@ sus relaciones con promociones masivas y se registra una acción legible en
 | `package_price` | Numeric(18,2), nullable | Precio por paquete o caja. |
 | `min_order_quantity` | Integer | Cantidad mínima de compra. |
 | `minimum_sale_quantity` | Integer | Cantidad mínima que se vende al cliente; es independiente del MOQ de recompra. |
-| `packaging_type` | String | Tipo de empaque: caja, set o unidad. |
-| `packaging_presentation_id` | UUID, FK, nullable | Presentación configurable, por ejemplo Unidad, Caja, Set o Cartón. |
+| `packaging_presentation_id` | UUID, FK | Presentación configurable obligatoria, por ejemplo Unidad, Caja, Set o Cartón. |
 | `cbm_per_moq` | Decimal | Volumen correspondiente al MOQ. |
 | `factory_cost` | Numeric(18,2) | Costo de fábrica antes de importación. |
 | `image_url` | String, nullable | URL de la imagen optimizada en Supabase Storage. |
@@ -301,7 +300,8 @@ Esto no reemplaza las validaciones de la aplicación. La aplicación valida para
 - Crear o editar una promoción, su alcance y sus condiciones particulares se
   ejecuta mediante `save_bulk_promotion` en una única transacción PostgreSQL.
   Cualquier fallo revierte toda la operación y conserva el estado anterior.
-- Las presentaciones dinámicas conviven temporalmente con `packaging_type` para
-  mantener compatibilidad con datos anteriores.
+- Las presentaciones se administran exclusivamente mediante
+  `packaging_presentations`; los productos anteriores fueron migrados y el enum
+  fijo `packaging_type` fue retirado.
 - Configuración de empresa, pagos, logo y preferencias del catálogo permanece
   temporalmente en `core/configuration` hasta definir el módulo Configuración.

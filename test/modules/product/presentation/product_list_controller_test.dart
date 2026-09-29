@@ -50,7 +50,7 @@ class _InMemoryProductRepository implements ProductRepository {
       categoryId: 'category-id',
       unitPriceInCents: 100,
       minimumOrderQuantity: 1,
-      packagingType: PackagingType.unit,
+      packagingPresentationId: 'presentation-id',
       cbmPerMoq: 0.01,
       factoryCostInCents: 50,
       currentStock: 10,

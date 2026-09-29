@@ -7,6 +7,7 @@ import 'package:serp/modules/product/domain/entities/category.dart';
 import 'package:serp/modules/product/services/bulk_product_transfer_service.dart';
 import 'package:serp/modules/product/services/product_image_service.dart';
 import 'package:serp/core/device/device_identity.dart';
+import 'package:serp/core/configuration/packaging_presentation.dart';
 
 void main() {
   test('Excel CSV template can be parsed with BOM and semicolon delimiter', () {
@@ -22,13 +23,16 @@ void main() {
     );
     final csv =
         '${service.templateCsv()}\r\n'
-        'ABC-1;Producto;Descripción;General;;12.50;;1;UNIT;1;0;5;3;2;SI;ABC-1.JPG';
+        'ABC-1;Producto;Descripción;General;;12.50;;1;Unidad;1;0;5;3;2;SI;ABC-1.JPG';
     final preview = service.parseCsv(
       csv,
       categories: const [
         Category(id: 'cat-1', name: 'General', isActive: true),
       ],
       existingProducts: const [],
+      presentations: const [
+        PackagingPresentation(id: 'unit', name: 'Unidad', sortOrder: 0),
+      ],
     );
 
     expect(preview.errors, isEmpty);

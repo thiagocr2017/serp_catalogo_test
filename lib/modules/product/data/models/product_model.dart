@@ -15,9 +15,8 @@ class ProductModel {
       : _moneyToCents(data['package_price']);
   int get minimumOrderQuantity => data['min_order_quantity'] as int;
   int get minimumSaleQuantity => data['minimum_sale_quantity'] as int? ?? 1;
-  String get packagingType => data['packaging_type'] as String;
-  String? get packagingPresentationId =>
-      data['packaging_presentation_id'] as String?;
+  String get packagingPresentationId =>
+      data['packaging_presentation_id'] as String;
   String? get packagingPresentationName =>
       data['packaging_presentation_name'] as String?;
   double get cbmPerMoq => _asDouble(data['cbm_per_moq']);

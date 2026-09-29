@@ -35,7 +35,6 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   final _initialStock = TextEditingController(text: '0');
   final _reorderPoint = TextEditingController(text: '0');
   String? _categoryId;
-  PackagingType _packagingType = PackagingType.unit;
   String? _packagingPresentationId;
   bool _saving = false;
   double _imagePositionX = 0.5;
@@ -80,7 +79,6 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       _factoryCost.text = (product.factoryCostInCents / 100).toStringAsFixed(2);
       _reorderPoint.text = '${product.reorderPoint}';
       _categoryId = product.categoryId;
-      _packagingType = product.packagingType;
       _packagingPresentationId = product.packagingPresentationId;
       _imagePositionX = product.imagePositionX;
       _imagePositionY = product.imagePositionY;
@@ -148,8 +146,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
             : _cents(_packagePrice.text),
         minimumOrderQuantity: int.parse(_moq.text),
         minimumSaleQuantity: int.parse(_minimumSaleQuantity.text),
-        packagingType: _packagingType,
-        packagingPresentationId: _packagingPresentationId,
+        packagingPresentationId: _packagingPresentationId!,
         packagingPresentationName: ref
             .read(packagingPresentationsProvider)
             .value

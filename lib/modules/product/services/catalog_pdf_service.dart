@@ -32,11 +32,6 @@ class CatalogPdfOptions {
     this.promotionPreviousPriceColor = '#757575',
     this.promotionPriceColor = '#C62828',
     this.promotionDescriptionColor = '#C62828',
-    this.packagingLabels = const {
-      PackagingType.unit: 'Unidad',
-      PackagingType.box: 'Caja',
-      PackagingType.set: 'Set',
-    },
     this.imageFit = CatalogImageFit.cover,
   });
   final String companyName;
@@ -57,7 +52,6 @@ class CatalogPdfOptions {
   final String promotionPreviousPriceColor;
   final String promotionPriceColor;
   final String promotionDescriptionColor;
-  final Map<PackagingType, String> packagingLabels;
   final CatalogImageFit imageFit;
 }
 
@@ -280,10 +274,7 @@ class CatalogPdfService {
                     promotionPreviousPriceColor: promotionPreviousPrice,
                     promotionPriceColor: promotionPrice,
                     promotionDescriptionColor: promotionDescription,
-                    packagingLabel:
-                        product.packagingPresentationName ??
-                        options.packagingLabels[product.packagingType] ??
-                        product.packagingType.name,
+                    packagingLabel: product.packagingPresentationName,
                     imageFit: options.imageFit,
                   ),
                 ),
@@ -400,14 +391,7 @@ class CatalogPdfService {
                                         promotionDescriptionColor,
                                     packagingLabel:
                                         products[row * columns + column]
-                                            .packagingPresentationName ??
-                                        options.packagingLabels[products[row *
-                                                    columns +
-                                                column]
-                                            .packagingType] ??
-                                        products[row * columns + column]
-                                            .packagingType
-                                            .name,
+                                            .packagingPresentationName,
                                     imageFit: options.imageFit,
                                   )
                                 : pw.SizedBox(),
@@ -558,7 +542,7 @@ class CatalogPdfService {
                     pw.Text(product.description, maxLines: 4),
                     pw.Spacer(),
                     pw.Text(
-                      'Presentación ${packagingLabel ?? product.packagingType.name} - Venta mínima ${product.minimumSaleQuantity}',
+                      'Presentación ${packagingLabel ?? 'No disponible'} - Venta mínima ${product.minimumSaleQuantity}',
                       style: pw.TextStyle(fontSize: 9, color: secondary),
                     ),
                     if (hasPromotion)
@@ -682,7 +666,7 @@ class CatalogPdfService {
             ],
             if (compact) pw.SizedBox(height: 6) else pw.Spacer(),
             pw.Text(
-              'Presentación ${packagingLabel ?? product.packagingType.name} - Venta mínima ${product.minimumSaleQuantity}',
+              'Presentación ${packagingLabel ?? 'No disponible'} - Venta mínima ${product.minimumSaleQuantity}',
               maxLines: 1,
               style: pw.TextStyle(fontSize: dense ? 7 : 9, color: secondary),
             ),
