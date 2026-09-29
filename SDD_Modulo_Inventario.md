@@ -113,8 +113,11 @@ consolidado.
 - El número, fecha, actor, equipo y ubicación predeterminada se completan
   automáticamente.
 - Ajustes: aceptan cantidades positivas y negativas para varios productos.
-- Traslados: el usuario selecciona bodegas; el sistema elige sus ubicaciones
-  predeterminadas y genera `TRANSFER_OUT` y `TRANSFER_IN` por línea.
+- El selector permite buscar productos por SKU, nombre o descripción y muestra
+  el stock actual antes de agregarlos.
+- Traslados: el sistema propone la ubicación predeterminada de origen; el
+  usuario selecciona la bodega y ubicación exacta de destino. Se generan
+  `TRANSFER_OUT` y `TRANSFER_IN` por línea.
 - Documento, líneas, movimientos, saldos y stock global se confirman en una
   única transacción PostgreSQL.
 - El stock inicial creado manualmente o por importación genera un documento de

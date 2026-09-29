@@ -20,6 +20,7 @@ class _InventoryDocumentFormPageState
   InventoryDocumentType _type = InventoryDocumentType.adjustment;
   String? _originWarehouseId;
   String? _destinationWarehouseId;
+  String? _destinationLocationId;
   final _reference = TextEditingController();
   final _notes = TextEditingController();
   final _lines = <_DocumentLineDraft>[_DocumentLineDraft()];
@@ -47,6 +48,10 @@ class _InventoryDocumentFormPageState
         data: (items) {
           _destinationWarehouseId ??= _defaultWarehouse(items)?.id;
           _originWarehouseId ??= _defaultWarehouse(items)?.id;
+          _destinationLocationId ??= _defaultLocation(
+            items,
+            _destinationWarehouseId,
+          )?.id;
           return FutureBuilder<List<Product>>(
             future: ref
                 .read(productApiProvider)
@@ -102,11 +107,26 @@ class _InventoryDocumentFormPageState
             ? 'Bodega de destino'
             : 'Bodega',
         value: _destinationWarehouseId,
-        onChanged: (value) => setState(() => _destinationWarehouseId = value),
+        onChanged: (value) => setState(() {
+          _destinationWarehouseId = value;
+          _destinationLocationId = _defaultLocation(warehouses, value)?.id;
+        }),
+      ),
+      const SizedBox(height: 12),
+      _locationField(
+        warehouses,
+        warehouseId: _destinationWarehouseId,
+        value: _destinationLocationId,
+        label: _type == InventoryDocumentType.transfer
+            ? 'Ubicación de destino'
+            : 'Ubicación',
+        onChanged: (value) => setState(() => _destinationLocationId = value),
       ),
       const SizedBox(height: 8),
       Text(
-        'La ubicación predeterminada de cada bodega se asignará automáticamente.',
+        _type == InventoryDocumentType.transfer
+            ? 'El origen usa automáticamente su ubicación predeterminada. El destino puede elegirse.'
+            : 'La ubicación predeterminada se propone automáticamente y puedes cambiarla.',
         style: Theme.of(context).textTheme.bodySmall,
       ),
       const SizedBox(height: 20),
@@ -143,18 +163,7 @@ class _InventoryDocumentFormPageState
               children: [
                 Expanded(
                   flex: 3,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _lines[index].productId,
-                    decoration: const InputDecoration(labelText: 'Producto'),
-                    items: [
-                      for (final product in products)
-                        DropdownMenuItem(
-                          value: product.id,
-                          child: Text('${product.sku} · ${product.name}'),
-                        ),
-                    ],
-                    onChanged: (value) => _lines[index].productId = value,
-                  ),
+                  child: _productField(context, products, _lines[index]),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -219,6 +228,151 @@ class _InventoryDocumentFormPageState
     onChanged: onChanged,
   );
 
+  Widget _locationField(
+    List<Warehouse> warehouses, {
+    required String? warehouseId,
+    required String? value,
+    required String label,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final locations = warehouses
+        .where((warehouse) => warehouse.id == warehouseId)
+        .expand((warehouse) => warehouse.locations)
+        .where((location) => location.isActive)
+        .toList();
+    return DropdownButtonFormField<String>(
+      initialValue: locations.any((location) => location.id == value)
+          ? value
+          : null,
+      decoration: InputDecoration(labelText: label),
+      items: [
+        for (final location in locations)
+          DropdownMenuItem(
+            value: location.id,
+            child: Text('${location.code} · ${location.name}'),
+          ),
+      ],
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _productField(
+    BuildContext context,
+    List<Product> products,
+    _DocumentLineDraft line,
+  ) {
+    final selected = products.where((product) => product.id == line.productId);
+    final product = selected.isEmpty ? null : selected.first;
+    return InkWell(
+      onTap: () async {
+        final value = await _pickProduct(context, products, line.productId);
+        if (value != null) setState(() => line.productId = value);
+      },
+      borderRadius: BorderRadius.circular(4),
+      child: InputDecorator(
+        decoration: const InputDecoration(
+          labelText: 'Producto',
+          prefixIcon: Icon(Icons.search),
+          suffixIcon: Icon(Icons.arrow_drop_down),
+        ),
+        child: Text(
+          product == null
+              ? 'Buscar por código, nombre o descripción'
+              : '${product.sku} · ${product.name}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _pickProduct(
+    BuildContext context,
+    List<Product> products,
+    String? selectedId,
+  ) async {
+    final search = TextEditingController();
+    var query = '';
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final normalized = query.trim().toLowerCase();
+          final filtered = products.where((product) {
+            if (normalized.isEmpty) return true;
+            return product.sku.toLowerCase().contains(normalized) ||
+                product.name.toLowerCase().contains(normalized) ||
+                product.description.toLowerCase().contains(normalized);
+          }).toList();
+          return AlertDialog(
+            title: const Text('Buscar producto'),
+            content: SizedBox(
+              width: 680,
+              height: 480,
+              child: Column(
+                children: [
+                  TextField(
+                    controller: search,
+                    autofocus: true,
+                    onChanged: (value) => setDialogState(() => query = value),
+                    decoration: InputDecoration(
+                      labelText: 'Código, nombre o descripción',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: query.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Limpiar búsqueda',
+                              onPressed: () {
+                                search.clear();
+                                setDialogState(() => query = '');
+                              },
+                              icon: const Icon(Icons.close),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? const Center(
+                            child: Text('No se encontraron productos.'),
+                          )
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              final item = filtered[index];
+                              return ListTile(
+                                selected: item.id == selectedId,
+                                title: Text('${item.sku} · ${item.name}'),
+                                subtitle: Text(
+                                  item.description.isEmpty
+                                      ? 'Sin descripción'
+                                      : item.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: Text('Stock ${item.currentStock}'),
+                                onTap: () => Navigator.pop(context, item.id),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    search.dispose();
+    return result;
+  }
+
   Warehouse? _defaultWarehouse(List<Warehouse> warehouses) {
     if (warehouses.isEmpty) return null;
     return warehouses.firstWhere(
@@ -227,7 +381,33 @@ class _InventoryDocumentFormPageState
     );
   }
 
+  InventoryLocation? _defaultLocation(
+    List<Warehouse> warehouses,
+    String? warehouseId,
+  ) {
+    final matching = warehouses.where(
+      (warehouse) => warehouse.id == warehouseId,
+    );
+    if (matching.isEmpty) return null;
+    final locations = matching.first.locations
+        .where((location) => location.isActive)
+        .toList();
+    if (locations.isEmpty) return null;
+    return locations.firstWhere(
+      (location) => location.isDefault,
+      orElse: () => locations.first,
+    );
+  }
+
   Future<void> _save(BuildContext context) async {
+    if (_destinationWarehouseId == null || _destinationLocationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecciona la bodega y ubicación de destino.'),
+        ),
+      );
+      return;
+    }
     final lines = <InventoryDocumentLineCommand>[];
     for (final draft in _lines) {
       final quantity = int.tryParse(draft.quantity.text.trim());
@@ -270,6 +450,7 @@ class _InventoryDocumentFormPageState
                   ? _originWarehouseId
                   : null,
               destinationWarehouseId: _destinationWarehouseId,
+              destinationLocationId: _destinationLocationId,
               externalReference: _reference.text.trim(),
               notes: _notes.text.trim(),
             ),
