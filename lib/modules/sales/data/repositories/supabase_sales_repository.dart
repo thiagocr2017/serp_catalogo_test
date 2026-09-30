@@ -11,8 +11,8 @@ class SupabaseSalesRepository implements SalesRepository {
   final DeviceIdentity _device;
 
   @override
-  Future<List<SalesAgentDto>> getAgents() async =>
-      (await _source.getActiveAgents())
+  Future<List<SalesAgentDto>> getAgents(SalesAgentQuery query) async =>
+      (await _source.getAgents(activeOnly: query.activeOnly))
           .map(SalesAgentModel.fromJson)
           .map((model) => model.toApi())
           .toList();

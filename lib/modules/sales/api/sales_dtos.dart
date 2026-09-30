@@ -14,3 +14,10 @@ class SalesAgentDto {
   final bool isActive;
   final int version;
 }
+
+/// Define si una consulta incluye agentes desactivados.
+class SalesAgentQuery {
+  const SalesAgentQuery({this.activeOnly = false});
+
+  final bool activeOnly;
+}

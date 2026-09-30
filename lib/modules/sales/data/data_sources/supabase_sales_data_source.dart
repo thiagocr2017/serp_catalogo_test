@@ -5,11 +5,15 @@ class SupabaseSalesDataSource {
 
   final SupabaseClient client;
 
-  Future<List<Map<String, dynamic>>> getActiveAgents() async => await client
-      .from('catalog_agents')
-      .select()
-      .eq('is_active', true)
-      .order('name');
+  Future<List<Map<String, dynamic>>> getAgents({
+    required bool activeOnly,
+  }) async {
+    final table = client.from('catalog_agents');
+    if (activeOnly) {
+      return await table.select().eq('is_active', true).order('name');
+    }
+    return await table.select().order('name');
+  }
 
   Future<Map<String, dynamic>> createAgent(Map<String, dynamic> values) async =>
       await client.from('catalog_agents').insert(values).select().single();

@@ -51,7 +51,8 @@ class _FakeSalesApi implements SalesApi {
       );
 
   @override
-  Future<List<SalesAgentDto>> getAgents() async => const [];
+  Future<List<SalesAgentDto>> getAgents(SalesAgentQuery query) async =>
+      const [];
 
   @override
   Future<SalesAgentDto> createLegacyAgent({

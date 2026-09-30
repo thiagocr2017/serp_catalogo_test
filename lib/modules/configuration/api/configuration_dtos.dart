@@ -41,7 +41,8 @@ class CatalogPreferencesDto {
     required this.promotionPriceColor,
     required this.promotionDescriptionColor,
     required this.imageFit,
-    required this.logoUrl,
+    required this.logoObjectName,
+    required this.logoVersion,
     required this.selectedAgentId,
     required this.version,
   });
@@ -59,9 +60,46 @@ class CatalogPreferencesDto {
   final String promotionPriceColor;
   final String promotionDescriptionColor;
   final String imageFit;
-  final String? logoUrl;
+
+  /// Clave canónica del objeto de Storage; una URL es un detalle del adaptador.
+  final String? logoObjectName;
+  final int logoVersion;
   final String? selectedAgentId;
   final int version;
+}
+
+/// Valores de diseño que una pantalla puede actualizar en bloque.
+/// No contiene logo, agente seleccionado ni metadatos de concurrencia.
+class CatalogDesignPreferencesInput {
+  const CatalogDesignPreferencesInput({
+    required this.cardsPerPage,
+    required this.backgroundColor,
+    required this.cardColor,
+    required this.designAccentColor,
+    required this.textColor,
+    required this.highlightTextColor,
+    required this.secondaryTextColor,
+    required this.promotionColor,
+    required this.promotionTextColor,
+    required this.promotionPreviousPriceColor,
+    required this.promotionPriceColor,
+    required this.promotionDescriptionColor,
+    required this.imageFit,
+  });
+
+  final int cardsPerPage;
+  final String backgroundColor;
+  final String cardColor;
+  final String designAccentColor;
+  final String textColor;
+  final String highlightTextColor;
+  final String secondaryTextColor;
+  final String promotionColor;
+  final String promotionTextColor;
+  final String promotionPreviousPriceColor;
+  final String promotionPriceColor;
+  final String promotionDescriptionColor;
+  final String imageFit;
 }
 
 class PackagingPresentationDto {

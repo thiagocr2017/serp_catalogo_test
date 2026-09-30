@@ -74,7 +74,9 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     final settings = await ref.read(businessSettingsProvider.future);
     final settingsRepository = ref.read(configurationRepositoryProvider);
     final preferences = await settingsRepository.getCatalogPreferences();
-    final agents = await ref.read(salesApiProvider).getAgents();
+    final agents = await ref
+        .read(salesApiProvider)
+        .getAgents(const SalesAgentQuery(activeOnly: true));
     final storedLogo = await settingsRepository.downloadCatalogLogo(
       preferences.logoUrl,
     );

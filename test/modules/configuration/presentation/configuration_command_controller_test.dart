@@ -97,7 +97,8 @@ const _preferences = CatalogPreferencesDto(
   promotionPriceColor: '#C62828',
   promotionDescriptionColor: '#C62828',
   imageFit: 'cover',
-  logoUrl: null,
+  logoObjectName: null,
+  logoVersion: 2,
   selectedAgentId: null,
   version: 7,
 );

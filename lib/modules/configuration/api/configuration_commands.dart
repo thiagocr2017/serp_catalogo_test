@@ -50,12 +50,12 @@ String _validatedDecimal(String value, {required String field}) {
 
 class SaveCatalogPreferencesCommand {
   const SaveCatalogPreferencesCommand({
-    required this.preferences,
+    required this.values,
     required this.expectedVersion,
     required this.identity,
   });
 
-  final CatalogPreferencesDto preferences;
+  final CatalogDesignPreferencesInput values;
   final int expectedVersion;
   final IdentityContext identity;
 }

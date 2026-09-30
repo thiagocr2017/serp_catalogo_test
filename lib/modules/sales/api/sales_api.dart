@@ -10,7 +10,7 @@ export 'sales_dtos.dart';
 typedef SalesAgent = SalesAgentDto;
 
 abstract interface class SalesApi {
-  Future<List<SalesAgentDto>> getAgents();
+  Future<List<SalesAgentDto>> getAgents(SalesAgentQuery query);
 
   Future<SalesAgentDto> createAgent(CreateSalesAgentCommand command);
   Future<SalesAgentDto> updateAgent(UpdateSalesAgentCommand command);
@@ -39,5 +39,5 @@ final salesApiProvider = Provider<SalesApi>(
 );
 
 final salesAgentsProvider = FutureProvider<List<SalesAgentDto>>(
-  (ref) => ref.watch(salesApiProvider).getAgents(),
+  (ref) => ref.watch(salesApiProvider).getAgents(const SalesAgentQuery()),
 );
