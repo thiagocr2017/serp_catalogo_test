@@ -18,5 +18,11 @@ class SalesAgentModel {
         phone: json['phone'] as String,
       );
 
-  SalesAgent toApi() => SalesAgent(id: id, name: name, phone: phone);
+  SalesAgentDto toApi() => SalesAgentDto(
+    id: id,
+    name: name,
+    phone: phone,
+    isActive: true,
+    version: 0,
+  );
 }

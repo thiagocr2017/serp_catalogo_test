@@ -5,30 +5,27 @@ import 'package:serp/modules/configuration/presentation/controllers/configuratio
 
 class _FakeConfigurationApi implements ConfigurationApi {
   SaveBusinessSettingsCommand? savedCommand;
+  CreatePackagingPresentationCommand? createPresentationCommand;
+  UpdatePackagingPresentationCommand? updatePresentationCommand;
 
   @override
-  Future<bool> clearSelectedCatalogAgent(
-    ClearSelectedCatalogAgentCommand command,
-  ) async => true;
+  Future<CatalogPreferencesDto> getCatalogPreferences() async => _preferences;
 
   @override
-  Future<CatalogPreferences> getCatalogPreferences() async =>
-      const CatalogPreferences();
-
-  @override
-  Future<List<PackagingPresentation>> getPackagingPresentations() async =>
+  Future<List<PackagingPresentationDto>> getPackagingPresentations() async =>
       const [];
 
   @override
-  Future<BusinessSettings> getBusinessSettings() async => _settings;
+  Future<BusinessSettingsDto> getBusinessSettings() async => _settings;
 
   @override
-  Future<CatalogLogoReference> replaceCatalogLogo(
+  Future<CatalogLogoReferenceDto> replaceCatalogLogo(
     ReplaceCatalogLogoCommand command,
-  ) async => const CatalogLogoReference(objectName: 'catalog-logo', version: 1);
+  ) async =>
+      const CatalogLogoReferenceDto(objectName: 'catalog-logo', version: 1);
 
   @override
-  Future<BusinessSettings> saveBusinessSettings(
+  Future<BusinessSettingsDto> saveBusinessSettings(
     SaveBusinessSettingsCommand command,
   ) async {
     savedCommand = command;
@@ -36,47 +33,86 @@ class _FakeConfigurationApi implements ConfigurationApi {
   }
 
   @override
-  Future<CatalogPreferences> saveCatalogPreferences(
+  Future<CatalogPreferencesDto> saveCatalogPreferences(
     SaveCatalogPreferencesCommand command,
-  ) async => command.preferences;
+  ) async => _preferences;
 
   @override
-  Future<PackagingPresentation> savePackagingPresentation(
-    SavePackagingPresentationCommand command,
-  ) async => const PackagingPresentation(
-    id: 'presentation-1',
-    name: 'Caja',
-    sortOrder: 0,
-  );
+  Future<PackagingPresentationDto> createPackagingPresentation(
+    CreatePackagingPresentationCommand command,
+  ) async {
+    createPresentationCommand = command;
+    return const PackagingPresentationDto(
+      id: 'presentation-1',
+      name: 'Caja',
+      sortOrder: 0,
+      isActive: true,
+      version: 3,
+    );
+  }
 
   @override
-  Future<CatalogPreferences> selectCatalogAgent(
+  Future<PackagingPresentationDto> updatePackagingPresentation(
+    UpdatePackagingPresentationCommand command,
+  ) async {
+    updatePresentationCommand = command;
+    return const PackagingPresentationDto(
+      id: 'presentation-1',
+      name: 'Caja actualizada',
+      sortOrder: 0,
+      isActive: true,
+      version: 4,
+    );
+  }
+
+  @override
+  Future<CatalogPreferencesDto> selectCatalogAgent(
     SelectCatalogAgentCommand command,
-  ) async => const CatalogPreferences();
+  ) async => _preferences;
 }
 
-const _settings = BusinessSettings(
+const _settings = BusinessSettingsDto(
   defaultCurrency: 'USD',
   decimalPlaces: 2,
-  taxPercentage: 0,
+  taxPercentage: '0.00',
   pricesIncludeTax: false,
   roundingMode: 'HALF_UP',
-  roundingIncrement: 0.01,
+  roundingIncrement: '0.01',
   companyName: 'SERP',
   paymentMethods: '',
+  version: 5,
+);
+
+const _preferences = CatalogPreferencesDto(
+  cardsPerPage: 4,
+  backgroundColor: '#FFFFFF',
+  cardColor: '#FFFFFF',
+  designAccentColor: '#3949AB',
+  textColor: '#111111',
+  highlightTextColor: '#1565C0',
+  secondaryTextColor: '#616161',
+  promotionColor: '#C62828',
+  promotionTextColor: '#FFFFFF',
+  promotionPreviousPriceColor: '#757575',
+  promotionPriceColor: '#C62828',
+  promotionDescriptionColor: '#C62828',
+  imageFit: 'cover',
+  logoUrl: null,
+  selectedAgentId: null,
+  version: 7,
 );
 
 void main() {
   test('controller forwards an optimistic-version business command', () async {
     final api = _FakeConfigurationApi();
     final controller = ConfigurationCommandController(api);
-    const command = SaveBusinessSettingsCommand(
+    final command = SaveBusinessSettingsCommand(
       defaultCurrency: 'USD',
       decimalPlaces: 2,
-      taxPercentage: 13,
+      taxPercentage: '13.00',
       pricesIncludeTax: true,
       roundingMode: 'HALF_UP',
-      roundingIncrement: 0.01,
+      roundingIncrement: '0.01',
       companyName: 'Empresa',
       paymentMethods: 'Transferencia',
       expectedVersion: 4,
@@ -87,9 +123,69 @@ void main() {
       ),
     );
 
-    await controller.saveBusinessSettings(command);
+    final updated = await controller.saveBusinessSettings(command);
 
     expect(api.savedCommand, same(command));
     expect(api.savedCommand!.expectedVersion, 4);
+    expect(updated.version, 5);
+    expect(command.taxPercentage, '13.00');
+    expect(command.roundingIncrement, '0.01');
+  });
+
+  test(
+    'presentation commands keep creation idempotency and edit version',
+    () async {
+      final api = _FakeConfigurationApi();
+      final controller = ConfigurationCommandController(api);
+      const identity = IdentityContext(
+        actorName: 'Equipo local',
+        deviceName: 'Mac',
+        deviceIdentifier: 'device-001',
+      );
+      const create = CreatePackagingPresentationCommand(
+        commandId: 'presentation-command-001',
+        name: 'Caja',
+        identity: identity,
+      );
+      const update = UpdatePackagingPresentationCommand(
+        id: 'presentation-1',
+        name: 'Caja actualizada',
+        expectedVersion: 3,
+        identity: identity,
+      );
+
+      final created = await controller.createPackagingPresentation(create);
+      final updated = await controller.updatePackagingPresentation(update);
+
+      expect(api.createPresentationCommand, same(create));
+      expect(api.updatePresentationCommand, same(update));
+      expect(created.version, 3);
+      expect(updated.version, 4);
+      expect(update.expectedVersion, 3);
+    },
+  );
+
+  test('persistent decimal commands reject non-normalized values', () {
+    const identity = IdentityContext(
+      actorName: 'Equipo local',
+      deviceName: 'Mac',
+      deviceIdentifier: 'device-001',
+    );
+
+    expect(
+      () => SaveBusinessSettingsCommand(
+        defaultCurrency: 'USD',
+        decimalPlaces: 2,
+        taxPercentage: '13,00',
+        pricesIncludeTax: true,
+        roundingMode: 'HALF_UP',
+        roundingIncrement: '0.01',
+        companyName: 'Empresa',
+        paymentMethods: '',
+        expectedVersion: 1,
+        identity: identity,
+      ),
+      throwsArgumentError,
+    );
   });
 }

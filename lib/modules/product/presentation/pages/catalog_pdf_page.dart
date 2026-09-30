@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 
 import '../../../configuration/configuration_module.dart';
+import '../../../configuration/di/configuration_providers.dart';
 import '../../../sales/sales_module.dart';
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';

@@ -11,14 +11,14 @@ class SupabaseSalesRepository implements SalesRepository {
   final DeviceIdentity _device;
 
   @override
-  Future<List<SalesAgent>> getAgents() async =>
+  Future<List<SalesAgentDto>> getAgents() async =>
       (await _source.getActiveAgents())
           .map(SalesAgentModel.fromJson)
           .map((model) => model.toApi())
           .toList();
 
   @override
-  Future<SalesAgent> createAgent({
+  Future<SalesAgentDto> createLegacyAgent({
     required String name,
     required String phone,
   }) async => SalesAgentModel.fromJson(
@@ -32,7 +32,7 @@ class SupabaseSalesRepository implements SalesRepository {
   ).toApi();
 
   @override
-  Future<SalesAgent> updateAgent({
+  Future<SalesAgentDto> updateLegacyAgent({
     required String id,
     required String name,
     required String phone,
@@ -45,8 +45,24 @@ class SupabaseSalesRepository implements SalesRepository {
   ).toApi();
 
   @override
-  Future<void> deactivateAgent(String id) =>
+  Future<void> deactivateLegacyAgent(String id) =>
       _source.deactivateAgent(id, {'is_active': false, ..._updateMetadata});
+
+  @override
+  Future<SalesAgentDto> createAgent(CreateSalesAgentCommand command) =>
+      throw UnsupportedError('Los comandos de agentes se habilitarán en 1B.3.');
+
+  @override
+  Future<SalesAgentDto> updateAgent(UpdateSalesAgentCommand command) =>
+      throw UnsupportedError('Los comandos de agentes se habilitarán en 1B.3.');
+
+  @override
+  Future<SalesAgentDto> activateAgent(ActivateSalesAgentCommand command) =>
+      throw UnsupportedError('Los comandos de agentes se habilitarán en 1B.3.');
+
+  @override
+  Future<SalesAgentDto> deactivateAgent(DeactivateSalesAgentCommand command) =>
+      throw UnsupportedError('Los comandos de agentes se habilitarán en 1B.3.');
 
   Map<String, dynamic> get _updateMetadata => {
     'updated_at': DateTime.now().toUtc().toIso8601String(),

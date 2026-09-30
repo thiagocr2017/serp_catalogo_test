@@ -1,43 +1,43 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'sales_commands.dart';
+import 'sales_dtos.dart';
 
 export 'sales_commands.dart';
+export 'sales_dtos.dart';
 
-class SalesAgent {
-  const SalesAgent({required this.id, required this.name, required this.phone});
-
-  final String id;
-  final String name;
-  final String phone;
-}
-
-/// Contrato de comandos que sustituirá gradualmente la API heredada en 1B.3.
-abstract interface class SalesCommandApi {
-  Future<SalesAgent> createAgentCommand(CreateSalesAgentCommand command);
-  Future<SalesAgent> updateAgentCommand(UpdateSalesAgentCommand command);
-  Future<SalesAgent> activateAgentCommand(ActivateSalesAgentCommand command);
-  Future<void> deactivateAgentCommand(DeactivateSalesAgentCommand command);
-}
+/// Puente de tipo para consumidores heredados; se elimina en 1B.3.
+typedef SalesAgent = SalesAgentDto;
 
 abstract interface class SalesApi {
-  Future<List<SalesAgent>> getAgents();
+  Future<List<SalesAgentDto>> getAgents();
 
-  Future<SalesAgent> createAgent({required String name, required String phone});
+  Future<SalesAgentDto> createAgent(CreateSalesAgentCommand command);
+  Future<SalesAgentDto> updateAgent(UpdateSalesAgentCommand command);
+  Future<SalesAgentDto> activateAgent(ActivateSalesAgentCommand command);
+  Future<SalesAgentDto> deactivateAgent(DeactivateSalesAgentCommand command);
 
-  Future<SalesAgent> updateAgent({
+  /// Puente temporal para la pantalla heredada; se elimina al migrarla en 1B.3.
+  Future<SalesAgentDto> createLegacyAgent({
+    required String name,
+    required String phone,
+  });
+
+  /// Puente temporal para la pantalla heredada; se elimina al migrarla en 1B.3.
+  Future<SalesAgentDto> updateLegacyAgent({
     required String id,
     required String name,
     required String phone,
   });
 
-  Future<void> deactivateAgent(String id);
+  /// Puente temporal para la pantalla heredada; se elimina al migrarla en 1B.3.
+  Future<void> deactivateLegacyAgent(String id);
 }
 
 final salesApiProvider = Provider<SalesApi>(
   (ref) => throw StateError('SalesApi must be overridden.'),
 );
 
-final salesAgentsProvider = FutureProvider<List<SalesAgent>>(
+final salesAgentsProvider = FutureProvider<List<SalesAgentDto>>(
   (ref) => ref.watch(salesApiProvider).getAgents(),
 );

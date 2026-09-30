@@ -7,21 +7,23 @@ class ConfigurationCommandController {
 
   final ConfigurationApi _api;
 
-  Future<void> saveBusinessSettings(SaveBusinessSettingsCommand command) async {
-    await _api.saveBusinessSettings(command);
-  }
+  Future<BusinessSettingsDto> saveBusinessSettings(
+    SaveBusinessSettingsCommand command,
+  ) => _api.saveBusinessSettings(command);
 
-  Future<void> saveCatalogPreferences(
+  Future<CatalogPreferencesDto> saveCatalogPreferences(
     SaveCatalogPreferencesCommand command,
-  ) async {
-    await _api.saveCatalogPreferences(command);
-  }
+  ) => _api.saveCatalogPreferences(command);
 
-  Future<void> selectCatalogAgent(SelectCatalogAgentCommand command) async {
-    await _api.selectCatalogAgent(command);
-  }
+  Future<CatalogPreferencesDto> selectCatalogAgent(
+    SelectCatalogAgentCommand command,
+  ) => _api.selectCatalogAgent(command);
 
-  Future<bool> clearSelectedCatalogAgent(
-    ClearSelectedCatalogAgentCommand command,
-  ) => _api.clearSelectedCatalogAgent(command);
+  Future<PackagingPresentationDto> createPackagingPresentation(
+    CreatePackagingPresentationCommand command,
+  ) => _api.createPackagingPresentation(command);
+
+  Future<PackagingPresentationDto> updatePackagingPresentation(
+    UpdatePackagingPresentationCommand command,
+  ) => _api.updatePackagingPresentation(command);
 }

@@ -4,17 +4,17 @@ import '../../api/sales_api.dart';
 class SalesAgentCommandController {
   const SalesAgentCommandController(this._api);
 
-  final SalesCommandApi _api;
+  final SalesApi _api;
 
-  Future<SalesAgent> create(CreateSalesAgentCommand command) =>
-      _api.createAgentCommand(command);
+  Future<SalesAgentDto> create(CreateSalesAgentCommand command) =>
+      _api.createAgent(command);
 
-  Future<SalesAgent> update(UpdateSalesAgentCommand command) =>
-      _api.updateAgentCommand(command);
+  Future<SalesAgentDto> update(UpdateSalesAgentCommand command) =>
+      _api.updateAgent(command);
 
-  Future<SalesAgent> activate(ActivateSalesAgentCommand command) =>
-      _api.activateAgentCommand(command);
+  Future<SalesAgentDto> activate(ActivateSalesAgentCommand command) =>
+      _api.activateAgent(command);
 
-  Future<void> deactivate(DeactivateSalesAgentCommand command) =>
-      _api.deactivateAgentCommand(command);
+  Future<SalesAgentDto> deactivate(DeactivateSalesAgentCommand command) =>
+      _api.deactivateAgent(command);
 }

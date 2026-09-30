@@ -1,32 +1,51 @@
 import 'dart:typed_data';
 
 import '../../../core/identity/identity_context.dart';
-import '../domain/entities/catalog_preferences.dart';
+import 'configuration_dtos.dart';
 
 class SaveBusinessSettingsCommand {
-  const SaveBusinessSettingsCommand({
+  SaveBusinessSettingsCommand({
     required this.defaultCurrency,
     required this.decimalPlaces,
-    required this.taxPercentage,
+    required String taxPercentage,
     required this.pricesIncludeTax,
     required this.roundingMode,
-    required this.roundingIncrement,
+    required String roundingIncrement,
     required this.companyName,
     required this.paymentMethods,
     required this.expectedVersion,
     required this.identity,
-  });
+  }) : taxPercentage = _validatedDecimal(taxPercentage, field: 'taxPercentage'),
+       roundingIncrement = _validatedDecimal(
+         roundingIncrement,
+         field: 'roundingIncrement',
+       );
 
   final String defaultCurrency;
   final int decimalPlaces;
-  final double taxPercentage;
+
+  /// Decimal normalizado, por ejemplo `13.00`.
+  final String taxPercentage;
   final bool pricesIncludeTax;
   final String roundingMode;
-  final double roundingIncrement;
+
+  /// Decimal normalizado, por ejemplo `0.01`.
+  final String roundingIncrement;
   final String companyName;
   final String paymentMethods;
   final int expectedVersion;
   final IdentityContext identity;
+}
+
+String _validatedDecimal(String value, {required String field}) {
+  if (!RegExp(r'^(0|[1-9]\d*)(\.\d+)?$').hasMatch(value)) {
+    throw ArgumentError.value(
+      value,
+      field,
+      'Debe ser un decimal normalizado sin separador de miles.',
+    );
+  }
+  return value;
 }
 
 class SaveCatalogPreferencesCommand {
@@ -36,7 +55,7 @@ class SaveCatalogPreferencesCommand {
     required this.identity,
   });
 
-  final CatalogPreferences preferences;
+  final CatalogPreferencesDto preferences;
   final int expectedVersion;
   final IdentityContext identity;
 }
@@ -53,29 +72,29 @@ class SelectCatalogAgentCommand {
   final IdentityContext identity;
 }
 
-class ClearSelectedCatalogAgentCommand {
-  const ClearSelectedCatalogAgentCommand({
-    required this.agentId,
+class CreatePackagingPresentationCommand {
+  const CreatePackagingPresentationCommand({
+    required this.commandId,
+    required this.name,
     required this.identity,
   });
 
-  final String agentId;
+  final String commandId;
+  final String name;
   final IdentityContext identity;
 }
 
-class SavePackagingPresentationCommand {
-  const SavePackagingPresentationCommand({
-    this.id,
+class UpdatePackagingPresentationCommand {
+  const UpdatePackagingPresentationCommand({
+    required this.id,
     required this.name,
-    this.commandId,
-    this.expectedVersion,
+    required this.expectedVersion,
     required this.identity,
   });
 
-  final String? id;
+  final String id;
   final String name;
-  final String? commandId;
-  final int? expectedVersion;
+  final int expectedVersion;
   final IdentityContext identity;
 }
 
@@ -93,11 +112,4 @@ class ReplaceCatalogLogoCommand {
   final String mimeType;
   final int expectedVersion;
   final IdentityContext identity;
-}
-
-class CatalogLogoReference {
-  const CatalogLogoReference({required this.objectName, required this.version});
-
-  final String objectName;
-  final int version;
 }

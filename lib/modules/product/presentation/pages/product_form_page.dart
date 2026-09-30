@@ -5,7 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import 'dart:typed_data';
 
-import '../../../configuration/configuration_module.dart';
+import '../../../configuration/di/configuration_providers.dart';
 import '../../../inventory/inventory_module.dart' as inventory;
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';

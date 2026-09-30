@@ -70,7 +70,7 @@ class AgentPage extends ConsumerWidget {
   Future<void> _edit(
     BuildContext context,
     WidgetRef ref, [
-    SalesAgent? existing,
+    SalesAgentDto? existing,
   ]) async {
     final name = TextEditingController(text: existing?.name ?? '');
     final phone = TextEditingController(text: existing?.phone ?? '+506');
@@ -115,9 +115,9 @@ class AgentPage extends ConsumerWidget {
     if (accepted == true) {
       final api = ref.read(salesApiProvider);
       if (existing == null) {
-        await api.createAgent(name: name.text, phone: phone.text);
+        await api.createLegacyAgent(name: name.text, phone: phone.text);
       } else {
-        await api.updateAgent(
+        await api.updateLegacyAgent(
           id: existing.id,
           name: name.text,
           phone: phone.text,
@@ -132,7 +132,7 @@ class AgentPage extends ConsumerWidget {
   Future<void> _deactivate(
     BuildContext context,
     WidgetRef ref,
-    SalesAgent agent,
+    SalesAgentDto agent,
   ) async {
     final accepted = await showDialog<bool>(
       context: context,
@@ -154,7 +154,7 @@ class AgentPage extends ConsumerWidget {
       ),
     );
     if (accepted == true) {
-      await ref.read(salesApiProvider).deactivateAgent(agent.id);
+      await ref.read(salesApiProvider).deactivateLegacyAgent(agent.id);
       ref.invalidate(salesAgentsProvider);
     }
   }
