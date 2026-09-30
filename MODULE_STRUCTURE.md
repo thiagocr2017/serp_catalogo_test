@@ -188,6 +188,11 @@ Una función futura no debe describirse como implementada. Cuando el código se
 aparte temporalmente de estas convenciones, la diferencia se registra como
 deuda técnica y no como una nueva regla arquitectónica.
 
+Todos los documentos generados por cualquier módulo deben cumplir
+`DOCUMENT_STANDARDS.md`, incluyendo las salidas PDF A4 y ticket térmico de
+80 mm. Los módulos conservan sus reglas; el renderizado común no contiene
+lógica de negocio.
+
 ## 11. Estado modular actual
 
 | Módulo o área | Estado funcional | Documento | Conformidad estructural |

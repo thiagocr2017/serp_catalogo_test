@@ -126,6 +126,8 @@ consolidado.
   apertura automático.
 - Los movimientos anteriores fueron asociados a documentos migrados para
   conservar navegación y trazabilidad.
+- Todo documento confirmado ofrecerá PDF A4 y ticket térmico de 80 mm conforme
+  a `DOCUMENT_STANDARDS.md`. La generación todavía está pendiente.
 
 ### Bodegas y ubicaciones
 
@@ -196,6 +198,21 @@ BORRADOR → DESPACHADA → EN_TRANSITO → RECIBIDA
 El traslado inmediato confirmado crea `TRANSFER_OUT` y `TRANSFER_IN` y guarda
 salida, entrada, documento y auditoría de forma atómica. Todavía falta el flujo
 logístico diferido con borrador, despacho, tránsito, recepción y cancelación.
+
+La experiencia objetivo aprobada será un traslado inteligente:
+
+1. El usuario elige una bodega y ubicación común de destino.
+2. Busca o selecciona uno o varios productos.
+3. El sistema consulta los saldos por ubicación y propone el origen de cada
+   producto.
+4. Si una ubicación tiene cantidad suficiente, se utiliza automáticamente.
+5. Si hacen falta varias ubicaciones, se propone una distribución de salida.
+6. El usuario puede expandir una línea y modificar los orígenes propuestos.
+7. Antes de confirmar se muestra el detalle real de salidas y entradas.
+
+El producto no tendrá una única ubicación fija: mantiene una relación de saldo
+con todas las ubicaciones donde existe. La selección explícita de origen queda
+reservada para casos ambiguos o correcciones del usuario.
 
 ### 9.5 Conteos físicos y conciliación
 

@@ -202,6 +202,8 @@ exportarse a PDF y compartirse. Debe incluir:
 - saldo restante.
 
 No se adjuntarán fotografías ni PDF de comprobantes bancarios inicialmente.
+Las plantillas A4 y ticket térmico de 80 mm deben cumplir
+`DOCUMENT_STANDARDS.md`.
 
 ## 9. Gastos y movimientos entre cuentas
 
