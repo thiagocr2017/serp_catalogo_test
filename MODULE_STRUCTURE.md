@@ -8,6 +8,8 @@
 - Todos los módulos siguen la misma arquitectura base. Una carpeta puede omitirse únicamente cuando el módulo no tenga esa responsabilidad.
 - Cada módulo expone una única interfaz pública mediante `api/` y su archivo índice `<module_name>_module.dart`.
 - Los demás módulos no deben importar implementaciones internas desde `data/`, `presentation/` o `di/`.
+- Toda comunicación y exposición entre módulos debe cumplir
+  `MODULE_SECURITY_CONTRACT.md`.
 - Las tablas, columnas, variables y nombres técnicos se escriben en inglés. La interfaz y la documentación funcional se mantienen en español.
 - Cualquier excepción debe documentarse y justificarse en la sección «Notas de cambio».
 
@@ -139,6 +141,17 @@ Cada módulo debe exponer los contratos, modelos públicos y rutas que necesiten
 otros módulos desde `api/`. Un cambio interno no debe obligar a modificar a sus
 consumidores.
 
+### Contrato obligatorio entre módulos
+
+`MODULE_SECURITY_CONTRACT.md` define de forma normativa qué puede importar,
+consultar, ordenar y publicar un módulo; cómo se protegen las escrituras, las
+transacciones cruzadas, las credenciales, RLS, auditoría e información sensible.
+Las reglas de ese contrato tienen la misma obligatoriedad que esta estructura.
+
+Un SDD puede restringir aún más su API, pero no puede debilitar ese contrato.
+Una excepción temporal debe registrarse como deuda técnica con responsable,
+riesgo y condición de retiro; no se convierte en precedente arquitectónico.
+
 ## 7. Pruebas
 
 Las pruebas viven en el directorio estándar `test/` y reflejan la estructura de `lib/`:
@@ -190,8 +203,8 @@ deuda técnica y no como una nueva regla arquitectónica.
 
 Todos los documentos generados por cualquier módulo deben cumplir
 `DOCUMENT_STANDARDS.md`, incluyendo las salidas PDF A4 y ticket térmico de
-80 mm. Los módulos conservan sus reglas; el renderizado común no contiene
-lógica de negocio.
+80 mm y la impresión ESC/POS directa por Bluetooth o USB. Los módulos conservan
+sus reglas; el renderizado común no contiene lógica de negocio.
 
 ## 11. Estado modular actual
 

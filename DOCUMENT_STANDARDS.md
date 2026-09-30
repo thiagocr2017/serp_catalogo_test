@@ -12,10 +12,12 @@ salidas visuales, el comportamiento común y las responsabilidades técnicas.
 
 ## 2. Salidas obligatorias
 
-Todo documento confirmado debe poder guardarse localmente en dos estilos PDF:
+Todo documento confirmado debe ofrecer tres salidas:
 
 1. **A4:** archivo formal, correo e impresión convencional.
 2. **Ticket térmico de 80 mm:** entrega e impresión rápida.
+3. **Impresión ESC/POS directa:** envío a una impresora térmica configurada por
+   Bluetooth o USB, sin generar ni abrir primero un PDF.
 
 La interfaz mostrará una acción coherente:
 
@@ -23,6 +25,9 @@ La interfaz mostrará una acción coherente:
 Guardar PDF
 ├── Documento A4
 └── Ticket térmico 80 mm
+
+Imprimir ticket
+└── Impresora ESC/POS configurada
 ```
 
 Un documento pendiente puede generar una vista previa marcada `BORRADOR`. Un
@@ -47,7 +52,7 @@ El PDF térmico utilizará una página de 80 mm, contenido limitado a 72 mm y
 márgenes laterales de 4 mm. La altura se adaptará al contenido para aprovechar
 el rollo continuo y evitar páginas vacías.
 
-## 4. PDF frente a impresión directa
+## 4. PDF e impresión directa
 
 ### PDF ticket
 
@@ -59,9 +64,32 @@ el rollo continuo y evitar páginas vacías.
 ### ESC/POS directo
 
 - envía comandos a la impresora sin PDF intermedio;
-- requiere configurar Bluetooth o USB;
-- depende de controladores, permisos y compatibilidad del sistema operativo;
-- será posterior y reutilizará el mismo modelo documental.
+- es una salida obligatoria para todo tipo de documento confirmado;
+- admite perfiles de conexión Bluetooth y USB;
+- utiliza la impresora predeterminada configurada o permite elegir otra;
+- valida conexión, permisos, ancho y capacidades antes de enviar;
+- informa claramente los estados conectando, imprimiendo, completado y error;
+- permite reintentar sin volver a confirmar ni duplicar el documento;
+- reutiliza el mismo modelo documental histórico usado por A4 y ticket PDF;
+- no consulta repositorios ni vuelve a calcular importes durante la impresión.
+
+La ausencia o desconexión de la impresora no impide confirmar un documento. El
+documento queda guardado y puede imprimirse posteriormente. Una reimpresión se
+identifica como tal cuando la política del documento lo requiera.
+
+### Transporte y comandos ESC/POS
+
+- El renderizador produce una secuencia ESC/POS independiente del transporte.
+- Los adaptadores Bluetooth y USB solo descubren, conectan y transmiten bytes;
+  no contienen reglas de negocio ni diseño documental.
+- Bluetooth utiliza dispositivos previamente emparejados por el sistema
+  operativo cuando la plataforma lo exija.
+- USB conserva identificadores estables de fabricante, producto y, cuando
+  exista, número de serie; nunca depende únicamente del nombre visible.
+- Los comandos respetan las capacidades declaradas por el perfil: ancho, juego
+  de caracteres, corte, QR, imagen y apertura de gaveta.
+- Una capacidad no soportada se degrada de manera explícita y legible, sin
+  perder líneas, cantidades, totales, número o estado del documento.
 
 ## 5. Contenido común
 
@@ -125,8 +153,8 @@ El usuario elige el destino con el selector estándar del sistema.
 
 - Cada módulo es propietario de sus documentos, reglas y datos históricos.
 - Cada módulo transforma su documento en un modelo de impresión estable.
-- Una capacidad compartida administra papel, tipografía, encabezados, pies, QR
-  y guardado local.
+- Una capacidad compartida administra papel, tipografía, encabezados, pies, QR,
+  guardado local, generación ESC/POS y selección de transporte.
 - La capacidad compartida no contiene reglas de negocio de los módulos.
 - Las plantillas no consultan repositorios ni Supabase directamente.
 - A4 y ticket se generan desde el mismo modelo para impedir contradicciones.
@@ -134,11 +162,24 @@ El usuario elige el destino con el selector estándar del sistema.
 La ubicación prevista es `lib/core/documents/`; los adaptadores específicos
 permanecen dentro de cada módulo.
 
+La separación interna prevista es:
+
+```text
+lib/core/documents/
+├── models/              # Modelo documental neutral
+├── pdf/                 # Renderizadores A4 y ticket 80 mm
+└── esc_pos/
+    ├── renderer/        # Modelo documental -> bytes ESC/POS
+    ├── profiles/        # Capacidades de Rongta y futuras impresoras
+    └── transports/      # Bluetooth y USB
+```
+
 ## 10. Configuración
 
 Configuración permitirá definir identidad, colores A4, campos opcionales,
-perfil térmico, ancho de papel e impresión, logo, firma, QR y directorio sugerido
-cuando el sistema operativo lo permita.
+perfil térmico, ancho de papel e impresión, conexión Bluetooth o USB, impresora
+predeterminada, logo, firma, QR y directorio sugerido cuando el sistema
+operativo lo permita.
 
 El perfil inicial será `Rongta RPP300 - 80 mm / imprimible 72 mm`.
 
@@ -154,10 +195,13 @@ Cada nuevo documento debe probar:
 - estados borrador, confirmado, anulado y provisional cuando apliquen;
 - apertura del PDF en macOS;
 - impresión física en la Rongta RPP300 antes de dar por terminada la plantilla.
+- impresión directa por Bluetooth y USB en la Rongta RPP300;
+- impresora apagada, desconectada, sin papel y sin permisos;
+- reconexión y reimpresión sin duplicar ni modificar el documento;
+- equivalencia de datos entre A4, ticket PDF y ESC/POS directo.
 
 ## 12. Alcance futuro
 
-- impresión ESC/POS directa por USB o Bluetooth;
 - perfiles adicionales de 58 mm y otros anchos;
 - envío por correo, WhatsApp u otros canales;
 - firmas criptográficas o validación remota por QR;
