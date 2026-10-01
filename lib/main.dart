@@ -33,44 +33,64 @@ import 'modules/payments/data/repositories/supabase_payment_api.dart';
 import 'modules/payments/di/payment_providers.dart';
 import 'modules/payments/payments_module.dart';
 import 'shared/theme/app_theme.dart';
+import 'shared/widgets/app_loading_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final configuration = AppConfiguration.local();
-  await Supabase.initialize(
-    url: configuration.supabaseUrl,
-    publishableKey: configuration.supabaseKey,
-  );
-  final device = await DeviceIdentity.detect();
-  final repository = SupabaseProductRepository(
-    SupabaseProductDataSource(Supabase.instance.client, device),
-  );
-  final inventoryRepository = SupabaseInventoryRepository(
-    SupabaseInventoryDataSource(Supabase.instance.client),
-    device,
-  );
-  final promotionRepository = SupabasePromotionRepository(
-    Supabase.instance.client,
-    device,
-  );
-  final configurationRepository = SupabaseConfigurationRepository(
-    Supabase.instance.client,
-    device,
-  );
-  final configurationApi = SupabaseConfigurationApi(Supabase.instance.client);
-  final imageService = ProductImageService(Supabase.instance.client);
-  final salesRepository = SupabaseSalesRepository(
-    SupabaseSalesDataSource(Supabase.instance.client),
-  );
-  final paymentDataSource = SupabasePaymentDataSource(
-    Supabase.instance.client,
-    device,
-  );
-  final paymentRepository = SupabasePaymentRepository(paymentDataSource);
-  final paymentApi = SupabasePaymentApi(paymentDataSource);
+  runApp(const ProviderScope(child: AppBootstrap()));
+}
 
-  runApp(
-    ProviderScope(
+class AppBootstrap extends StatefulWidget {
+  const AppBootstrap({super.key});
+
+  @override
+  State<AppBootstrap> createState() => _AppBootstrapState();
+}
+
+class _AppBootstrapState extends State<AppBootstrap> {
+  late final Future<Widget> _appFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _appFuture = _initializeApp();
+  }
+
+  Future<Widget> _initializeApp() async {
+    final configuration = AppConfiguration.local();
+    await Supabase.initialize(
+      url: configuration.supabaseUrl,
+      publishableKey: configuration.supabaseKey,
+    );
+    final device = await DeviceIdentity.detect();
+    final repository = SupabaseProductRepository(
+      SupabaseProductDataSource(Supabase.instance.client, device),
+    );
+    final inventoryRepository = SupabaseInventoryRepository(
+      SupabaseInventoryDataSource(Supabase.instance.client),
+      device,
+    );
+    final promotionRepository = SupabasePromotionRepository(
+      Supabase.instance.client,
+      device,
+    );
+    final configurationRepository = SupabaseConfigurationRepository(
+      Supabase.instance.client,
+      device,
+    );
+    final configurationApi = SupabaseConfigurationApi(Supabase.instance.client);
+    final imageService = ProductImageService(Supabase.instance.client);
+    final salesRepository = SupabaseSalesRepository(
+      SupabaseSalesDataSource(Supabase.instance.client),
+    );
+    final paymentDataSource = SupabasePaymentDataSource(
+      Supabase.instance.client,
+      device,
+    );
+    final paymentRepository = SupabasePaymentRepository(paymentDataSource);
+    final paymentApi = SupabasePaymentApi(paymentDataSource);
+
+    return ProviderScope(
       overrides: [
         identityContextProvider.overrideWithValue(
           IdentityContext(
@@ -95,8 +115,21 @@ Future<void> main() async {
         paymentApiProvider.overrideWithValue(paymentApi),
       ],
       child: const SerpApp(),
-    ),
-  );
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Widget>(
+      future: _appFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return snapshot.data!;
+        }
+        return const AppLoadingScreen();
+      },
+    );
+  }
 }
 
 class SerpApp extends ConsumerWidget {
