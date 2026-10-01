@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -42,6 +43,11 @@ class _Profile extends ConsumerWidget {
     final audit = ref.watch(productAuditProvider(product.id));
     final packagingLabel =
         product.packagingPresentationName ?? 'Presentación no disponible';
+    final marginPercent = product.unitPriceInCents > 0
+        ? (product.unitPriceInCents - product.factoryCostInCents) /
+              product.unitPriceInCents *
+              100
+        : null;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -112,16 +118,66 @@ class _Profile extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _StatusChip(
+                              label: product.isActive ? 'Activo' : 'Inactivo',
+                              icon: product.isActive
+                                  ? Icons.check_circle_outline
+                                  : Icons.visibility_off_outlined,
+                              color: product.isActive
+                                  ? Colors.green
+                                  : Colors.red,
+                            ),
+                            if (product.isOutOfStock)
+                              const _StatusChip(
+                                label: 'Sin stock',
+                                icon: Icons.remove_shopping_cart_outlined,
+                                color: Colors.red,
+                              )
+                            else if (product.requiresRestock)
+                              _StatusChip(
+                                label:
+                                    'Reponer (punto: ${product.reorderPoint})',
+                                icon: Icons.warning_amber_outlined,
+                                color: Colors.orange,
+                              )
+                            else
+                              const _StatusChip(
+                                label: 'En stock',
+                                icon: Icons.check_circle_outline,
+                                color: Colors.green,
+                              ),
+                            if (product.promotionPriceInCents != null)
+                              const _StatusChip(
+                                label: 'Con promoción',
+                                icon: Icons.local_offer_outlined,
+                                color: Colors.purple,
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
                         Text(
                           product.name,
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          product.sku,
-                          style: Theme.of(context).textTheme.titleMedium,
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            _CopyableValue(prefix: 'SKU', value: product.sku),
+                            if (product.barcode?.trim().isNotEmpty == true)
+                              _CopyableValue(
+                                prefix: 'Código de barras',
+                                value: product.barcode!.trim(),
+                              ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
                         Text(product.description),
                       ],
                     ),
@@ -140,11 +196,30 @@ class _Profile extends ConsumerWidget {
                 value:
                     'USD ${(product.unitPriceInCents / 100).toStringAsFixed(2)}',
                 icon: Icons.attach_money,
+                subtitle: product.promotionPriceInCents == null
+                    ? null
+                    : 'Promoción: USD ${(product.promotionPriceInCents! / 100).toStringAsFixed(2)}',
               ),
               _Metric(
                 label: 'Stock actual',
                 value: '${product.currentStock}',
                 icon: Icons.inventory_2,
+                color: product.isOutOfStock
+                    ? Colors.red
+                    : product.requiresRestock
+                    ? Colors.orange
+                    : Colors.green,
+                subtitle: 'Punto de reorden: ${product.reorderPoint}',
+              ),
+              _Metric(
+                label: 'Margen actual',
+                value: marginPercent == null
+                    ? '—'
+                    : '${marginPercent.toStringAsFixed(1)} %',
+                icon: Icons.percent,
+                color: marginPercent != null && marginPercent < 0
+                    ? Colors.red
+                    : null,
               ),
               _Metric(
                 label: 'Venta mínima',
@@ -172,7 +247,10 @@ class _Profile extends ConsumerWidget {
           const SizedBox(height: 24),
           _Section(
             title: 'Ubicación y stock por almacén',
-            child: _LocationBalances(balances: locationBalances),
+            child: _LocationBalances(
+              balances: locationBalances,
+              productStock: product.currentStock,
+            ),
           ),
           const SizedBox(height: 16),
           _Section(title: 'Descripción', child: Text(product.description)),
@@ -548,9 +626,10 @@ class _Profile extends ConsumerWidget {
 }
 
 class _LocationBalances extends StatelessWidget {
-  const _LocationBalances({required this.balances});
+  const _LocationBalances({required this.balances, required this.productStock});
 
   final AsyncValue<List<InventoryBalance>> balances;
+  final int productStock;
 
   @override
   Widget build(BuildContext context) => balances.when(
@@ -559,6 +638,7 @@ class _LocationBalances extends StatelessWidget {
     data: (items) {
       final visible = items.where((item) => item.quantity != 0).toList()
         ..sort((a, b) {
+          if (a.quantity != b.quantity) return b.quantity.compareTo(a.quantity);
           final warehouse = (a.warehouseName ?? '').compareTo(
             b.warehouseName ?? '',
           );
@@ -571,6 +651,7 @@ class _LocationBalances extends StatelessWidget {
       }
 
       final total = visible.fold<int>(0, (sum, item) => sum + item.quantity);
+      final difference = total - productStock;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -578,37 +659,55 @@ class _LocationBalances extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              Chip(
-                avatar: const Icon(Icons.inventory_2_outlined, size: 18),
-                label: Text('Total ubicado: $total'),
+              _StatusChip(
+                label: 'Total ubicado: $total',
+                icon: Icons.inventory_2_outlined,
+                color: Colors.blue,
               ),
-              Chip(
-                avatar: const Icon(Icons.location_on_outlined, size: 18),
-                label: Text('${visible.length} ubicación(es)'),
+              _StatusChip(
+                label: '${visible.length} ubicación(es)',
+                icon: Icons.location_on_outlined,
+                color: Colors.blueGrey,
               ),
+              if (difference != 0)
+                _StatusChip(
+                  label: difference > 0
+                      ? '$difference unidad(es) de más frente al stock del producto'
+                      : '${difference.abs()} unidad(es) de menos frente al stock del producto',
+                  icon: Icons.sync_problem_outlined,
+                  color: Colors.orange,
+                ),
             ],
           ),
           const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxWidth < 720;
+              final tiles = [
+                for (final item in visible)
+                  _LocationBalanceTile(
+                    balance: item,
+                    share: total == 0
+                        ? 0.0
+                        : (item.quantity / total).clamp(0.0, 1.0).toDouble(),
+                  ),
+              ];
               if (compact) {
                 return Column(
                   children: [
-                    for (final item in visible)
-                      _LocationBalanceTile(balance: item),
+                    for (final tile in tiles)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: tile,
+                      ),
                   ],
                 );
               }
               return Wrap(
-                spacing: 12,
-                runSpacing: 12,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  for (final item in visible)
-                    SizedBox(
-                      width: 320,
-                      child: _LocationBalanceTile(balance: item),
-                    ),
+                  for (final tile in tiles) SizedBox(width: 340, child: tile),
                 ],
               );
             },
@@ -620,30 +719,141 @@ class _LocationBalances extends StatelessWidget {
 }
 
 class _LocationBalanceTile extends StatelessWidget {
-  const _LocationBalanceTile({required this.balance});
+  const _LocationBalanceTile({required this.balance, required this.share});
 
   final InventoryBalance balance;
+  final double share;
 
   @override
-  Widget build(BuildContext context) => Card.outlined(
-    margin: const EdgeInsets.only(bottom: 8),
-    child: ListTile(
-      leading: const Icon(Icons.warehouse_outlined),
-      title: Text(balance.warehouseName ?? 'Almacén sin nombre'),
-      subtitle: Text(balance.locationName ?? 'Ubicación sin nombre'),
-      trailing: Text(
-        balance.quantity.toString(),
-        style: Theme.of(context).textTheme.titleLarge,
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Card.outlined(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            const Icon(Icons.warehouse_outlined),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    balance.warehouseName ?? 'Almacén sin nombre',
+                    style: textTheme.titleSmall,
+                  ),
+                  Text(
+                    balance.locationName ?? 'Ubicación sin nombre',
+                    style: textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(value: share, minHeight: 6),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('${balance.quantity}', style: textTheme.titleLarge),
+                Text(
+                  '${(share * 100).toStringAsFixed(0)} %',
+                  style: textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final IconData icon;
+  final MaterialColor color;
+
+  @override
+  Widget build(BuildContext context) => Chip(
+    avatar: Icon(icon, size: 16, color: color.shade700),
+    label: Text(
+      label,
+      style: TextStyle(color: color.shade800, fontWeight: FontWeight.w600),
     ),
+    backgroundColor: color.shade100,
+    visualDensity: VisualDensity.compact,
   );
 }
 
+class _CopyableValue extends StatelessWidget {
+  const _CopyableValue({required this.prefix, required this.value});
+
+  final String prefix;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.only(left: 12, top: 2, bottom: 2, right: 4),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$prefix: $value',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          IconButton(
+            tooltip: 'Copiar $prefix',
+            visualDensity: VisualDensity.compact,
+            iconSize: 16,
+            icon: const Icon(Icons.copy, size: 16),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: value));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('$prefix copiado: $value'),
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value, required this.icon});
+  const _Metric({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.subtitle,
+    this.color,
+  });
   final String label;
   final String value;
   final IconData icon;
+  final String? subtitle;
+  final MaterialColor? color;
   @override
   Widget build(BuildContext context) => Card(
     child: SizedBox(
@@ -653,10 +863,20 @@ class _Metric extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon),
+            Icon(icon, color: color?.shade700),
             const SizedBox(height: 12),
             Text(label),
-            Text(value, style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: color?.shade800,
+                fontWeight: color == null ? null : FontWeight.w700,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
+              Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+            ],
           ],
         ),
       ),
