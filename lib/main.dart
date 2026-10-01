@@ -27,6 +27,9 @@ import 'modules/inventory/di/inventory_providers.dart';
 import 'modules/inventory/inventory_module.dart';
 import 'modules/sales/data/data_sources/supabase_sales_data_source.dart';
 import 'modules/sales/data/repositories/supabase_sales_repository.dart';
+import 'modules/sales/data/data_sources/supabase_sales_invoice_data_source.dart';
+import 'modules/sales/data/repositories/supabase_sales_invoice_repository.dart';
+import 'modules/sales/api/sales_invoice_api.dart';
 import 'modules/sales/di/sales_providers.dart';
 import 'modules/sales/sales_module.dart';
 import 'modules/payments/data/data_sources/supabase_payment_data_source.dart';
@@ -66,6 +69,9 @@ Future<void> main() async {
   final salesRepository = SupabaseSalesRepository(
     SupabaseSalesDataSource(Supabase.instance.client),
   );
+  final salesInvoiceRepository = SupabaseSalesInvoiceRepository(
+    SupabaseSalesInvoiceDataSource(Supabase.instance.client, device),
+  );
   final paymentDataSource = SupabasePaymentDataSource(
     Supabase.instance.client,
     device,
@@ -99,6 +105,7 @@ Future<void> main() async {
         productImageServiceProvider.overrideWithValue(imageService),
         salesRepositoryProvider.overrideWithValue(salesRepository),
         salesApiProvider.overrideWithValue(salesRepository),
+        salesInvoiceApiProvider.overrideWithValue(salesInvoiceRepository),
         paymentRepositoryProvider.overrideWithValue(paymentRepository),
         paymentApiProvider.overrideWithValue(paymentApi),
         offlineSyncServiceProvider.overrideWithValue(offlineSyncService),
