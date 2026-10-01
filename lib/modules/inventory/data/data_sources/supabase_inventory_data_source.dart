@@ -100,14 +100,31 @@ class SupabaseInventoryDataSource {
     String? id,
   }) async {
     if (id == null) {
-      return _client.from('warehouses').insert(values).select().single();
+      return _client.rpc<Map<String, dynamic>>(
+        'create_warehouse',
+        params: {
+          'p_code': values['code'],
+          'p_name': values['name'],
+          'p_is_default': values['is_default'] ?? false,
+          'p_actor_name': values['created_by'],
+          'p_device_name': values['created_device_name'],
+          'p_device_identifier': values['created_device_identifier'],
+        },
+      );
     }
-    return _client
-        .from('warehouses')
-        .update(values)
-        .eq('id', id)
-        .select()
-        .single();
+    return _client.rpc<Map<String, dynamic>>(
+      'update_warehouse',
+      params: {
+        'p_warehouse_id': id,
+        'p_code': values['code'],
+        'p_name': values['name'],
+        'p_is_default': values['is_default'] ?? false,
+        'p_is_active': values['is_active'] ?? true,
+        'p_actor_name': values['updated_by'],
+        'p_device_name': values['updated_device_name'],
+        'p_device_identifier': values['updated_device_identifier'],
+      },
+    );
   }
 
   Future<Map<String, dynamic>> saveLocation(
@@ -115,18 +132,32 @@ class SupabaseInventoryDataSource {
     String? id,
   }) async {
     if (id == null) {
-      return _client
-          .from('inventory_locations')
-          .insert(values)
-          .select()
-          .single();
+      return _client.rpc<Map<String, dynamic>>(
+        'create_inventory_location',
+        params: {
+          'p_warehouse_id': values['warehouse_id'],
+          'p_code': values['code'],
+          'p_name': values['name'],
+          'p_is_default': values['is_default'] ?? false,
+          'p_actor_name': values['created_by'],
+          'p_device_name': values['created_device_name'],
+          'p_device_identifier': values['created_device_identifier'],
+        },
+      );
     }
-    return _client
-        .from('inventory_locations')
-        .update(values)
-        .eq('id', id)
-        .select()
-        .single();
+    return _client.rpc<Map<String, dynamic>>(
+      'update_inventory_location',
+      params: {
+        'p_location_id': id,
+        'p_code': values['code'],
+        'p_name': values['name'],
+        'p_is_default': values['is_default'] ?? false,
+        'p_is_active': values['is_active'] ?? true,
+        'p_actor_name': values['updated_by'],
+        'p_device_name': values['updated_device_name'],
+        'p_device_identifier': values['updated_device_identifier'],
+      },
+    );
   }
 
   Future<List<Map<String, dynamic>>> audit({
