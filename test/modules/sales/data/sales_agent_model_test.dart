@@ -7,10 +7,13 @@ void main() {
       'id': 'agent-1',
       'name': 'Ana',
       'phone': '+506 8888-8888',
+      'is_active': true,
+      'version': 3,
     }).toApi();
 
     expect(agent.id, 'agent-1');
     expect(agent.name, 'Ana');
     expect(agent.phone, '+506 8888-8888');
+    expect(agent.version, 3);
   });
 }

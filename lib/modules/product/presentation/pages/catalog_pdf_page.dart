@@ -44,7 +44,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   Map<String, String> categoryNames = const {};
   Uint8List? logoBytes;
   String? logoUrl;
-  List<SalesAgent> catalogAgents = const [];
+  List<SalesAgentDto> catalogAgents = const [];
   String? selectedAgentId;
   Timer? _preferencesTimer;
   bool _savingPreferences = false;

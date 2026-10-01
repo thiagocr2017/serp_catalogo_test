@@ -53,22 +53,6 @@ class _FakeSalesApi implements SalesApi {
   @override
   Future<List<SalesAgentDto>> getAgents(SalesAgentQuery query) async =>
       const [];
-
-  @override
-  Future<SalesAgentDto> createLegacyAgent({
-    required String name,
-    required String phone,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<SalesAgentDto> updateLegacyAgent({
-    required String id,
-    required String name,
-    required String phone,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<void> deactivateLegacyAgent(String id) => throw UnimplementedError();
 }
 
 void main() {
