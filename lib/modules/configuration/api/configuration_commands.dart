@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import '../../../core/identity/identity_context.dart';
-import 'configuration_dtos.dart';
 
 class SaveBusinessSettingsCommand {
   SaveBusinessSettingsCommand({
@@ -112,4 +111,38 @@ class ReplaceCatalogLogoCommand {
   final String mimeType;
   final int expectedVersion;
   final IdentityContext identity;
+}
+
+/// Valores de diseño que una pantalla puede actualizar en bloque.
+/// No contiene logo, agente seleccionado ni metadatos de concurrencia.
+class CatalogDesignPreferencesInput {
+  const CatalogDesignPreferencesInput({
+    required this.cardsPerPage,
+    required this.backgroundColor,
+    required this.cardColor,
+    required this.designAccentColor,
+    required this.textColor,
+    required this.highlightTextColor,
+    required this.secondaryTextColor,
+    required this.promotionColor,
+    required this.promotionTextColor,
+    required this.promotionPreviousPriceColor,
+    required this.promotionPriceColor,
+    required this.promotionDescriptionColor,
+    required this.imageFit,
+  });
+
+  final int cardsPerPage;
+  final String backgroundColor;
+  final String cardColor;
+  final String designAccentColor;
+  final String textColor;
+  final String highlightTextColor;
+  final String secondaryTextColor;
+  final String promotionColor;
+  final String promotionTextColor;
+  final String promotionPreviousPriceColor;
+  final String promotionPriceColor;
+  final String promotionDescriptionColor;
+  final String imageFit;
 }
