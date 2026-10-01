@@ -50,6 +50,8 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   bool _savingPreferences = false;
   bool _savePreferencesAgain = false;
   bool _preferencesSaved = true;
+  bool _savingPdf = false;
+  int _tab = 0;
   String categorySelectionSearch = '';
   String productSelectionSearch = '';
   String categoryOrderSearch = '';
@@ -270,527 +272,691 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   @override
   Widget build(BuildContext context) {
     final data = products;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Generar catálogo PDF')),
-      body: data == null
-          ? const Center(child: CircularProgressIndicator())
-          : Row(
-              children: [
-                SizedBox(
-                  width: 360,
-                  child: ListView(
-                    padding: const EdgeInsets.all(20),
-                    children: [
-                      Text(
-                        'Datos de empresa',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        onTap: () => context.go('/settings'),
-                        title: Text(companyName),
-                        subtitle: Text(
-                          paymentMethods.isEmpty
-                              ? 'Sin métodos de pago configurados'
-                              : paymentMethods,
-                        ),
-                        trailing: const Icon(Icons.settings_outlined),
-                      ),
-                      const Text(
-                        'Estos datos se administran en Configuración y se usan automáticamente.',
-                      ),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        onTap: () => context.go('/settings'),
-                        leading: const Icon(Icons.business_outlined),
-                        title: Text(
-                          logoBytes == null
-                              ? 'Logo no configurado'
-                              : 'Logo configurado',
-                        ),
-                        subtitle: const Text(
-                          'El logo se administra en Configuración.',
-                        ),
-                        trailing: const Icon(Icons.open_in_new),
-                      ),
-                      const Divider(height: 28),
-                      Text(
-                        'Datos del catálogo',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              key: ValueKey(selectedAgentId),
-                              initialValue: selectedAgentId,
-                              decoration: const InputDecoration(
-                                labelText: 'Agente del catálogo',
-                              ),
-                              items: catalogAgents
-                                  .map(
-                                    (item) => DropdownMenuItem(
-                                      value: item.id,
-                                      child: Text(item.name),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: _selectAgent,
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: 'Administrar agentes',
-                            onPressed: () => context.go('/sales/agents'),
-                            icon: const Icon(Icons.manage_accounts_outlined),
-                          ),
-                        ],
-                      ),
-                      if (selectedAgentId != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text('WhatsApp: ${phone.text}'),
-                        ),
-                      const Divider(height: 28),
-                      Text(
-                        'Diseño de la plantilla',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      _TemplateColorField(
-                        label: 'Fondo',
-                        value: backgroundColor,
-                        onChanged: (value) =>
-                            _updatePreference(() => backgroundColor = value),
-                      ),
-                      _TemplateColorField(
-                        label: 'Tarjetas',
-                        value: cardColor,
-                        onChanged: (value) =>
-                            _updatePreference(() => cardColor = value),
-                      ),
-                      _TemplateColorField(
-                        label: 'Elemento de diseño',
-                        value: designAccentColor,
-                        onChanged: (value) =>
-                            _updatePreference(() => designAccentColor = value),
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        'Colores de fuentes',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      _TemplateColorField(
-                        label: 'Fuente de texto',
-                        value: textColor,
-                        onChanged: (value) =>
-                            _updatePreference(() => textColor = value),
-                      ),
-                      _TemplateColorField(
-                        label: 'Fuente destacada',
-                        value: highlightTextColor,
-                        onChanged: (value) =>
-                            _updatePreference(() => highlightTextColor = value),
-                      ),
-                      _TemplateColorField(
-                        label: 'Fuente secundaria',
-                        value: secondaryTextColor,
-                        onChanged: (value) =>
-                            _updatePreference(() => secondaryTextColor = value),
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        'Promociones',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      _TemplateColorField(
-                        label: 'Elemento de promoción',
-                        value: promotionColor,
-                        onChanged: (value) =>
-                            _updatePreference(() => promotionColor = value),
-                      ),
-                      _TemplateColorField(
-                        label: 'Fuente de promoción',
-                        value: promotionTextColor,
-                        onChanged: (value) =>
-                            _updatePreference(() => promotionTextColor = value),
-                      ),
-                      _TemplateColorField(
-                        label: 'Precio anterior (secundario)',
-                        value: promotionPreviousPriceColor,
-                        onChanged: (value) => _updatePreference(
-                          () => promotionPreviousPriceColor = value,
-                        ),
-                      ),
-                      _TemplateColorField(
-                        label: 'Precio actual (principal)',
-                        value: promotionPriceColor,
-                        onChanged: (value) => _updatePreference(
-                          () => promotionPriceColor = value,
-                        ),
-                      ),
-                      _TemplateColorField(
-                        label: 'Texto de promoción (principal)',
-                        value: promotionDescriptionColor,
-                        onChanged: (value) => _updatePreference(
-                          () => promotionDescriptionColor = value,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<CatalogImageFit>(
-                        initialValue: imageFit,
-                        decoration: const InputDecoration(
-                          labelText: 'Ajuste de fotografías',
-                          helperText:
-                              'Define cómo llenan el marco del producto.',
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: CatalogImageFit.cover,
-                            child: Text('Rellenar marco (puede recortar)'),
-                          ),
-                          DropdownMenuItem(
-                            value: CatalogImageFit.contain,
-                            child: Text('Mostrar imagen completa'),
-                          ),
-                          DropdownMenuItem(
-                            value: CatalogImageFit.fitWidth,
-                            child: Text('Ajustar al ancho'),
-                          ),
-                        ],
-                        onChanged: (value) =>
-                            _updatePreference(() => imageFit = value!),
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<int>(
-                        initialValue: cards,
-                        decoration: const InputDecoration(
-                          labelText: 'Tarjetas por página',
-                        ),
-                        items: const [0, 1, 2, 4, 6]
-                            .map(
-                              (v) => DropdownMenuItem(
-                                value: v,
-                                child: Text(
-                                  v == 0 ? 'Lista compacta' : '$v tarjetas',
-                                ),
-                              ),
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Generar catálogo PDF'),
+          actions: data == null
+              ? null
+              : [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      '${selected.length} de ${data.length} productos · '
+                      '${_selectedCategoryCount(data)} categorías',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: FilledButton.icon(
+                      onPressed: _savingPdf ? null : () => _savePdf(data),
+                      icon: _savingPdf
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                            .toList(),
-                        onChanged: (v) => _updatePreference(() => cards = v!),
-                      ),
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: FilledButton.tonalIcon(
-                          onPressed: _savingPreferences
-                              ? null
-                              : _savePreferences,
-                          icon: _savingPreferences
-                              ? const SizedBox.square(
-                                  dimension: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Icon(
-                                  _preferencesSaved
-                                      ? Icons.cloud_done_outlined
-                                      : Icons.save_outlined,
-                                ),
-                          label: Text(
-                            _preferencesSaved
-                                ? 'Diseño guardado'
-                                : 'Guardar diseño',
+                          : const Icon(Icons.save_alt_outlined),
+                      label: const Text('Guardar PDF'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                ],
+        ),
+        body: data == null
+            ? const Center(child: CircularProgressIndicator())
+            : Row(
+                children: [
+                  SizedBox(
+                    width: 360,
+                    child: Column(
+                      children: [
+                        Material(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          child: TabBar(
+                            onTap: (index) => setState(() => _tab = index),
+                            tabs: const [
+                              Tab(
+                                icon: Icon(Icons.business_outlined),
+                                text: 'Datos',
+                              ),
+                              Tab(
+                                icon: Icon(Icons.palette_outlined),
+                                text: 'Diseño',
+                              ),
+                              Tab(
+                                icon: Icon(Icons.checklist_outlined),
+                                text: 'Selección',
+                              ),
+                              Tab(
+                                icon: Icon(Icons.sort_outlined),
+                                text: 'Orden',
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      const Divider(height: 32),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          'Los productos inactivos o agotados se excluyen automáticamente del catálogo.',
-                        ),
-                      ),
-                      if (data.isEmpty) ...[
-                        const SizedBox(height: 12),
-                        const Card(
-                          child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Column(
-                              children: [
-                                Icon(Icons.inventory_2_outlined, size: 38),
-                                SizedBox(height: 8),
-                                Text(
-                                  'No hay productos disponibles para el catálogo.',
-                                  textAlign: TextAlign.center,
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Crea productos activos con existencias para habilitar la selección y el orden.',
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
+                        const Divider(height: 1),
+                        Expanded(
+                          child: IndexedStack(
+                            index: _tab,
+                            children: [
+                              ListView(
+                                padding: const EdgeInsets.all(20),
+                                children: [
+                                  Text(
+                                    'Datos de empresa',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    onTap: () => context.go('/settings'),
+                                    title: Text(companyName),
+                                    subtitle: Text(
+                                      paymentMethods.isEmpty
+                                          ? 'Sin métodos de pago configurados'
+                                          : paymentMethods,
+                                    ),
+                                    trailing: const Icon(
+                                      Icons.settings_outlined,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Estos datos se administran en Configuración y se usan automáticamente.',
+                                  ),
+                                  ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    onTap: () => context.go('/settings'),
+                                    leading: const Icon(
+                                      Icons.business_outlined,
+                                    ),
+                                    title: Text(
+                                      logoBytes == null
+                                          ? 'Logo no configurado'
+                                          : 'Logo configurado',
+                                    ),
+                                    subtitle: const Text(
+                                      'El logo se administra en Configuración.',
+                                    ),
+                                    trailing: const Icon(Icons.open_in_new),
+                                  ),
+                                  const Divider(height: 28),
+                                  Text(
+                                    'Datos del catálogo',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium,
+                                  ),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: DropdownButtonFormField<String>(
+                                          key: ValueKey(selectedAgentId),
+                                          initialValue: selectedAgentId,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Agente del catálogo',
+                                          ),
+                                          items: catalogAgents
+                                              .map(
+                                                (item) => DropdownMenuItem(
+                                                  value: item.id,
+                                                  child: Text(item.name),
+                                                ),
+                                              )
+                                              .toList(),
+                                          onChanged: _selectAgent,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Administrar agentes',
+                                        onPressed: () =>
+                                            context.go('/sales/agents'),
+                                        icon: const Icon(
+                                          Icons.manage_accounts_outlined,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (selectedAgentId != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Text('WhatsApp: ${phone.text}'),
+                                    ),
+                                ],
+                              ),
+                              ListView(
+                                padding: const EdgeInsets.all(20),
+                                children: [
+                                  Text(
+                                    'Diseño de la plantilla',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium,
+                                  ),
+                                  _TemplateColorField(
+                                    label: 'Fondo',
+                                    value: backgroundColor,
+                                    onChanged: (value) => _updatePreference(
+                                      () => backgroundColor = value,
+                                    ),
+                                  ),
+                                  _TemplateColorField(
+                                    label: 'Tarjetas',
+                                    value: cardColor,
+                                    onChanged: (value) => _updatePreference(
+                                      () => cardColor = value,
+                                    ),
+                                  ),
+                                  _TemplateColorField(
+                                    label: 'Elemento de diseño',
+                                    value: designAccentColor,
+                                    onChanged: (value) => _updatePreference(
+                                      () => designAccentColor = value,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  Text(
+                                    'Colores de fuentes',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall,
+                                  ),
+                                  _TemplateColorField(
+                                    label: 'Fuente de texto',
+                                    value: textColor,
+                                    onChanged: (value) => _updatePreference(
+                                      () => textColor = value,
+                                    ),
+                                  ),
+                                  _TemplateColorField(
+                                    label: 'Fuente destacada',
+                                    value: highlightTextColor,
+                                    onChanged: (value) => _updatePreference(
+                                      () => highlightTextColor = value,
+                                    ),
+                                  ),
+                                  _TemplateColorField(
+                                    label: 'Fuente secundaria',
+                                    value: secondaryTextColor,
+                                    onChanged: (value) => _updatePreference(
+                                      () => secondaryTextColor = value,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  Text(
+                                    'Promociones',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall,
+                                  ),
+                                  _TemplateColorField(
+                                    label: 'Elemento de promoción',
+                                    value: promotionColor,
+                                    onChanged: (value) => _updatePreference(
+                                      () => promotionColor = value,
+                                    ),
+                                  ),
+                                  _TemplateColorField(
+                                    label: 'Fuente de promoción',
+                                    value: promotionTextColor,
+                                    onChanged: (value) => _updatePreference(
+                                      () => promotionTextColor = value,
+                                    ),
+                                  ),
+                                  _TemplateColorField(
+                                    label: 'Precio anterior (secundario)',
+                                    value: promotionPreviousPriceColor,
+                                    onChanged: (value) => _updatePreference(
+                                      () => promotionPreviousPriceColor = value,
+                                    ),
+                                  ),
+                                  _TemplateColorField(
+                                    label: 'Precio actual (principal)',
+                                    value: promotionPriceColor,
+                                    onChanged: (value) => _updatePreference(
+                                      () => promotionPriceColor = value,
+                                    ),
+                                  ),
+                                  _TemplateColorField(
+                                    label: 'Texto de promoción (principal)',
+                                    value: promotionDescriptionColor,
+                                    onChanged: (value) => _updatePreference(
+                                      () => promotionDescriptionColor = value,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  DropdownButtonFormField<CatalogImageFit>(
+                                    key: ValueKey('imageFit-$imageFit'),
+                                    initialValue: imageFit,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Ajuste de fotografías',
+                                      helperText: 'Define cómo llenan el marco del producto.',
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem(
+                                        value: CatalogImageFit.cover,
+                                        child: Text(
+                                          'Rellenar marco (puede recortar)',
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: CatalogImageFit.contain,
+                                        child: Text('Mostrar imagen completa'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: CatalogImageFit.fitWidth,
+                                        child: Text('Ajustar al ancho'),
+                                      ),
+                                    ],
+                                    onChanged: (value) => _updatePreference(
+                                      () => imageFit = value!,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  DropdownButtonFormField<int>(
+                                    key: ValueKey('cards-$cards'),
+                                    initialValue: cards,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Tarjetas por página',
+                                    ),
+                                    items: const [0, 1, 2, 4, 6]
+                                        .map(
+                                          (v) => DropdownMenuItem(
+                                            value: v,
+                                            child: Text(
+                                              v == 0
+                                                  ? 'Lista compacta'
+                                                  : '$v tarjetas',
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (v) =>
+                                        _updatePreference(() => cards = v!),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      TextButton.icon(
+                                        onPressed: _resetDesign,
+                                        icon: const Icon(
+                                          Icons.restart_alt_outlined,
+                                        ),
+                                        label: const Text('Restablecer diseño'),
+                                      ),
+                                      FilledButton.tonalIcon(
+                                        onPressed: _savingPreferences
+                                            ? null
+                                            : _savePreferences,
+                                        icon: _savingPreferences
+                                            ? const SizedBox.square(
+                                                dimension: 18,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                            : Icon(
+                                                _preferencesSaved
+                                                    ? Icons.cloud_done_outlined
+                                                    : Icons.save_outlined,
+                                              ),
+                                        label: Text(
+                                          _preferencesSaved
+                                              ? 'Diseño guardado'
+                                              : 'Guardar diseño',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              ListView(
+                                padding: const EdgeInsets.all(20),
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .surfaceContainerHighest,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'Los productos inactivos o agotados se excluyen automáticamente del catálogo.',
+                                    ),
+                                  ),
+                                  if (data.isEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    const Card(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              Icons.inventory_2_outlined,
+                                              size: 38,
+                                            ),
+                                            SizedBox(height: 8),
+                                            Text(
+                                              'No hay productos disponibles para el catálogo.',
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            SizedBox(height: 4),
+                                            Text(
+                                              'Crea productos activos con existencias para habilitar la selección y el orden.',
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Selección por categoría',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium,
+                                  ),
+                                  _CatalogSearchField(
+                                    hint: 'Buscar categoría',
+                                    onChanged: (value) => setState(
+                                      () => categorySelectionSearch = value,
+                                    ),
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton.icon(
+                                      onPressed: selected.isEmpty
+                                          ? null
+                                          : _clearCatalogSelection,
+                                      icon: const Icon(Icons.deselect),
+                                      label: const Text('Limpiar selección'),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height: 220,
+                                    child: Scrollbar(
+                                      child: ListView(
+                                        children: [
+                                          for (final entry
+                                              in categoryNames.entries)
+                                            if (data.any(
+                                                  (p) =>
+                                                      p.categoryId == entry.key,
+                                                ) &&
+                                                _matches(
+                                                  entry.value,
+                                                  categorySelectionSearch,
+                                                ))
+                                              CheckboxListTile(
+                                                dense: true,
+                                                contentPadding: EdgeInsets.zero,
+                                                value: data
+                                                    .where(
+                                                      (p) =>
+                                                          p.categoryId ==
+                                                          entry.key,
+                                                    )
+                                                    .every(
+                                                      (p) => selected.contains(
+                                                        p.id,
+                                                      ),
+                                                    ),
+                                                title: Text(entry.value),
+                                                subtitle: Text(
+                                                  '${data.where((p) => p.categoryId == entry.key).length} producto(s)',
+                                                ),
+                                                onChanged: (value) => setState(() {
+                                                  final ids = data
+                                                      .where(
+                                                        (p) =>
+                                                            p.categoryId ==
+                                                            entry.key,
+                                                      )
+                                                      .map((p) => p.id);
+                                                  value == true
+                                                      ? selected.addAll(ids)
+                                                      : selected.removeAll(ids);
+                                                  ref
+                                                      .read(
+                                                        selectedProductIdsProvider
+                                                            .notifier,
+                                                      )
+                                                      .replaceAll(selected);
+                                                }),
+                                              ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const Divider(height: 24),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Selección por producto',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium,
+                                      ),
+                                      TextButton.icon(
+                                        onPressed: selected.isEmpty
+                                            ? null
+                                            : _clearCatalogSelection,
+                                        icon: const Icon(Icons.deselect),
+                                        label: const Text('Limpiar'),
+                                      ),
+                                    ],
+                                  ),
+                                  _CatalogSearchField(
+                                    hint: 'Buscar por nombre, SKU o categoría',
+                                    onChanged: (value) => setState(
+                                      () => productSelectionSearch = value,
+                                    ),
+                                  ),
+                                  CheckboxListTile(
+                                    value: selected.length == data.length,
+                                    title: const Text('Todos los productos'),
+                                    onChanged: (v) => setState(() {
+                                      selected.clear();
+                                      if (v == true) {
+                                        selected.addAll(data.map((p) => p.id));
+                                      }
+                                      ref
+                                          .read(
+                                            selectedProductIdsProvider.notifier,
+                                          )
+                                          .replaceAll(selected);
+                                    }),
+                                  ),
+                                  SizedBox(
+                                    height: 320,
+                                    child: Scrollbar(
+                                      child: ListView(
+                                        children: [
+                                          for (final p in data)
+                                            if (_matchesProduct(
+                                              p,
+                                              productSelectionSearch,
+                                            ))
+                                              CheckboxListTile(
+                                                dense: true,
+                                                value: selected.contains(p.id),
+                                                title: Text(p.name),
+                                                subtitle: Text(p.sku),
+                                                onChanged: (v) => setState(() {
+                                                  v!
+                                                      ? selected.add(p.id)
+                                                      : selected.remove(p.id);
+                                                  ref
+                                                      .read(
+                                                        selectedProductIdsProvider
+                                                            .notifier,
+                                                      )
+                                                      .replaceAll(selected);
+                                                }),
+                                              ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              ListView(
+                                padding: const EdgeInsets.all(20),
+                                children: [
+                                  Text(
+                                    'Orden de categorías',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium,
+                                  ),
+                                  const Text(
+                                    'Al mover una categoría se mueve con todos sus productos.',
+                                  ),
+                                  _CatalogSearchField(
+                                    hint: 'Buscar categoría para ordenar',
+                                    onChanged: (value) => setState(
+                                      () => categoryOrderSearch = value,
+                                    ),
+                                  ),
+                                  _orderButtons(
+                                    selection: categoryReorderSelection,
+                                    onUp: () => _moveCategories(-1),
+                                    onDown: () => _moveCategories(1),
+                                    onClear: () => setState(
+                                      () => categoryReorderSelection.clear(),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height: 180,
+                                    child: Scrollbar(
+                                      child: ListView(
+                                        children: [
+                                          for (final categoryId
+                                              in categoryOrder)
+                                            if (_matches(
+                                              categoryNames[categoryId] ?? '',
+                                              categoryOrderSearch,
+                                            ))
+                                              CheckboxListTile(
+                                                dense: true,
+                                                contentPadding: EdgeInsets.zero,
+                                                value: categoryReorderSelection
+                                                    .contains(categoryId),
+                                                title: Text(
+                                                  categoryNames[categoryId] ??
+                                                      'Sin categoría',
+                                                ),
+                                                onChanged: (value) => setState(() {
+                                                  value == true
+                                                      ? categoryReorderSelection
+                                                            .add(categoryId)
+                                                      : categoryReorderSelection
+                                                            .remove(categoryId);
+                                                }),
+                                              ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const Divider(height: 24),
+                                  Text(
+                                    'Orden dentro de cada categoría',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium,
+                                  ),
+                                  const Text(
+                                    'Marca uno o varios productos y muévelos juntos. Las categorías siempre permanecen agrupadas.',
+                                  ),
+                                  _CatalogSearchField(
+                                    hint: 'Buscar producto para ordenar',
+                                    onChanged: (value) => setState(
+                                      () => productOrderSearch = value,
+                                    ),
+                                  ),
+                                  _orderButtons(
+                                    selection: reorderSelection,
+                                    onUp: () => _moveMarked(data, -1),
+                                    onDown: () => _moveMarked(data, 1),
+                                    onClear: () =>
+                                        setState(reorderSelection.clear),
+                                  ),
+                                  SizedBox(
+                                    height: 340,
+                                    child: Scrollbar(
+                                      child: ListView(
+                                        children: [
+                                          for (final product
+                                              in _orderedProducts(data))
+                                            if (selected.contains(product.id) &&
+                                                _matchesProduct(
+                                                  product,
+                                                  productOrderSearch,
+                                                ))
+                                              CheckboxListTile(
+                                                dense: true,
+                                                contentPadding: EdgeInsets.zero,
+                                                value: reorderSelection
+                                                    .contains(product.id),
+                                                title: Text(product.name),
+                                                subtitle: Text(
+                                                  '${categoryNames[product.categoryId] ?? 'Sin categoría'} · ${product.sku}',
+                                                ),
+                                                onChanged: (value) =>
+                                                    setState(() {
+                                                      value == true
+                                                          ? reorderSelection
+                                                                .add(product.id)
+                                                          : reorderSelection
+                                                                .remove(
+                                                                  product.id,
+                                                                );
+                                                    }),
+                                              ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                      const Divider(height: 32),
-                      Text(
-                        'Selección por categoría',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      _CatalogSearchField(
-                        hint: 'Buscar categoría',
-                        onChanged: (value) =>
-                            setState(() => categorySelectionSearch = value),
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: selected.isEmpty
-                              ? null
-                              : _clearCatalogSelection,
-                          icon: const Icon(Icons.deselect),
-                          label: const Text('Limpiar selección'),
-                        ),
-                      ),
-                      SizedBox(
-                        height: 220,
-                        child: Scrollbar(
-                          child: ListView(
-                            children: [
-                              for (final entry in categoryNames.entries)
-                                if (data.any(
-                                      (p) => p.categoryId == entry.key,
-                                    ) &&
-                                    _matches(
-                                      entry.value,
-                                      categorySelectionSearch,
-                                    ))
-                                  CheckboxListTile(
-                                    dense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                    value: data
-                                        .where((p) => p.categoryId == entry.key)
-                                        .every((p) => selected.contains(p.id)),
-                                    title: Text(entry.value),
-                                    subtitle: Text(
-                                      '${data.where((p) => p.categoryId == entry.key).length} producto(s)',
-                                    ),
-                                    onChanged: (value) => setState(() {
-                                      final ids = data
-                                          .where(
-                                            (p) => p.categoryId == entry.key,
-                                          )
-                                          .map((p) => p.id);
-                                      value == true
-                                          ? selected.addAll(ids)
-                                          : selected.removeAll(ids);
-                                      ref
-                                          .read(
-                                            selectedProductIdsProvider.notifier,
-                                          )
-                                          .replaceAll(selected);
-                                    }),
-                                  ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const Divider(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Selección por producto',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          TextButton.icon(
-                            onPressed: selected.isEmpty
-                                ? null
-                                : _clearCatalogSelection,
-                            icon: const Icon(Icons.deselect),
-                            label: const Text('Limpiar'),
-                          ),
-                        ],
-                      ),
-                      _CatalogSearchField(
-                        hint: 'Buscar por nombre, SKU o categoría',
-                        onChanged: (value) =>
-                            setState(() => productSelectionSearch = value),
-                      ),
-                      CheckboxListTile(
-                        value: selected.length == data.length,
-                        title: const Text('Todos los productos'),
-                        onChanged: (v) => setState(() {
-                          selected.clear();
-                          if (v == true) selected.addAll(data.map((p) => p.id));
-                          ref
-                              .read(selectedProductIdsProvider.notifier)
-                              .replaceAll(selected);
-                        }),
-                      ),
-                      SizedBox(
-                        height: 320,
-                        child: Scrollbar(
-                          child: ListView(
-                            children: [
-                              for (final p in data)
-                                if (_matchesProduct(p, productSelectionSearch))
-                                  CheckboxListTile(
-                                    dense: true,
-                                    value: selected.contains(p.id),
-                                    title: Text(p.name),
-                                    subtitle: Text(p.sku),
-                                    onChanged: (v) => setState(() {
-                                      v!
-                                          ? selected.add(p.id)
-                                          : selected.remove(p.id);
-                                      ref
-                                          .read(
-                                            selectedProductIdsProvider.notifier,
-                                          )
-                                          .replaceAll(selected);
-                                    }),
-                                  ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const Divider(height: 32),
-                      Text(
-                        'Orden de categorías',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const Text(
-                        'Al mover una categoría se mueve con todos sus productos.',
-                      ),
-                      _CatalogSearchField(
-                        hint: 'Buscar categoría para ordenar',
-                        onChanged: (value) =>
-                            setState(() => categoryOrderSearch = value),
-                      ),
-                      _orderButtons(
-                        selection: categoryReorderSelection,
-                        onUp: () => _moveCategories(-1),
-                        onDown: () => _moveCategories(1),
-                        onClear: () =>
-                            setState(() => categoryReorderSelection.clear()),
-                      ),
-                      SizedBox(
-                        height: 180,
-                        child: Scrollbar(
-                          child: ListView(
-                            children: [
-                              for (final categoryId in categoryOrder)
-                                if (_matches(
-                                  categoryNames[categoryId] ?? '',
-                                  categoryOrderSearch,
-                                ))
-                                  CheckboxListTile(
-                                    dense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                    value: categoryReorderSelection.contains(
-                                      categoryId,
-                                    ),
-                                    title: Text(
-                                      categoryNames[categoryId] ??
-                                          'Sin categoría',
-                                    ),
-                                    onChanged: (value) => setState(() {
-                                      value == true
-                                          ? categoryReorderSelection.add(
-                                              categoryId,
-                                            )
-                                          : categoryReorderSelection.remove(
-                                              categoryId,
-                                            );
-                                    }),
-                                  ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const Divider(height: 24),
-                      Text(
-                        'Orden dentro de cada categoría',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const Text(
-                        'Marca uno o varios productos y muévelos juntos. Las categorías siempre permanecen agrupadas.',
-                      ),
-                      _CatalogSearchField(
-                        hint: 'Buscar producto para ordenar',
-                        onChanged: (value) =>
-                            setState(() => productOrderSearch = value),
-                      ),
-                      _orderButtons(
-                        selection: reorderSelection,
-                        onUp: () => _moveMarked(data, -1),
-                        onDown: () => _moveMarked(data, 1),
-                        onClear: () => setState(reorderSelection.clear),
-                      ),
-                      SizedBox(
-                        height: 340,
-                        child: Scrollbar(
-                          child: ListView(
-                            children: [
-                              for (final product in _orderedProducts(data))
-                                if (selected.contains(product.id) &&
-                                    _matchesProduct(
-                                      product,
-                                      productOrderSearch,
-                                    ))
-                                  CheckboxListTile(
-                                    dense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                    value: reorderSelection.contains(
-                                      product.id,
-                                    ),
-                                    title: Text(product.name),
-                                    subtitle: Text(
-                                      '${categoryNames[product.categoryId] ?? 'Sin categoría'} · ${product.sku}',
-                                    ),
-                                    onChanged: (value) => setState(() {
-                                      value == true
-                                          ? reorderSelection.add(product.id)
-                                          : reorderSelection.remove(product.id);
-                                    }),
-                                  ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                const VerticalDivider(width: 1),
-                Expanded(
-                  child: PdfPreview(
-                    allowPrinting: false,
-                    allowSharing: false,
-                    canChangePageFormat: false,
-                    canChangeOrientation: false,
-                    canDebug: false,
-                    pdfFileName: 'catalogo_serp.pdf',
-                    actions: [
-                      IconButton(
-                        tooltip: 'Guardar PDF',
-                        onPressed: () => _savePdf(data),
-                        icon: const Icon(Icons.download_outlined),
-                      ),
-                    ],
-                    build: (_) => _generatePdf(data),
+                  const VerticalDivider(width: 1),
+                  Expanded(
+                    child: PdfPreview(
+                      allowPrinting: false,
+                      allowSharing: false,
+                      canChangePageFormat: false,
+                      canChangeOrientation: false,
+                      canDebug: false,
+                      pdfFileName: 'catalogo_serp.pdf',
+                      actions: [
+                        IconButton(
+                          tooltip: 'Guardar PDF',
+                          onPressed: () => _savePdf(data),
+                          icon: const Icon(Icons.download_outlined),
+                        ),
+                      ],
+                      build: (_) => _generatePdf(data),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+      ),
     );
   }
 
@@ -823,19 +989,25 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
       );
 
   Future<void> _savePdf(List<Product> data) async {
-    final location = await getSaveLocation(
-      suggestedName: 'catalogo_serp.pdf',
-      acceptedTypeGroups: const [
-        XTypeGroup(label: 'Documento PDF', extensions: ['pdf']),
-      ],
-    );
-    if (location == null) return;
-    final bytes = await _generatePdf(data);
-    await File(location.path).writeAsBytes(bytes, flush: true);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF guardado en ${location.path}')),
+    if (_savingPdf) return;
+    setState(() => _savingPdf = true);
+    try {
+      final location = await getSaveLocation(
+        suggestedName: 'catalogo_serp.pdf',
+        acceptedTypeGroups: const [
+          XTypeGroup(label: 'Documento PDF', extensions: ['pdf']),
+        ],
       );
+      if (location == null) return;
+      final bytes = await _generatePdf(data);
+      await File(location.path).writeAsBytes(bytes, flush: true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF guardado en ${location.path}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingPdf = false);
     }
   }
 
@@ -851,6 +1023,35 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   void _clearCatalogSelection() {
     setState(selected.clear);
     ref.read(selectedProductIdsProvider.notifier).clear();
+  }
+
+  int _selectedCategoryCount(List<Product> data) => data
+      .where((product) => selected.contains(product.id))
+      .map((product) => product.categoryId)
+      .toSet()
+      .length;
+
+  void _resetDesign() {
+    _updatePreference(() {
+      backgroundColor = '#FFFFFF';
+      cardColor = '#FFFFFF';
+      designAccentColor = '#3949AB';
+      textColor = '#111111';
+      highlightTextColor = '#1565C0';
+      secondaryTextColor = '#616161';
+      promotionColor = '#C62828';
+      promotionTextColor = '#FFFFFF';
+      promotionPreviousPriceColor = '#757575';
+      promotionPriceColor = '#C62828';
+      promotionDescriptionColor = '#C62828';
+      imageFit = CatalogImageFit.cover;
+      cards = 4;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Diseño restablecido a los valores por defecto.'),
+      ),
+    );
   }
 
   bool _matches(String value, String query) {
