@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:serp/core/identity/identity_context.dart';
 import 'package:serp/modules/configuration/api/configuration_api.dart';
@@ -7,6 +9,9 @@ class _FakeConfigurationApi implements ConfigurationApi {
   SaveBusinessSettingsCommand? savedCommand;
   CreatePackagingPresentationCommand? createPresentationCommand;
   UpdatePackagingPresentationCommand? updatePresentationCommand;
+
+  @override
+  Future<Uint8List?> downloadCatalogLogo() async => null;
 
   @override
   Future<CatalogPreferencesDto> getCatalogPreferences() async => _preferences;

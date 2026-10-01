@@ -71,7 +71,7 @@ class BulkProductTransferService {
     String text, {
     required List<Category> categories,
     required List<Product> existingProducts,
-    List<PackagingPresentation> presentations = const [],
+    List<PackagingPresentationDto> presentations = const [],
   }) {
     final rows = csv.decode(text);
     if (rows.isEmpty) {

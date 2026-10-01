@@ -9,7 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 
 import '../../../configuration/configuration_module.dart';
-import '../../../configuration/di/configuration_providers.dart';
+import '../../../../core/identity/identity_context_provider.dart';
 import '../../../sales/sales_module.dart';
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
@@ -43,7 +43,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   List<Product>? products;
   Map<String, String> categoryNames = const {};
   Uint8List? logoBytes;
-  String? logoUrl;
+  int preferencesVersion = 1;
   List<SalesAgentDto> catalogAgents = const [];
   String? selectedAgentId;
   Timer? _preferencesTimer;
@@ -71,15 +71,13 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
       const ProductQuery(isActive: true),
     );
     final categories = await ref.read(categoriesProvider.future);
-    final settings = await ref.read(businessSettingsProvider.future);
-    final settingsRepository = ref.read(configurationRepositoryProvider);
-    final preferences = await settingsRepository.getCatalogPreferences();
+    final settings = await ref.read(businessSettingsDtoProvider.future);
+    final configuration = ref.read(configurationApiProvider);
+    final preferences = await configuration.getCatalogPreferences();
     final agents = await ref
         .read(salesApiProvider)
         .getAgents(const SalesAgentQuery(activeOnly: true));
-    final storedLogo = await settingsRepository.downloadCatalogLogo(
-      preferences.logoUrl,
-    );
+    final storedLogo = await configuration.downloadCatalogLogo();
     if (mounted) {
       final sharedSelection = ref.read(selectedProductIdsProvider);
       final loadedCategoryNames = {
@@ -124,7 +122,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
           (value) => value.name == preferences.imageFit,
           orElse: () => CatalogImageFit.cover,
         );
-        logoUrl = preferences.logoUrl;
+        preferencesVersion = preferences.version;
         logoBytes = storedLogo;
         catalogAgents = agents;
         selectedAgentId =
@@ -192,28 +190,35 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     }
     if (mounted) setState(() => _savingPreferences = true);
     try {
-      await ref
-          .read(configurationRepositoryProvider)
+      final saved = await ref
+          .read(configurationApiProvider)
           .saveCatalogPreferences(
-            CatalogPreferences(
-              cardsPerPage: cards,
-              backgroundColor: backgroundColor,
-              cardColor: cardColor,
-              designAccentColor: designAccentColor,
-              textColor: textColor,
-              highlightTextColor: highlightTextColor,
-              secondaryTextColor: secondaryTextColor,
-              promotionColor: promotionColor,
-              promotionTextColor: promotionTextColor,
-              promotionPreviousPriceColor: promotionPreviousPriceColor,
-              promotionPriceColor: promotionPriceColor,
-              promotionDescriptionColor: promotionDescriptionColor,
-              imageFit: imageFit.name,
-              logoUrl: logoUrl,
-              selectedAgentId: selectedAgentId,
+            SaveCatalogPreferencesCommand(
+              expectedVersion: preferencesVersion,
+              identity: ref.read(identityContextProvider),
+              values: CatalogDesignPreferencesInput(
+                cardsPerPage: cards,
+                backgroundColor: backgroundColor,
+                cardColor: cardColor,
+                designAccentColor: designAccentColor,
+                textColor: textColor,
+                highlightTextColor: highlightTextColor,
+                secondaryTextColor: secondaryTextColor,
+                promotionColor: promotionColor,
+                promotionTextColor: promotionTextColor,
+                promotionPreviousPriceColor: promotionPreviousPriceColor,
+                promotionPriceColor: promotionPriceColor,
+                promotionDescriptionColor: promotionDescriptionColor,
+                imageFit: imageFit.name,
+              ),
             ),
           );
-      if (mounted) setState(() => _preferencesSaved = true);
+      if (mounted) {
+        setState(() {
+          preferencesVersion = saved.version;
+          _preferencesSaved = true;
+        });
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -225,6 +230,39 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
       if (_savePreferencesAgain) {
         _savePreferencesAgain = false;
         unawaited(_savePreferences());
+      }
+    }
+  }
+
+  Future<void> _selectAgent(String? value) async {
+    _preferencesTimer?.cancel();
+    if (!_preferencesSaved) await _savePreferences();
+    try {
+      final saved = await ref
+          .read(configurationApiProvider)
+          .selectCatalogAgent(
+            SelectCatalogAgentCommand(
+              agentId: value,
+              expectedVersion: preferencesVersion,
+              identity: ref.read(identityContextProvider),
+            ),
+          );
+      final selectedAgent = catalogAgents
+          .where((item) => item.id == value)
+          .firstOrNull;
+      if (mounted) {
+        setState(() {
+          preferencesVersion = saved.version;
+          selectedAgentId = value;
+          agent.text = selectedAgent?.name ?? '';
+          phone.text = selectedAgent?.phone ?? '';
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo seleccionar el agente: $error')),
+        );
       }
     }
   }
@@ -298,16 +336,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                                     ),
                                   )
                                   .toList(),
-                              onChanged: (value) {
-                                final selectedAgent = catalogAgents
-                                    .where((item) => item.id == value)
-                                    .firstOrNull;
-                                _updatePreference(() {
-                                  selectedAgentId = value;
-                                  agent.text = selectedAgent?.name ?? '';
-                                  phone.text = selectedAgent?.phone ?? '';
-                                });
-                              },
+                              onChanged: _selectAgent,
                             ),
                           ),
                           IconButton(

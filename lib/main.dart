@@ -9,6 +9,8 @@ import 'core/device/device_identity.dart';
 import 'core/identity/identity_context.dart';
 import 'core/identity/identity_context_provider.dart';
 import 'modules/configuration/data/repositories/supabase_configuration_repository.dart';
+import 'modules/configuration/data/repositories/supabase_configuration_api.dart';
+import 'modules/configuration/configuration_module.dart';
 import 'modules/configuration/di/configuration_providers.dart';
 import 'modules/product/data/data_sources/supabase_product_data_source.dart';
 import 'modules/product/data/repositories/supabase_product_repository.dart';
@@ -50,6 +52,7 @@ Future<void> main() async {
     Supabase.instance.client,
     device,
   );
+  final configurationApi = SupabaseConfigurationApi(Supabase.instance.client);
   final imageService = ProductImageService(Supabase.instance.client);
   final salesRepository = SupabaseSalesRepository(
     SupabaseSalesDataSource(Supabase.instance.client),
@@ -73,6 +76,7 @@ Future<void> main() async {
         configurationRepositoryProvider.overrideWithValue(
           configurationRepository,
         ),
+        configurationApiProvider.overrideWithValue(configurationApi),
         productImageServiceProvider.overrideWithValue(imageService),
         salesRepositoryProvider.overrideWithValue(salesRepository),
         salesApiProvider.overrideWithValue(salesRepository),

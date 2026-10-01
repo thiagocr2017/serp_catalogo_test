@@ -6,7 +6,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../configuration/di/configuration_providers.dart';
+import '../../../configuration/configuration_module.dart';
 
 import '../../di/product_providers.dart';
 import '../../domain/entities/product_query.dart';
@@ -204,7 +204,7 @@ class _ProductTransferPageState extends ConsumerState<ProductTransferPage> {
         const ProductQuery(),
       );
       final presentations = await ref.read(
-        packagingPresentationsProvider.future,
+        packagingPresentationDtosProvider.future,
       );
       final text = utf8.decode(await file.readAsBytes(), allowMalformed: true);
       setState(() {

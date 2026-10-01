@@ -31,7 +31,13 @@ void main() {
       ],
       existingProducts: const [],
       presentations: const [
-        PackagingPresentation(id: 'unit', name: 'Unidad', sortOrder: 0),
+        PackagingPresentationDto(
+          id: 'unit',
+          name: 'Unidad',
+          sortOrder: 0,
+          isActive: true,
+          version: 1,
+        ),
       ],
     );
 

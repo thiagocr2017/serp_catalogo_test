@@ -3,11 +3,13 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/configuration/theme_mode_controller.dart';
+import '../../../../core/identity/identity_context_provider.dart';
+import '../../api/configuration_api.dart';
 import '../../di/configuration_providers.dart';
 import '../../domain/entities/business_settings.dart';
-import '../../domain/entities/packaging_presentation.dart';
 
 class _ThemeModeSection extends ConsumerWidget {
   const _ThemeModeSection();
@@ -56,14 +58,27 @@ class SettingsPage extends ConsumerWidget {
         .when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('$e')),
-          data: (value) => _SettingsForm(initial: value),
+          data: (value) => ref
+              .watch(businessSettingsDtoProvider)
+              .when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('$e')),
+                data: (dto) => _SettingsForm(
+                  initial: value,
+                  initialBusinessVersion: dto.version,
+                ),
+              ),
         ),
   );
 }
 
 class _SettingsForm extends ConsumerStatefulWidget {
-  const _SettingsForm({required this.initial});
+  const _SettingsForm({
+    required this.initial,
+    required this.initialBusinessVersion,
+  });
   final BusinessSettings initial;
+  final int initialBusinessVersion;
   @override
   ConsumerState<_SettingsForm> createState() => _SettingsFormState();
 }
@@ -83,6 +98,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
   late int decimals = widget.initial.decimalPlaces;
   late bool includesTax = widget.initial.pricesIncludeTax;
   late String rounding = widget.initial.roundingMode;
+  late int businessVersion = widget.initialBusinessVersion;
   Uint8List? catalogLogo;
   bool loadingLogo = true;
 
@@ -238,7 +254,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
       ),
       const SizedBox(height: 16),
       ref
-          .watch(packagingPresentationsProvider)
+          .watch(packagingPresentationDtosProvider)
           .when(
             loading: () => const LinearProgressIndicator(),
             error: (error, _) => Text('No se pudieron cargar: $error'),
@@ -347,23 +363,25 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     ],
   );
   Future<void> _save() async {
-    await ref
-        .read(configurationRepositoryProvider)
-        .save(
-          BusinessSettings(
+    final saved = await ref
+        .read(configurationApiProvider)
+        .saveBusinessSettings(
+          SaveBusinessSettingsCommand(
             defaultCurrency: currency,
             decimalPlaces: decimals,
-            taxPercentage: double.parse(tax.text),
+            taxPercentage: tax.text.trim(),
             pricesIncludeTax: includesTax,
             roundingMode: rounding,
-            roundingIncrement: double.parse(increment.text),
+            roundingIncrement: increment.text.trim(),
             companyName: company.text.trim(),
             paymentMethods: payments.text.trim(),
-            appMode: widget.initial.appMode,
-            isSuperAdmin: widget.initial.isSuperAdmin,
+            expectedVersion: businessVersion,
+            identity: ref.read(identityContextProvider),
           ),
         );
+    businessVersion = saved.version;
     ref.invalidate(businessSettingsProvider);
+    ref.invalidate(businessSettingsDtoProvider);
     if (mounted) {
       ScaffoldMessenger.of(
         context,
@@ -396,7 +414,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     }
   }
 
-  Future<void> _editPresentation([PackagingPresentation? existing]) async {
+  Future<void> _editPresentation([PackagingPresentationDto? existing]) async {
     final controller = TextEditingController(text: existing?.name ?? '');
     final accepted = await showDialog<bool>(
       context: context,
@@ -429,10 +447,27 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
       ),
     );
     if (accepted == true) {
-      await ref
-          .read(configurationRepositoryProvider)
-          .savePackagingPresentation(id: existing?.id, name: controller.text);
-      ref.invalidate(packagingPresentationsProvider);
+      final api = ref.read(configurationApiProvider);
+      final identity = ref.read(identityContextProvider);
+      if (existing == null) {
+        await api.createPackagingPresentation(
+          CreatePackagingPresentationCommand(
+            commandId: const Uuid().v4(),
+            name: controller.text,
+            identity: identity,
+          ),
+        );
+      } else {
+        await api.updatePackagingPresentation(
+          UpdatePackagingPresentationCommand(
+            id: existing.id,
+            name: controller.text,
+            expectedVersion: existing.version,
+            identity: identity,
+          ),
+        );
+      }
+      ref.invalidate(packagingPresentationDtosProvider);
     }
     controller.dispose();
   }

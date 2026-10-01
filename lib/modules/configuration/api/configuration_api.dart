@@ -1,16 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'dart:typed_data';
+
 import 'configuration_commands.dart';
 import 'configuration_dtos.dart';
 
 export 'configuration_commands.dart';
 export 'configuration_dtos.dart';
-
-// Puente temporal de tipos para consumidores heredados; se elimina en 1B.3.
-// Ningún contrato nuevo depende de estas entidades internas.
-export '../domain/entities/business_settings.dart';
-export '../domain/entities/catalog_preferences.dart';
-export '../domain/entities/packaging_presentation.dart';
 
 /// Fachada pública de Configuración y su provider público.
 /// Las implementaciones y providers de infraestructura son internos.
@@ -37,8 +33,23 @@ abstract interface class ConfigurationApi {
   Future<CatalogLogoReferenceDto> replaceCatalogLogo(
     ReplaceCatalogLogoCommand command,
   );
+
+  Future<Uint8List?> downloadCatalogLogo();
 }
 
 final configurationApiProvider = Provider<ConfigurationApi>(
   (ref) => throw StateError('ConfigurationApi must be overridden.'),
 );
+
+final businessSettingsDtoProvider = FutureProvider<BusinessSettingsDto>(
+  (ref) => ref.watch(configurationApiProvider).getBusinessSettings(),
+);
+
+final catalogPreferencesDtoProvider = FutureProvider<CatalogPreferencesDto>(
+  (ref) => ref.watch(configurationApiProvider).getCatalogPreferences(),
+);
+
+final packagingPresentationDtosProvider =
+    FutureProvider<List<PackagingPresentationDto>>(
+      (ref) => ref.watch(configurationApiProvider).getPackagingPresentations(),
+    );

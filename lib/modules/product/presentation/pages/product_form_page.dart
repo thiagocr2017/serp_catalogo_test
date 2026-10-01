@@ -5,7 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import 'dart:typed_data';
 
-import '../../../configuration/di/configuration_providers.dart';
+import '../../../configuration/configuration_module.dart';
 import '../../../inventory/inventory_module.dart' as inventory;
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
@@ -148,7 +148,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
         minimumSaleQuantity: int.parse(_minimumSaleQuantity.text),
         packagingPresentationId: _packagingPresentationId!,
         packagingPresentationName: ref
-            .read(packagingPresentationsProvider)
+            .read(packagingPresentationDtosProvider)
             .value
             ?.where((item) => item.id == _packagingPresentationId)
             .firstOrNull
@@ -208,7 +208,8 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   @override
   Widget build(BuildContext context) {
     final categories = ref.watch(categoriesProvider);
-    final presentations = ref.watch(packagingPresentationsProvider).value ?? [];
+    final presentations =
+        ref.watch(packagingPresentationDtosProvider).value ?? [];
     if (_packagingPresentationId == null && presentations.isNotEmpty) {
       _packagingPresentationId = presentations.first.id;
     }
