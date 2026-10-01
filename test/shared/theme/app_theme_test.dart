@@ -26,6 +26,8 @@ void main() {
       },
     );
   }
+
+  darkModeChecks();
 }
 
 double _contrast(Color foreground, Color background) {
@@ -38,4 +40,33 @@ double _contrast(Color foreground, Color background) {
     background.computeLuminance(),
   );
   return (lighter + .05) / (darker + .05);
+}
+
+void darkModeChecks() {
+  test('el tema oscuro mejora legibilidad y jerarquía de superficies', () {
+    final colors = AppTheme.dark.colorScheme;
+    expect(
+      _contrast(colors.onSurfaceVariant, colors.surface),
+      greaterThan(4.5),
+    );
+    expect(_contrast(colors.outlineVariant, colors.surface), greaterThan(1.8));
+    expect(
+      _contrast(colors.outline, colors.surfaceContainerLowest),
+      greaterThan(4.5),
+    );
+    final steps = [
+      colors.surfaceContainerLowest,
+      colors.surface,
+      colors.surfaceContainerLow,
+      colors.surfaceContainer,
+      colors.surfaceContainerHigh,
+      colors.surfaceContainerHighest,
+    ];
+    for (var i = 1; i < steps.length; i++) {
+      expect(
+        steps[i].computeLuminance(),
+        greaterThan(steps[i - 1].computeLuminance()),
+      );
+    }
+  });
 }

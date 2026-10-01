@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/order_api.dart';
+import '../../../../shared/widgets/status_chip.dart';
 
 class OrdersPage extends ConsumerWidget {
   const OrdersPage({super.key});
@@ -37,20 +38,20 @@ class OrdersPage extends ConsumerWidget {
                         '\$${order.totalAmount.toStringAsFixed(2)}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      Chip(
-                        label: Text(switch (order.status) {
+                      StatusChip(
+                        label: switch (order.status) {
                           OrderStatus.draft => 'Borrador',
                           OrderStatus.confirmed => 'Confirmado',
                           OrderStatus.reserved => 'Reservado',
                           OrderStatus.dispatched => 'Despachado',
                           OrderStatus.delivered => 'Entregado',
                           OrderStatus.cancelled => 'Cancelado',
-                        }),
-                        backgroundColor: switch (order.status) {
-                          OrderStatus.delivered => Colors.green.shade100,
-                          OrderStatus.cancelled => Colors.red.shade100,
-                          OrderStatus.dispatched => Colors.blue.shade100,
-                          _ => Colors.grey.shade100,
+                        },
+                        tone: switch (order.status) {
+                          OrderStatus.delivered => StatusTone.success,
+                          OrderStatus.cancelled => StatusTone.danger,
+                          OrderStatus.dispatched => StatusTone.info,
+                          _ => StatusTone.neutral,
                         },
                       ),
                     ],

@@ -7,6 +7,7 @@ import '../../domain/entities/category.dart';
 import '../../domain/entities/product_query.dart';
 import '../../di/product_providers.dart';
 import '../controllers/product_list_controller.dart';
+import '../../../../shared/widgets/status_chip.dart';
 
 enum ProductView { list, grid }
 
@@ -599,35 +600,16 @@ class _StockBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final (label, color, background) = product.isOutOfStock
-        ? (
-            'Agotado',
-            dark ? Colors.red.shade200 : Colors.red.shade900,
-            dark
-                ? Colors.red.shade900.withValues(alpha: .35)
-                : Colors.red.shade50,
-          )
+    final label = product.isOutOfStock
+        ? 'Agotado'
         : product.requiresRestock
-        ? (
-            'Stock bajo',
-            dark ? Colors.orange.shade200 : Colors.orange.shade900,
-            dark
-                ? Colors.orange.shade900.withValues(alpha: .35)
-                : Colors.orange.shade50,
-          )
-        : (
-            'Disponible',
-            dark ? Colors.green.shade200 : Colors.green.shade900,
-            dark
-                ? Colors.green.shade900.withValues(alpha: .35)
-                : Colors.green.shade50,
-          );
-    return Chip(
-      label: Text(label, style: TextStyle(color: color)),
-      backgroundColor: background,
-      side: BorderSide(color: color),
-      visualDensity: VisualDensity.compact,
-    );
+        ? 'Stock bajo'
+        : 'Disponible';
+    final tone = product.isOutOfStock
+        ? StatusTone.danger
+        : product.requiresRestock
+        ? StatusTone.warning
+        : StatusTone.success;
+    return StatusChip(label: label, tone: tone);
   }
 }

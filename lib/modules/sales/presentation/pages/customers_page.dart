@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/customer_api.dart';
+import '../../../../shared/widgets/status_chip.dart';
 
 class CustomersPage extends ConsumerWidget {
   const CustomersPage({super.key});
@@ -29,11 +30,11 @@ class CustomersPage extends ConsumerWidget {
                 child: ListTile(
                   title: Text(customer.name),
                   subtitle: Text(customer.phone ?? customer.email ?? ''),
-                  trailing: Chip(
-                    label: Text(customer.isActive ? 'Activo' : 'Inactivo'),
-                    backgroundColor: customer.isActive
-                        ? Colors.green.shade100
-                        : Colors.red.shade100,
+                  trailing: StatusChip(
+                    label: customer.isActive ? 'Activo' : 'Inactivo',
+                    tone: customer.isActive
+                        ? StatusTone.success
+                        : StatusTone.danger,
                   ),
                 ),
               );

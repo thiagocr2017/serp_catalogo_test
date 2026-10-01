@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/consignment_api.dart';
+import '../../../../shared/widgets/status_chip.dart';
 
 class ConsignmentsPage extends ConsumerWidget {
   const ConsignmentsPage({super.key});
@@ -17,7 +18,9 @@ class ConsignmentsPage extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (consignments) {
           if (consignments.isEmpty) {
-            return const Center(child: Text('No hay consignaciones registradas.'));
+            return const Center(
+              child: Text('No hay consignaciones registradas.'),
+            );
           }
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -37,20 +40,20 @@ class ConsignmentsPage extends ConsumerWidget {
                         '\$${consignment.totalAmount.toStringAsFixed(2)}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      Chip(
-                        label: Text(switch (consignment.status) {
+                      StatusChip(
+                        label: switch (consignment.status) {
                           ConsignmentStatus.draft => 'Borrador',
                           ConsignmentStatus.sent => 'Enviada',
                           ConsignmentStatus.partialReturn => 'Parcial',
                           ConsignmentStatus.returned => 'Devuelta',
                           ConsignmentStatus.settled => 'Liquidada',
                           ConsignmentStatus.cancelled => 'Cancelada',
-                        }),
-                        backgroundColor: switch (consignment.status) {
-                          ConsignmentStatus.settled => Colors.green.shade100,
-                          ConsignmentStatus.cancelled => Colors.red.shade100,
-                          ConsignmentStatus.returned => Colors.blue.shade100,
-                          _ => Colors.grey.shade100,
+                        },
+                        tone: switch (consignment.status) {
+                          ConsignmentStatus.settled => StatusTone.success,
+                          ConsignmentStatus.cancelled => StatusTone.danger,
+                          ConsignmentStatus.returned => StatusTone.info,
+                          _ => StatusTone.neutral,
                         },
                       ),
                     ],

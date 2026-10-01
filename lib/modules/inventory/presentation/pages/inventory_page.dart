@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/inventory_api.dart';
 import '../../di/inventory_providers.dart';
+import '../../../../shared/widgets/status_chip.dart';
 
 class InventoryPage extends ConsumerStatefulWidget {
   const InventoryPage({super.key, this.productId, this.productSku});
@@ -122,16 +123,18 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                         separatorBuilder: (_, _) => const Divider(),
                         itemBuilder: (context, index) {
                           final item = filtered[index];
+                          final (background, foreground) = resolveStatusColors(
+                            context,
+                            item.quantity > 0
+                                ? StatusTone.success
+                                : StatusTone.danger,
+                          );
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: item.quantity > 0
-                                  ? Colors.green.shade100
-                                  : Colors.red.shade100,
+                              backgroundColor: background,
                               child: Icon(
                                 item.quantity > 0 ? Icons.add : Icons.remove,
-                                color: item.quantity > 0
-                                    ? Colors.green.shade900
-                                    : Colors.red.shade900,
+                                color: foreground,
                               ),
                             ),
                             title: Text(

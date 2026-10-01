@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/quote_api.dart';
+import '../../../../shared/widgets/status_chip.dart';
 
 class QuotesPage extends ConsumerWidget {
   const QuotesPage({super.key});
@@ -17,7 +18,9 @@ class QuotesPage extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (quotes) {
           if (quotes.isEmpty) {
-            return const Center(child: Text('No hay cotizaciones registradas.'));
+            return const Center(
+              child: Text('No hay cotizaciones registradas.'),
+            );
           }
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -37,20 +40,21 @@ class QuotesPage extends ConsumerWidget {
                         '\$${quote.totalAmount.toStringAsFixed(2)}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      Chip(
-                        label: Text(switch (quote.status) {
+                      StatusChip(
+                        label: switch (quote.status) {
                           QuoteStatus.draft => 'Borrador',
                           QuoteStatus.sent => 'Enviada',
                           QuoteStatus.accepted => 'Aceptada',
                           QuoteStatus.rejected => 'Rechazada',
                           QuoteStatus.expired => 'Expirada',
                           QuoteStatus.converted => 'Convertida',
-                        }),
-                        backgroundColor: switch (quote.status) {
-                          QuoteStatus.accepted => Colors.green.shade100,
-                          QuoteStatus.rejected => Colors.red.shade100,
-                          QuoteStatus.converted => Colors.blue.shade100,
-                          _ => Colors.grey.shade100,
+                        },
+                        tone: switch (quote.status) {
+                          QuoteStatus.accepted => StatusTone.success,
+                          QuoteStatus.rejected => StatusTone.danger,
+                          QuoteStatus.expired => StatusTone.warning,
+                          QuoteStatus.converted => StatusTone.info,
+                          _ => StatusTone.neutral,
                         },
                       ),
                     ],

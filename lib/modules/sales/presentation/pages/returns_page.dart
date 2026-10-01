@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/return_api.dart';
+import '../../../../shared/widgets/status_chip.dart';
 
 class ReturnsPage extends ConsumerWidget {
   const ReturnsPage({super.key});
@@ -17,7 +18,9 @@ class ReturnsPage extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (returns) {
           if (returns.isEmpty) {
-            return const Center(child: Text('No hay devoluciones registradas.'));
+            return const Center(
+              child: Text('No hay devoluciones registradas.'),
+            );
           }
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -37,16 +40,16 @@ class ReturnsPage extends ConsumerWidget {
                         '\$${returnItem.totalAmount.toStringAsFixed(2)}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      Chip(
-                        label: Text(switch (returnItem.status) {
+                      StatusChip(
+                        label: switch (returnItem.status) {
                           ReturnStatus.draft => 'Borrador',
                           ReturnStatus.confirmed => 'Confirmada',
                           ReturnStatus.cancelled => 'Cancelada',
-                        }),
-                        backgroundColor: switch (returnItem.status) {
-                          ReturnStatus.confirmed => Colors.green.shade100,
-                          ReturnStatus.cancelled => Colors.red.shade100,
-                          _ => Colors.grey.shade100,
+                        },
+                        tone: switch (returnItem.status) {
+                          ReturnStatus.confirmed => StatusTone.success,
+                          ReturnStatus.cancelled => StatusTone.danger,
+                          _ => StatusTone.neutral,
                         },
                       ),
                     ],
