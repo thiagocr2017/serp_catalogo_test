@@ -46,6 +46,9 @@ dependencies:
   csv: ^8.0.0
   archive: ^4.3.0
   shared_preferences: ^2.5.5
+  sqflite: ^2.3.0
+  sqflite_common_ffi: ^2.3.0
+  connectivity_plus: ^6.0.0
 
 dev_dependencies:
   flutter_test:

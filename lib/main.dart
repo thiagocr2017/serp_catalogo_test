@@ -8,6 +8,8 @@ import 'core/navigation/app_router.dart';
 import 'core/device/device_identity.dart';
 import 'core/identity/identity_context.dart';
 import 'core/identity/identity_context_provider.dart';
+import 'core/offline/data/offline_queue_repository.dart';
+import 'core/offline/services/offline_sync_service.dart';
 import 'modules/configuration/data/repositories/supabase_configuration_repository.dart';
 import 'modules/configuration/data/repositories/supabase_configuration_api.dart';
 import 'modules/configuration/configuration_module.dart';
@@ -33,64 +35,50 @@ import 'modules/payments/data/repositories/supabase_payment_api.dart';
 import 'modules/payments/di/payment_providers.dart';
 import 'modules/payments/payments_module.dart';
 import 'shared/theme/app_theme.dart';
-import 'shared/widgets/app_loading_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: AppBootstrap()));
-}
+  runApp(const _LoadingScreen());
 
-class AppBootstrap extends StatefulWidget {
-  const AppBootstrap({super.key});
+  final configuration = AppConfiguration.local();
+  await Supabase.initialize(
+    url: configuration.supabaseUrl,
+    publishableKey: configuration.supabaseKey,
+  );
+  final device = await DeviceIdentity.detect();
+  final repository = SupabaseProductRepository(
+    SupabaseProductDataSource(Supabase.instance.client, device),
+  );
+  final inventoryRepository = SupabaseInventoryRepository(
+    SupabaseInventoryDataSource(Supabase.instance.client),
+    device,
+  );
+  final promotionRepository = SupabasePromotionRepository(
+    Supabase.instance.client,
+    device,
+  );
+  final configurationRepository = SupabaseConfigurationRepository(
+    Supabase.instance.client,
+    device,
+  );
+  final configurationApi = SupabaseConfigurationApi(Supabase.instance.client);
+  final imageService = ProductImageService(Supabase.instance.client);
+  final salesRepository = SupabaseSalesRepository(
+    SupabaseSalesDataSource(Supabase.instance.client),
+  );
+  final paymentDataSource = SupabasePaymentDataSource(
+    Supabase.instance.client,
+    device,
+  );
+  final paymentRepository = SupabasePaymentRepository(paymentDataSource);
+  final paymentApi = SupabasePaymentApi(paymentDataSource);
+  final offlineSyncService = OfflineSyncService(
+    OfflineQueueRepository.instance,
+    device,
+  );
 
-  @override
-  State<AppBootstrap> createState() => _AppBootstrapState();
-}
-
-class _AppBootstrapState extends State<AppBootstrap> {
-  late final Future<Widget> _appFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _appFuture = _initializeApp();
-  }
-
-  Future<Widget> _initializeApp() async {
-    final configuration = AppConfiguration.local();
-    await Supabase.initialize(
-      url: configuration.supabaseUrl,
-      publishableKey: configuration.supabaseKey,
-    );
-    final device = await DeviceIdentity.detect();
-    final repository = SupabaseProductRepository(
-      SupabaseProductDataSource(Supabase.instance.client, device),
-    );
-    final inventoryRepository = SupabaseInventoryRepository(
-      SupabaseInventoryDataSource(Supabase.instance.client),
-      device,
-    );
-    final promotionRepository = SupabasePromotionRepository(
-      Supabase.instance.client,
-      device,
-    );
-    final configurationRepository = SupabaseConfigurationRepository(
-      Supabase.instance.client,
-      device,
-    );
-    final configurationApi = SupabaseConfigurationApi(Supabase.instance.client);
-    final imageService = ProductImageService(Supabase.instance.client);
-    final salesRepository = SupabaseSalesRepository(
-      SupabaseSalesDataSource(Supabase.instance.client),
-    );
-    final paymentDataSource = SupabasePaymentDataSource(
-      Supabase.instance.client,
-      device,
-    );
-    final paymentRepository = SupabasePaymentRepository(paymentDataSource);
-    final paymentApi = SupabasePaymentApi(paymentDataSource);
-
-    return ProviderScope(
+  runApp(
+    ProviderScope(
       overrides: [
         identityContextProvider.overrideWithValue(
           IdentityContext(
@@ -113,21 +101,47 @@ class _AppBootstrapState extends State<AppBootstrap> {
         salesApiProvider.overrideWithValue(salesRepository),
         paymentRepositoryProvider.overrideWithValue(paymentRepository),
         paymentApiProvider.overrideWithValue(paymentApi),
+        offlineSyncServiceProvider.overrideWithValue(offlineSyncService),
       ],
       child: const SerpApp(),
-    );
-  }
+    ),
+  );
+}
+
+class _LoadingScreen extends StatelessWidget {
+  const _LoadingScreen();
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Widget>(
-      future: _appFuture,
-      builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          return snapshot.data!;
-        }
-        return const AppLoadingScreen();
-      },
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.dark,
+      home: const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.inventory_2_outlined, size: 64),
+              SizedBox(height: 16),
+              Text(
+                'SERP',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
+              SizedBox(height: 24),
+              SizedBox(
+                width: 200,
+                child: LinearProgressIndicator(minHeight: 4),
+              ),
+              SizedBox(height: 16),
+              Text('Iniciando...'),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
