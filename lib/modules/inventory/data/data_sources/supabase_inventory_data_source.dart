@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 class SupabaseInventoryDataSource {
   const SupabaseInventoryDataSource(this._client);
@@ -193,4 +194,138 @@ class SupabaseInventoryDataSource {
         .inFilter('id', values);
     return {for (final row in rows) row['id'] as String: row['name'] as String};
   }
+
+  // Advanced inventory
+
+  Future<Map<String, dynamic>> reserveStock({
+    required String productId,
+    required String locationId,
+    required String orderId,
+    required int quantity,
+    required String actorName,
+    required String deviceName,
+    required String deviceIdentifier,
+  }) => _client.rpc<Map<String, dynamic>>(
+    'reserve_inventory',
+    params: {
+      'p_command_id': const Uuid().v4(),
+      'p_product_id': productId,
+      'p_location_id': locationId,
+      'p_order_id': orderId,
+      'p_quantity': quantity,
+      'p_actor_name': actorName,
+      'p_device_name': deviceName,
+      'p_device_identifier': deviceIdentifier,
+    },
+  );
+
+  Future<void> releaseReservation(
+    String reservationId, {
+    required String actorName,
+    required String deviceName,
+    required String deviceIdentifier,
+  }) => _client.rpc<void>(
+    'release_reservation',
+    params: {
+      'p_reservation_id': reservationId,
+      'p_actor_name': actorName,
+      'p_device_name': deviceName,
+      'p_device_identifier': deviceIdentifier,
+    },
+  );
+
+  Future<void> consumeReservation(
+    String reservationId, {
+    required String actorName,
+    required String deviceName,
+    required String deviceIdentifier,
+  }) => _client.rpc<void>(
+    'consume_reservation',
+    params: {
+      'p_reservation_id': reservationId,
+      'p_actor_name': actorName,
+      'p_device_name': deviceName,
+      'p_device_identifier': deviceIdentifier,
+    },
+  );
+
+  Future<List<Map<String, dynamic>>> getReservations() => _client
+      .from('inventory_reservations')
+      .select()
+      .order('created_at', ascending: false);
+
+  Future<Map<String, dynamic>> createCount({
+    required String warehouseId,
+    required String actorName,
+    required String deviceName,
+    required String deviceIdentifier,
+  }) => _client.rpc<Map<String, dynamic>>(
+    'create_inventory_count',
+    params: {
+      'p_warehouse_id': warehouseId,
+      'p_actor_name': actorName,
+      'p_device_name': deviceName,
+      'p_device_identifier': deviceIdentifier,
+    },
+  );
+
+  Future<void> confirmCount(
+    String countId, {
+    required String actorName,
+    required String deviceName,
+    required String deviceIdentifier,
+  }) => _client.rpc<void>(
+    'confirm_count_and_adjust',
+    params: {
+      'p_count_id': countId,
+      'p_actor_name': actorName,
+      'p_device_name': deviceName,
+      'p_device_identifier': deviceIdentifier,
+    },
+  );
+
+  Future<void> dispatchTransfer(
+    String documentId, {
+    required String actorName,
+    required String deviceName,
+    required String deviceIdentifier,
+  }) => _client.rpc<void>(
+    'dispatch_transfer',
+    params: {
+      'p_document_id': documentId,
+      'p_actor_name': actorName,
+      'p_device_name': deviceName,
+      'p_device_identifier': deviceIdentifier,
+    },
+  );
+
+  Future<void> markTransferInTransit(
+    String documentId, {
+    required String actorName,
+    required String deviceName,
+    required String deviceIdentifier,
+  }) => _client.rpc<void>(
+    'mark_transfer_in_transit',
+    params: {
+      'p_document_id': documentId,
+      'p_actor_name': actorName,
+      'p_device_name': deviceName,
+      'p_device_identifier': deviceIdentifier,
+    },
+  );
+
+  Future<void> receiveTransfer(
+    String documentId, {
+    required String actorName,
+    required String deviceName,
+    required String deviceIdentifier,
+  }) => _client.rpc<void>(
+    'receive_transfer',
+    params: {
+      'p_document_id': documentId,
+      'p_actor_name': actorName,
+      'p_device_name': deviceName,
+      'p_device_identifier': deviceIdentifier,
+    },
+  );
 }

@@ -357,4 +357,134 @@ class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
     isDefault: row['is_default'] as bool? ?? false,
     isActive: row['is_active'] as bool? ?? true,
   );
+
+  // Advanced inventory implementation
+
+  @override
+  Future<InventoryReservation> reserveStock({
+    required String productId,
+    required String locationId,
+    required String orderId,
+    required int quantity,
+  }) async {
+    final row = await _source.reserveStock(
+      productId: productId,
+      locationId: locationId,
+      orderId: orderId,
+      quantity: quantity,
+      actorName: _device.actorName,
+      deviceName: _device.name,
+      deviceIdentifier: _device.identifier,
+    );
+    return _reservation(row);
+  }
+
+  @override
+  Future<void> releaseReservation(String reservationId) =>
+      _source.releaseReservation(
+        reservationId,
+        actorName: _device.actorName,
+        deviceName: _device.name,
+        deviceIdentifier: _device.identifier,
+      );
+
+  @override
+  Future<void> consumeReservation(String reservationId) =>
+      _source.consumeReservation(
+        reservationId,
+        actorName: _device.actorName,
+        deviceName: _device.name,
+        deviceIdentifier: _device.identifier,
+      );
+
+  @override
+  Future<List<InventoryReservation>> getReservations() async {
+    final rows = await _source.getReservations();
+    return rows.map(_reservation).toList();
+  }
+
+  @override
+  Future<InventoryCount> createCount(String warehouseId) async {
+    final row = await _source.createCount(
+      warehouseId: warehouseId,
+      actorName: _device.actorName,
+      deviceName: _device.name,
+      deviceIdentifier: _device.identifier,
+    );
+    return _count(row);
+  }
+
+  @override
+  Future<void> confirmCount(String countId) => _source.confirmCount(
+    countId,
+    actorName: _device.actorName,
+    deviceName: _device.name,
+    deviceIdentifier: _device.identifier,
+  );
+
+  @override
+  Future<void> dispatchTransfer(String documentId) => _source.dispatchTransfer(
+    documentId,
+    actorName: _device.actorName,
+    deviceName: _device.name,
+    deviceIdentifier: _device.identifier,
+  );
+
+  @override
+  Future<void> markTransferInTransit(String documentId) =>
+      _source.markTransferInTransit(
+        documentId,
+        actorName: _device.actorName,
+        deviceName: _device.name,
+        deviceIdentifier: _device.identifier,
+      );
+
+  @override
+  Future<void> receiveTransfer(String documentId) => _source.receiveTransfer(
+    documentId,
+    actorName: _device.actorName,
+    deviceName: _device.name,
+    deviceIdentifier: _device.identifier,
+  );
+
+  InventoryReservation _reservation(Map<String, dynamic> row) =>
+      InventoryReservation(
+        id: row['id'] as String,
+        productId: row['product_id'] as String,
+        locationId: row['location_id'] as String,
+        orderId: row['order_id'] as String,
+        quantity: row['quantity'] as int,
+        status: switch (row['status'] as String) {
+          'PENDING' => ReservationStatus.pending,
+          'RELEASED' => ReservationStatus.released,
+          'CONSUMED' => ReservationStatus.consumed,
+          _ => ReservationStatus.pending,
+        },
+        commandId: row['command_id'] as String,
+        createdAt: row['created_at'] == null
+            ? null
+            : DateTime.parse(row['created_at'] as String),
+        releasedAt: row['released_at'] == null
+            ? null
+            : DateTime.parse(row['released_at'] as String),
+      );
+
+  InventoryCount _count(Map<String, dynamic> row) => InventoryCount(
+    id: row['id'] as String,
+    warehouseId: row['warehouse_id'] as String,
+    status: switch (row['status'] as String) {
+      'DRAFT' => CountStatus.draft,
+      'COUNTING' => CountStatus.counting,
+      'REVIEW' => CountStatus.review,
+      'CONFIRMED' => CountStatus.confirmed,
+      'CANCELLED' => CountStatus.cancelled,
+      _ => CountStatus.draft,
+    },
+    createdAt: row['created_at'] == null
+        ? null
+        : DateTime.parse(row['created_at'] as String),
+    confirmedAt: row['confirmed_at'] == null
+        ? null
+        : DateTime.parse(row['confirmed_at'] as String),
+  );
 }
