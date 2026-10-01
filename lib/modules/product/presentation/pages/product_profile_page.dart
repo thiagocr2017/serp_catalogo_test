@@ -36,6 +36,9 @@ class _Profile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final transactions = ref.watch(productTransactionsProvider(product.id));
+    final locationBalances = ref.watch(
+      productLocationBalancesProvider(product.id),
+    );
     final audit = ref.watch(productAuditProvider(product.id));
     final packagingLabel =
         product.packagingPresentationName ?? 'Presentación no disponible';
@@ -167,6 +170,11 @@ class _Profile extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 24),
+          _Section(
+            title: 'Ubicación y stock por almacén',
+            child: _LocationBalances(balances: locationBalances),
+          ),
+          const SizedBox(height: 16),
           _Section(title: 'Descripción', child: Text(product.description)),
           const SizedBox(height: 16),
           _PricingCalculator(product: product),
@@ -537,6 +545,98 @@ class _Profile extends ConsumerWidget {
       }
     }
   }
+}
+
+class _LocationBalances extends StatelessWidget {
+  const _LocationBalances({required this.balances});
+
+  final AsyncValue<List<InventoryBalance>> balances;
+
+  @override
+  Widget build(BuildContext context) => balances.when(
+    loading: () => const LinearProgressIndicator(),
+    error: (e, _) => Text('No fue posible cargar ubicaciones: $e'),
+    data: (items) {
+      final visible = items.where((item) => item.quantity != 0).toList()
+        ..sort((a, b) {
+          final warehouse = (a.warehouseName ?? '').compareTo(
+            b.warehouseName ?? '',
+          );
+          if (warehouse != 0) return warehouse;
+          return (a.locationName ?? '').compareTo(b.locationName ?? '');
+        });
+
+      if (visible.isEmpty) {
+        return const Text('Sin stock registrado en almacenes o ubicaciones.');
+      }
+
+      final total = visible.fold<int>(0, (sum, item) => sum + item.quantity);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Chip(
+                avatar: const Icon(Icons.inventory_2_outlined, size: 18),
+                label: Text('Total ubicado: $total'),
+              ),
+              Chip(
+                avatar: const Icon(Icons.location_on_outlined, size: 18),
+                label: Text('${visible.length} ubicación(es)'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 720;
+              if (compact) {
+                return Column(
+                  children: [
+                    for (final item in visible)
+                      _LocationBalanceTile(balance: item),
+                  ],
+                );
+              }
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final item in visible)
+                    SizedBox(
+                      width: 320,
+                      child: _LocationBalanceTile(balance: item),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+class _LocationBalanceTile extends StatelessWidget {
+  const _LocationBalanceTile({required this.balance});
+
+  final InventoryBalance balance;
+
+  @override
+  Widget build(BuildContext context) => Card.outlined(
+    margin: const EdgeInsets.only(bottom: 8),
+    child: ListTile(
+      leading: const Icon(Icons.warehouse_outlined),
+      title: Text(balance.warehouseName ?? 'Almacén sin nombre'),
+      subtitle: Text(balance.locationName ?? 'Ubicación sin nombre'),
+      trailing: Text(
+        balance.quantity.toString(),
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+    ),
+  );
 }
 
 class _Metric extends StatelessWidget {

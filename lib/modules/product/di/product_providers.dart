@@ -72,6 +72,14 @@ final productTransactionsProvider =
           .getTransactions(productId: productId);
     });
 
+final productLocationBalancesProvider =
+    FutureProvider.family<List<InventoryBalance>, String>((ref, productId) {
+      ref.watch(inventoryDataRevisionProvider);
+      return ref
+          .watch(inventoryApiProvider)
+          .getLocationBalances(productId: productId);
+    });
+
 final productAuditProvider = FutureProvider.family<List<AuditEntry>, String>((
   ref,
   productId,
