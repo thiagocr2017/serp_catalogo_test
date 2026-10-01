@@ -52,6 +52,8 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   bool _preferencesSaved = true;
   bool _savingPdf = false;
   int _tab = 0;
+  static const double _kMinRailWidth = 410;
+  double _railWidth = 410;
   String categorySelectionSearch = '';
   String productSelectionSearch = '';
   String categoryOrderSearch = '';
@@ -272,6 +274,9 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   @override
   Widget build(BuildContext context) {
     final data = products;
+    final rawMaxRail = MediaQuery.sizeOf(context).width - 480;
+    final maxRail = rawMaxRail < _kMinRailWidth ? _kMinRailWidth : rawMaxRail;
+    final railWidth = _railWidth.clamp(_kMinRailWidth, maxRail).toDouble();
     return DefaultTabController(
       length: 4,
       child: Scaffold(
@@ -309,7 +314,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
             : Row(
                 children: [
                   SizedBox(
-                    width: 360,
+                    width: railWidth,
                     child: Column(
                       children: [
                         Material(
@@ -935,7 +940,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                       ],
                     ),
                   ),
-                  const VerticalDivider(width: 1),
+                  _buildResizeHandle(maxRail),
                   Expanded(
                     child: PdfPreview(
                       allowPrinting: false,
@@ -1050,6 +1055,39 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Diseño restablecido a los valores por defecto.'),
+      ),
+    );
+  }
+
+  Widget _buildResizeHandle(double maxRail) {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragUpdate: (details) {
+        setState(() {
+          final next = _railWidth + details.delta.dx;
+          _railWidth = next.clamp(_kMinRailWidth, maxRail).toDouble();
+        });
+      },
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeLeftRight,
+        child: Tooltip(
+          message: 'Arrastra para redimensionar el panel',
+          child: Container(
+            width: 8,
+            height: double.infinity,
+            color: scheme.surfaceContainerHighest,
+            alignment: Alignment.center,
+            child: Container(
+              width: 2,
+              height: 36,
+              decoration: BoxDecoration(
+                color: scheme.outlineVariant,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
