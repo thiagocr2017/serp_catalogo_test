@@ -67,7 +67,7 @@ acceder al repositorio o a los providers internos de Ventas.
 Las siguientes capacidades están previstas, pero no implementadas:
 
 - clientes y datos de contacto;
-- cotizaciones, pedidos y documentos de venta;
+- cotizaciones, pedidos, documentos de devoluciones(enteras o parciales), documentos de consignación y documentos de venta;
 - líneas de documento con producto, cantidad y precio histórico;
 - asignación de agente o vendedor;
 - estados y numeración de documentos;

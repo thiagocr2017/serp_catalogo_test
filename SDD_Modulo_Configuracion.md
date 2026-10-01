@@ -78,3 +78,14 @@ la implementación Supabase porque es la raíz de composición de la aplicación
   una fuente HTTP si se requiere reutilización o pruebas de integración finas.
 - las políticas RLS siguen siendo provisionales hasta incorporar autenticación
   y roles reales.
+
+## 8. Puerta obligatoria antes de producción
+
+Durante el desarrollo local, el primer equipo puede reclamar temporalmente la
+condición de superadministrador mediante una RPC limitada y los roles locales
+pueden ejecutar los comandos públicos. Esta autorización fue aceptada sólo para
+desarrollo y debe revertirse al implementar Autenticación.
+
+La lista vinculante de revocaciones, migración de identidad y pruebas está en
+`docs/authentication_production_gate.md`. La aplicación no se considerará lista
+para producción mientras esa puerta permanezca abierta.
