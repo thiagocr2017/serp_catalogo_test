@@ -15,11 +15,7 @@ abstract interface class ConfigurationRepository {
 
   Future<void> saveCatalogPreferences(CatalogPreferences value);
 
-  Future<void> setCatalogLogoUrl(String url);
-
-  Future<String> uploadCatalogLogo(Uint8List bytes, String extension);
-
-  Future<Uint8List?> downloadCatalogLogo(String? url);
+  Future<Uint8List?> downloadCatalogLogo();
 
   Future<List<PackagingPresentation>> getPackagingPresentations();
 

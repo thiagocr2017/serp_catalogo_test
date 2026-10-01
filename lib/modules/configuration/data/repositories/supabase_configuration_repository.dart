@@ -1,7 +1,7 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/device/device_identity.dart';
 import '../../domain/entities/business_settings.dart';
@@ -18,11 +18,10 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
   Future<BusinessSettings> get() async {
     var row = await _client.from('app_settings').select().single();
     if (row['superadmin_device_identifier'] == null) {
-      await _client
-          .from('app_settings')
-          .update({'superadmin_device_identifier': _device.identifier})
-          .eq('id', true)
-          .isFilter('superadmin_device_identifier', null);
+      await _client.rpc<void>(
+        'claim_local_superadmin',
+        params: {'p_device_identifier': _device.identifier},
+      );
       row = await _client.from('app_settings').select().single();
     }
     return BusinessSettings(
@@ -40,23 +39,31 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
   }
 
   @override
-  Future<void> save(BusinessSettings value) => _client
-      .from('app_settings')
-      .update({
-        'default_currency': value.defaultCurrency,
-        'decimal_places': value.decimalPlaces,
-        'tax_percentage': value.taxPercentage,
-        'prices_include_tax': value.pricesIncludeTax,
-        'rounding_mode': value.roundingMode,
-        'rounding_increment': value.roundingIncrement,
-        'company_name': value.companyName,
-        'payment_methods': value.paymentMethods,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-        'updated_by': _device.actorName,
-        'updated_device_name': _device.name,
-        'updated_device_identifier': _device.identifier,
-      })
-      .eq('id', true);
+  Future<void> save(BusinessSettings value) async {
+    final row = await _client
+        .from('app_settings')
+        .select('business_settings_version')
+        .eq('id', true)
+        .single();
+    final expectedVersion = row['business_settings_version'] as int;
+    await _client.rpc<void>(
+      'save_business_settings',
+      params: {
+        'p_default_currency': value.defaultCurrency,
+        'p_decimal_places': value.decimalPlaces,
+        'p_tax_percentage': value.taxPercentage,
+        'p_prices_include_tax': value.pricesIncludeTax,
+        'p_rounding_mode': value.roundingMode,
+        'p_rounding_increment': value.roundingIncrement,
+        'p_company_name': value.companyName,
+        'p_payment_methods': value.paymentMethods,
+        'p_expected_version': expectedVersion,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
+  }
 
   @override
   Future<void> purgeTestDataAndGoProduction() => _client.rpc<void>(
@@ -91,89 +98,53 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
       promotionDescriptionColor:
           row['catalog_promotion_description_color'] as String? ?? '#C62828',
       imageFit: row['catalog_image_fit'] as String? ?? 'cover',
-      logoUrl: row['catalog_logo_url'] as String?,
+      logoUrl: row['catalog_logo_object_name'] as String?,
       selectedAgentId: row['selected_catalog_agent_id'] as String?,
     );
   }
 
   @override
   Future<void> saveCatalogPreferences(CatalogPreferences value) async {
-    await _client
+    final row = await _client
         .from('app_settings')
-        .update({
-          'catalog_cards_per_page': value.cardsPerPage,
-          'catalog_background_color': value.backgroundColor,
-          'catalog_card_color': value.cardColor,
-          'catalog_design_accent_color': value.designAccentColor,
-          'catalog_text_color': value.textColor,
-          'catalog_highlight_text_color': value.highlightTextColor,
-          'catalog_secondary_text_color': value.secondaryTextColor,
-          'catalog_promotion_color': value.promotionColor,
-          'catalog_promotion_text_color': value.promotionTextColor,
-          'catalog_promotion_previous_price_color':
-              value.promotionPreviousPriceColor,
-          'catalog_promotion_price_color': value.promotionPriceColor,
-          'catalog_promotion_description_color':
-              value.promotionDescriptionColor,
-          'catalog_image_fit': value.imageFit,
-          'catalog_logo_url': value.logoUrl,
-          'selected_catalog_agent_id': value.selectedAgentId,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-          'updated_by': _device.actorName,
-          'updated_device_name': _device.name,
-          'updated_device_identifier': _device.identifier,
-        })
+        .select('catalog_preferences_version')
         .eq('id', true)
-        .select('catalog_cards_per_page')
         .single();
+    final expectedVersion = row['catalog_preferences_version'] as int;
+    await _client.rpc<void>(
+      'save_catalog_preferences',
+      params: {
+        'p_cards_per_page': value.cardsPerPage,
+        'p_background_color': value.backgroundColor,
+        'p_card_color': value.cardColor,
+        'p_design_accent_color': value.designAccentColor,
+        'p_text_color': value.textColor,
+        'p_highlight_text_color': value.highlightTextColor,
+        'p_secondary_text_color': value.secondaryTextColor,
+        'p_promotion_color': value.promotionColor,
+        'p_promotion_text_color': value.promotionTextColor,
+        'p_promotion_previous_price_color': value.promotionPreviousPriceColor,
+        'p_promotion_price_color': value.promotionPriceColor,
+        'p_promotion_description_color': value.promotionDescriptionColor,
+        'p_image_fit': value.imageFit,
+        'p_expected_version': expectedVersion,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
   }
 
   @override
-  Future<void> setCatalogLogoUrl(String url) => _client
-      .from('app_settings')
-      .update({
-        'catalog_logo_url': url,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-        'updated_by': _device.actorName,
-        'updated_device_name': _device.name,
-        'updated_device_identifier': _device.identifier,
-      })
-      .eq('id', true);
-
-  @override
-  Future<String> uploadCatalogLogo(Uint8List bytes, String extension) async {
-    final safeExtension = extension.toLowerCase() == 'png' ? 'png' : 'jpg';
-    final path = 'catalog-logo.$safeExtension';
-    await _client.storage
-        .from('catalog-assets')
-        .uploadBinary(
-          path,
-          bytes,
-          fileOptions: FileOptions(
-            upsert: true,
-            contentType: safeExtension == 'png' ? 'image/png' : 'image/jpeg',
-          ),
-        );
-    final url = _client.storage.from('catalog-assets').getPublicUrl(path);
-    return '$url?v=${DateTime.now().millisecondsSinceEpoch}';
-  }
-
-  @override
-  Future<Uint8List?> downloadCatalogLogo(String? url) async {
-    if (url == null || url.isEmpty) return null;
-    final client = HttpClient();
-    try {
-      final request = await client.getUrl(Uri.parse(url));
-      final response = await request.close();
-      if (response.statusCode != HttpStatus.ok) return null;
-      final bytes = <int>[];
-      await for (final chunk in response) {
-        bytes.addAll(chunk);
-      }
-      return Uint8List.fromList(bytes);
-    } finally {
-      client.close(force: true);
-    }
+  Future<Uint8List?> downloadCatalogLogo() async {
+    final row = await _client
+        .from('app_settings')
+        .select('catalog_logo_object_name')
+        .eq('id', true)
+        .single();
+    final objectName = row['catalog_logo_object_name'] as String?;
+    if (objectName == null || objectName.isEmpty) return null;
+    return _client.storage.from('catalog-assets').download(objectName);
   }
 
   @override
@@ -201,40 +172,51 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
     String? id,
     required String name,
   }) async {
-    final values = {
-      'name': name.trim(),
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-      'updated_by': _device.actorName,
-      'updated_device_name': _device.name,
-      'updated_device_identifier': _device.identifier,
-    };
-    final Map<String, dynamic> row;
     if (id == null) {
-      final existing = await getPackagingPresentations();
-      row = await _client
-          .from('packaging_presentations')
-          .insert({
-            ...values,
-            'sort_order': existing.length,
-            'created_by': _device.actorName,
-            'created_device_name': _device.name,
-            'created_device_identifier': _device.identifier,
-          })
-          .select()
-          .single();
+      final row = await _client.rpc<Map<String, dynamic>>(
+        'create_packaging_presentation',
+        params: {
+          'p_command_id': _newUuid(),
+          'p_name': name,
+          'p_actor_name': _device.actorName,
+          'p_device_name': _device.name,
+          'p_device_identifier': _device.identifier,
+        },
+      );
+      return PackagingPresentation(
+        id: row['id'] as String,
+        name: row['name'] as String,
+        sortOrder: row['sort_order'] as int,
+        isActive: row['is_active'] as bool,
+      );
     } else {
-      row = await _client
+      final row = await _client
           .from('packaging_presentations')
-          .update(values)
+          .select('version')
           .eq('id', id)
-          .select()
           .single();
+      final expectedVersion = row['version'] as int;
+      final result = await _client.rpc<Map<String, dynamic>>(
+        'update_packaging_presentation',
+        params: {
+          'p_presentation_id': id,
+          'p_name': name,
+          'p_expected_version': expectedVersion,
+          'p_actor_name': _device.actorName,
+          'p_device_name': _device.name,
+          'p_device_identifier': _device.identifier,
+        },
+      );
+      return PackagingPresentation(
+        id: result['id'] as String,
+        name: result['name'] as String,
+        sortOrder: result['sort_order'] as int,
+        isActive: result['is_active'] as bool,
+      );
     }
-    return PackagingPresentation(
-      id: row['id'] as String,
-      name: row['name'] as String,
-      sortOrder: row['sort_order'] as int,
-      isActive: row['is_active'] as bool,
-    );
+  }
+
+  String _newUuid() {
+    return const Uuid().v4();
   }
 }

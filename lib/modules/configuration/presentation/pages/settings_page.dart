@@ -100,6 +100,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
   late String rounding = widget.initial.roundingMode;
   late int businessVersion = widget.initialBusinessVersion;
   Uint8List? catalogLogo;
+  int catalogLogoVersion = 1;
   bool loadingLogo = true;
 
   @override
@@ -109,12 +110,13 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
   }
 
   Future<void> _loadLogo() async {
-    final repository = ref.read(configurationRepositoryProvider);
-    final preferences = await repository.getCatalogPreferences();
-    final bytes = await repository.downloadCatalogLogo(preferences.logoUrl);
+    final api = ref.read(configurationApiProvider);
+    final preferences = await api.getCatalogPreferences();
+    final bytes = await api.downloadCatalogLogo();
     if (mounted) {
       setState(() {
         catalogLogo = bytes;
+        catalogLogoVersion = preferences.logoVersion;
         loadingLogo = false;
       });
     }
@@ -400,14 +402,28 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     );
     if (file == null) return;
     final bytes = await file.readAsBytes();
-    final repository = ref.read(configurationRepositoryProvider);
-    final url = await repository.uploadCatalogLogo(
-      bytes,
-      file.name.split('.').last,
-    );
-    await repository.setCatalogLogoUrl(url);
+    final extension = file.name.split('.').last.toLowerCase();
+    final mimeType = extension == 'png'
+        ? 'image/png'
+        : extension == 'webp'
+        ? 'image/webp'
+        : 'image/jpeg';
+    final saved = await ref
+        .read(configurationApiProvider)
+        .replaceCatalogLogo(
+          ReplaceCatalogLogoCommand(
+            operationId: const Uuid().v4(),
+            bytes: bytes,
+            mimeType: mimeType,
+            expectedVersion: catalogLogoVersion,
+            identity: ref.read(identityContextProvider),
+          ),
+        );
     if (mounted) {
-      setState(() => catalogLogo = bytes);
+      setState(() {
+        catalogLogo = bytes;
+        catalogLogoVersion = saved.version;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Logo guardado correctamente.')),
       );

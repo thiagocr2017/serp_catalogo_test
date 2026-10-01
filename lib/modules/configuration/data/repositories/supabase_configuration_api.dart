@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -149,31 +148,43 @@ class SupabaseConfigurationApi implements ConfigurationApi {
   @override
   Future<CatalogLogoReferenceDto> replaceCatalogLogo(
     ReplaceCatalogLogoCommand command,
-  ) => throw UnsupportedError(
-    'El reemplazo seguro del logo se completa en 1B.4.',
-  );
+  ) async {
+    final objectName = 'catalog-logo/${command.operationId}';
+    await _client.storage
+        .from('catalog-assets')
+        .uploadBinary(
+          objectName,
+          command.bytes,
+          fileOptions: FileOptions(upsert: true, contentType: command.mimeType),
+        );
+    final row = Map<String, dynamic>.from(
+      await _client.rpc<dynamic>(
+        'register_catalog_logo_version',
+        params: {
+          'p_operation_id': command.operationId,
+          'p_object_name': objectName,
+          'p_mime_type': command.mimeType,
+          'p_expected_logo_version': command.expectedVersion,
+          ..._identity(command.identity),
+        },
+      ) as Map,
+    );
+    return CatalogLogoReferenceDto(
+      objectName: row['object_name'] as String,
+      version: row['version'] as int,
+    );
+  }
 
   @override
   Future<Uint8List?> downloadCatalogLogo() async {
     final row = await _client
         .from('app_settings')
-        .select('catalog_logo_url')
+        .select('catalog_logo_object_name')
         .eq('id', true)
         .single();
-    final url = row['catalog_logo_url'] as String?;
-    if (url == null || url.isEmpty) return null;
-    final http = HttpClient();
-    try {
-      final response = await (await http.getUrl(Uri.parse(url))).close();
-      if (response.statusCode != HttpStatus.ok) return null;
-      final bytes = <int>[];
-      await for (final chunk in response) {
-        bytes.addAll(chunk);
-      }
-      return Uint8List.fromList(bytes);
-    } finally {
-      http.close(force: true);
-    }
+    final objectName = row['catalog_logo_object_name'] as String?;
+    if (objectName == null || objectName.isEmpty) return null;
+    return _client.storage.from('catalog-assets').download(objectName);
   }
 
   Map<String, dynamic> _identity(IdentityContext identity) => {
@@ -233,7 +244,9 @@ class SupabaseConfigurationApi implements ConfigurationApi {
         row['promotion_description_color'] as String? ??
         row['catalog_promotion_description_color'] as String,
     imageFit: row['image_fit'] as String? ?? row['catalog_image_fit'] as String,
-    logoObjectName: row['logo_object_name'] as String? ?? 'catalog-logo',
+    logoObjectName:
+        row['logo_object_name'] as String? ??
+        row['catalog_logo_object_name'] as String?,
     logoVersion:
         row['logo_version'] as int? ?? row['catalog_logo_version'] as int,
     selectedAgentId:
