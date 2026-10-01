@@ -27,6 +27,11 @@ import 'modules/sales/data/data_sources/supabase_sales_data_source.dart';
 import 'modules/sales/data/repositories/supabase_sales_repository.dart';
 import 'modules/sales/di/sales_providers.dart';
 import 'modules/sales/sales_module.dart';
+import 'modules/payments/data/data_sources/supabase_payment_data_source.dart';
+import 'modules/payments/data/repositories/supabase_payment_repository.dart';
+import 'modules/payments/data/repositories/supabase_payment_api.dart';
+import 'modules/payments/di/payment_providers.dart';
+import 'modules/payments/payments_module.dart';
 import 'shared/theme/app_theme.dart';
 
 Future<void> main() async {
@@ -57,6 +62,12 @@ Future<void> main() async {
   final salesRepository = SupabaseSalesRepository(
     SupabaseSalesDataSource(Supabase.instance.client),
   );
+  final paymentDataSource = SupabasePaymentDataSource(
+    Supabase.instance.client,
+    device,
+  );
+  final paymentRepository = SupabasePaymentRepository(paymentDataSource);
+  final paymentApi = SupabasePaymentApi(paymentDataSource);
 
   runApp(
     ProviderScope(
@@ -80,6 +91,8 @@ Future<void> main() async {
         productImageServiceProvider.overrideWithValue(imageService),
         salesRepositoryProvider.overrideWithValue(salesRepository),
         salesApiProvider.overrideWithValue(salesRepository),
+        paymentRepositoryProvider.overrideWithValue(paymentRepository),
+        paymentApiProvider.overrideWithValue(paymentApi),
       ],
       child: const SerpApp(),
     ),
