@@ -72,17 +72,24 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
               if (productId != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Chip(
-                      avatar: const Icon(Icons.filter_alt_outlined, size: 16),
-                      label: Text(
-                        widget.productSku?.trim().isNotEmpty == true
-                            ? 'Movimientos de ${widget.productSku!.trim()}'
-                            : 'Movimientos de un solo producto',
+                  child: Row(
+                    children: [
+                      Chip(
+                        avatar: const Icon(Icons.filter_alt_outlined, size: 16),
+                        label: Text(
+                          widget.productSku?.trim().isNotEmpty == true
+                              ? 'Movimientos de ${widget.productSku!.trim()}'
+                              : 'Movimientos de un solo producto',
+                        ),
+                        onDeleted: () => context.go('/inventory'),
                       ),
-                      onDeleted: () => context.go('/inventory'),
-                    ),
+                      const Spacer(),
+                      FilledButton.tonalIcon(
+                        onPressed: () => context.go('/products/$productId'),
+                        icon: const Icon(Icons.open_in_new, size: 18),
+                        label: const Text('Ver ficha del producto'),
+                      ),
+                    ],
                   ),
                 ),
               Padding(
