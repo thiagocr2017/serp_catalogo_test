@@ -108,28 +108,34 @@ class SupabasePromotionRepository implements PromotionRepository {
   }
 
   @override
-  Future<void> setActive(String id, {required bool isActive}) => _client
-      .from('bulk_promotions')
-      .update({
-        'is_active': isActive,
-        'updated_by': _device.actorName,
-        'updated_device_name': _device.name,
-        'updated_device_identifier': _device.identifier,
-      })
-      .eq('id', id);
+  Future<void> setActive(String id, {required bool isActive}) =>
+      _client.rpc<void>(
+        'set_promotion_active',
+        params: {
+          'p_promotion_id': id,
+          'p_is_active': isActive,
+          'p_actor_name': _device.actorName,
+          'p_device_name': _device.name,
+          'p_device_identifier': _device.identifier,
+        },
+      );
 
   @override
   Future<void> setProductCondition({
     required String promotionId,
     required String productId,
     required String conditionsText,
-  }) async {
-    await _client.from('bulk_promotion_products').upsert({
-      'promotion_id': promotionId,
-      'product_id': productId,
-      'conditions_text': conditionsText.trim(),
-    });
-  }
+  }) => _client.rpc<void>(
+    'set_promotion_product_condition',
+    params: {
+      'p_promotion_id': promotionId,
+      'p_product_id': productId,
+      'p_conditions_text': conditionsText,
+      'p_actor_name': _device.actorName,
+      'p_device_name': _device.name,
+      'p_device_identifier': _device.identifier,
+    },
+  );
 
   BulkPromotion _map(
     Map<String, dynamic> row, {

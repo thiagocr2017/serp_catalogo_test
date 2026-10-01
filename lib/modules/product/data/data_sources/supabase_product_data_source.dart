@@ -73,19 +73,7 @@ class SupabaseProductDataSource {
         'p_device_identifier': _device.identifier,
       },
     );
-    final updated = await _client
-        .from('products')
-        .update({
-          'image_position_x': values['image_position_x'],
-          'image_position_y': values['image_position_y'],
-          'image_scale': values['image_scale'],
-          'catalog_sort_order': values['catalog_sort_order'],
-          'packaging_presentation_id': values['packaging_presentation_id'],
-        })
-        .eq('id', row['id'] as String)
-        .select()
-        .single();
-    return ProductModel(updated);
+    return ProductModel(row);
   }
 
   Future<List<CategoryModel>> getCategories() async {
@@ -99,31 +87,29 @@ class SupabaseProductDataSource {
   }
 
   Future<CategoryModel> createCategory(String name) async {
-    final row = await _client
-        .from('categories')
-        .insert({
-          'name': name.trim(),
-          'created_by': _device.actorName,
-          'created_device_name': _device.name,
-          'created_device_identifier': _device.identifier,
-        })
-        .select()
-        .single();
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'create_category',
+      params: {
+        'p_name': name,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
     return CategoryModel(row);
   }
 
   Future<CategoryModel> updateCategory(String id, String name) async {
-    final row = await _client
-        .from('categories')
-        .update({
-          'name': name.trim(),
-          'updated_by': _device.actorName,
-          'updated_device_name': _device.name,
-          'updated_device_identifier': _device.identifier,
-        })
-        .eq('id', id)
-        .select()
-        .single();
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'update_category',
+      params: {
+        'p_category_id': id,
+        'p_name': name,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
     return CategoryModel(row);
   }
 
@@ -145,36 +131,28 @@ class SupabaseProductDataSource {
     String id,
     Map<String, dynamic> values,
   ) async {
-    if (values['is_active'] == true) {
-      values.addAll({'deleted_at': null, 'deleted_by': null});
-    }
-    values.addAll({
-      'updated_by': _device.actorName,
-      'updated_device_name': _device.name,
-      'updated_device_identifier': _device.identifier,
-    });
-    final row = await _client
-        .from('products')
-        .update(values)
-        .eq('id', id)
-        .select()
-        .single();
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'update_product',
+      params: {
+        'p_product_id': id,
+        'p_product': values,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
     return ProductModel(row);
   }
 
-  Future<void> deactivateProduct(String id) async {
-    await _client
-        .from('products')
-        .update({
-          'is_active': false,
-          'deleted_at': DateTime.now().toUtc().toIso8601String(),
-          'deleted_by': _device.actorName,
-          'updated_by': _device.actorName,
-          'updated_device_name': _device.name,
-          'updated_device_identifier': _device.identifier,
-        })
-        .eq('id', id);
-  }
+  Future<void> deactivateProduct(String id) => _client.rpc<void>(
+    'deactivate_product',
+    params: {
+      'p_product_id': id,
+      'p_actor_name': _device.actorName,
+      'p_device_name': _device.name,
+      'p_device_identifier': _device.identifier,
+    },
+  );
 
   Future<void> saveCatalogOrder({
     required List<String> productIds,
