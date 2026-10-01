@@ -30,6 +30,21 @@ import 'modules/sales/data/repositories/supabase_sales_repository.dart';
 import 'modules/sales/data/data_sources/supabase_sales_invoice_data_source.dart';
 import 'modules/sales/data/repositories/supabase_sales_invoice_repository.dart';
 import 'modules/sales/api/sales_invoice_api.dart';
+import 'modules/sales/data/data_sources/supabase_customer_data_source.dart';
+import 'modules/sales/data/repositories/supabase_customer_repository.dart';
+import 'modules/sales/api/customer_api.dart';
+import 'modules/sales/data/data_sources/supabase_quote_data_source.dart';
+import 'modules/sales/data/repositories/supabase_quote_repository.dart';
+import 'modules/sales/api/quote_api.dart';
+import 'modules/sales/data/data_sources/supabase_order_data_source.dart';
+import 'modules/sales/data/repositories/supabase_order_repository.dart';
+import 'modules/sales/api/order_api.dart';
+import 'modules/sales/data/data_sources/supabase_return_data_source.dart';
+import 'modules/sales/data/repositories/supabase_return_repository.dart';
+import 'modules/sales/api/return_api.dart';
+import 'modules/sales/data/data_sources/supabase_consignment_data_source.dart';
+import 'modules/sales/data/repositories/supabase_consignment_repository.dart';
+import 'modules/sales/api/consignment_api.dart';
 import 'modules/sales/di/sales_providers.dart';
 import 'modules/sales/sales_module.dart';
 import 'modules/payments/data/data_sources/supabase_payment_data_source.dart';
@@ -72,6 +87,21 @@ Future<void> main() async {
   final salesInvoiceRepository = SupabaseSalesInvoiceRepository(
     SupabaseSalesInvoiceDataSource(Supabase.instance.client, device),
   );
+  final customerRepository = SupabaseCustomerRepository(
+    SupabaseCustomerDataSource(Supabase.instance.client, device),
+  );
+  final quoteRepository = SupabaseQuoteRepository(
+    SupabaseQuoteDataSource(Supabase.instance.client, device),
+  );
+  final orderRepository = SupabaseOrderRepository(
+    SupabaseOrderDataSource(Supabase.instance.client, device),
+  );
+  final returnRepository = SupabaseReturnRepository(
+    SupabaseReturnDataSource(Supabase.instance.client, device),
+  );
+  final consignmentRepository = SupabaseConsignmentRepository(
+    SupabaseConsignmentDataSource(Supabase.instance.client, device),
+  );
   final paymentDataSource = SupabasePaymentDataSource(
     Supabase.instance.client,
     device,
@@ -106,6 +136,11 @@ Future<void> main() async {
         salesRepositoryProvider.overrideWithValue(salesRepository),
         salesApiProvider.overrideWithValue(salesRepository),
         salesInvoiceApiProvider.overrideWithValue(salesInvoiceRepository),
+        customerApiProvider.overrideWithValue(customerRepository),
+        quoteApiProvider.overrideWithValue(quoteRepository),
+        orderApiProvider.overrideWithValue(orderRepository),
+        returnApiProvider.overrideWithValue(returnRepository),
+        consignmentApiProvider.overrideWithValue(consignmentRepository),
         paymentRepositoryProvider.overrideWithValue(paymentRepository),
         paymentApiProvider.overrideWithValue(paymentApi),
         offlineSyncServiceProvider.overrideWithValue(offlineSyncService),
