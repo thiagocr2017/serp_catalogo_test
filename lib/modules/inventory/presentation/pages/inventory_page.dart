@@ -20,6 +20,16 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
   String _query = '';
 
   @override
+  void initState() {
+    super.initState();
+    final sku = widget.productSku?.trim();
+    if (widget.productId != null && sku != null && sku.isNotEmpty) {
+      _search.text = sku;
+      _query = sku;
+    }
+  }
+
+  @override
   void dispose() {
     _search.dispose();
     super.dispose();
@@ -42,10 +52,12 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
         data: (items) {
           final query = _query.trim().toLowerCase();
           final productId = widget.productId;
+          final prefilledSku = widget.productSku?.trim().toLowerCase();
           final filtered = items.where((item) {
             if (productId != null && item.productId != productId) return false;
             if (query.isEmpty) return true;
-            return (item.productSku ?? '').toLowerCase().contains(query) ||
+            return (prefilledSku != null && query == prefilledSku) ||
+                (item.productSku ?? '').toLowerCase().contains(query) ||
                 _reason(item.reason).toLowerCase().contains(query) ||
                 (item.documentNumber ?? '').toLowerCase().contains(query) ||
                 (item.notes ?? '').toLowerCase().contains(query) ||

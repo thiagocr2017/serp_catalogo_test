@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
 import '../presentation/pages/audit_page.dart';
@@ -9,10 +10,14 @@ import '../presentation/pages/warehouses_page.dart';
 final List<RouteBase> inventoryRoutes = [
   GoRoute(
     path: '/inventory',
-    builder: (context, state) => InventoryPage(
-      productId: state.uri.queryParameters['productId'],
-      productSku: state.uri.queryParameters['sku'],
-    ),
+    builder: (context, state) {
+      final productId = state.uri.queryParameters['productId'];
+      return InventoryPage(
+        key: ValueKey('inventory:${productId ?? ''}'),
+        productId: productId,
+        productSku: state.uri.queryParameters['sku'],
+      );
+    },
   ),
   GoRoute(
     path: '/inventory/warehouses',

@@ -703,14 +703,9 @@ class _LocationBalances extends StatelessWidget {
                 ),
             ],
           ),
-          if (groups.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _WarehouseDistribution(groups: groups),
-          ],
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
-              final compact = constraints.maxWidth < 720;
               final tiles = [
                 for (final item in visible)
                   _LocationBalanceTile(
@@ -720,22 +715,47 @@ class _LocationBalances extends StatelessWidget {
                         : (item.quantity / total).clamp(0.0, 1.0).toDouble(),
                   ),
               ];
-              if (compact) {
+              Widget tileGrid() => constraints.maxWidth < 720
+                  ? Column(
+                      children: [
+                        for (final tile in tiles)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: tile,
+                          ),
+                      ],
+                    )
+                  : Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final tile in tiles)
+                          SizedBox(width: 340, child: tile),
+                      ],
+                    );
+              if (groups.isEmpty) return tileGrid();
+              if (constraints.maxWidth < 880) {
                 return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (final tile in tiles)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: tile,
-                      ),
+                    tileGrid(),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: 300,
+                      child: _WarehouseDistribution(groups: groups),
+                    ),
                   ],
                 );
               }
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final tile in tiles) SizedBox(width: 340, child: tile),
+                  Expanded(child: tileGrid()),
+                  const SizedBox(width: 24),
+                  SizedBox(
+                    width: 300,
+                    child: _WarehouseDistribution(groups: groups),
+                  ),
                 ],
               );
             },
@@ -781,79 +801,167 @@ class _WarehouseDistribution extends StatelessWidget {
         ),
     ];
     const chartSize = 150.0;
-    final chart = SizedBox(
-      width: chartSize,
-      height: chartSize,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CustomPaint(
-            size: const Size(chartSize, chartSize),
-            painter: _DistributionPainter(
-              values: [for (final entry in colored) entry.$1.quantity],
-              colors: [for (final entry in colored) entry.$2],
-              total: total,
-            ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('$total', style: textTheme.headlineSmall),
-              Text('unidades', style: textTheme.bodySmall),
-            ],
-          ),
-        ],
-      ),
-    );
-    final legend = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final entry in colored)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
+        Center(
+          child: SizedBox(
+            width: chartSize,
+            height: chartSize,
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: entry.$2,
-                    borderRadius: BorderRadius.circular(3),
+                CustomPaint(
+                  size: const Size(chartSize, chartSize),
+                  painter: _DistributionPainter(
+                    values: [for (final entry in colored) entry.$1.quantity],
+                    colors: [for (final entry in colored) entry.$2],
+                    total: total,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(entry.$1.name, overflow: TextOverflow.ellipsis),
-                ),
-                Text(
-                  '${entry.$1.quantity} · '
-                  '${total == 0 ? 0 : (entry.$1.quantity * 100 / total).toStringAsFixed(0)} %',
-                  style: textTheme.labelLarge,
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('$total', style: textTheme.headlineSmall),
+                    Text('unidades', style: textTheme.bodySmall),
+                  ],
                 ),
               ],
             ),
           ),
+        ),
+        const SizedBox(height: 16),
+        _DistributionTable(rows: colored, total: total),
       ],
     );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 520) {
-          return Column(
-            children: [
-              chart,
-              const SizedBox(height: 16),
-              Align(alignment: Alignment.centerLeft, child: legend),
-            ],
-          );
-        }
-        return Row(
-          children: [
-            chart,
-            const SizedBox(width: 28),
-            Expanded(child: legend),
-          ],
-        );
+  }
+}
+
+class _DistributionTable extends StatelessWidget {
+  const _DistributionTable({required this.rows, required this.total});
+
+  final List<(_WarehouseGroup, MaterialColor)> rows;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+    final headerStyle = textTheme.labelMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+    );
+    final valueStyle = textTheme.labelLarge;
+    final divider = BorderSide(color: theme.dividerColor);
+
+    Widget cell(
+      Widget child, {
+      required int column,
+      bool header = false,
+      bool last = false,
+    }) => Container(
+      padding: EdgeInsets.only(
+        top: header ? 0 : 8,
+        bottom: header ? 6 : 8,
+        left: column == 0 ? 0 : 6,
+        right: column == 0 ? 6 : 0,
+      ),
+      decoration: last ? null : BoxDecoration(border: Border(bottom: divider)),
+      child: child,
+    );
+
+    Widget number(String value, {TextStyle? style}) =>
+        Text(value, textAlign: TextAlign.right, style: style ?? valueStyle);
+
+    final lastIndex = rows.length - 1;
+    return Table(
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      columnWidths: const {
+        0: FlexColumnWidth(3),
+        1: FlexColumnWidth(1.4),
+        2: FlexColumnWidth(1),
       },
+      children: [
+        TableRow(
+          children: [
+            cell(Text('Almacén', style: headerStyle), column: 0, header: true),
+            cell(
+              number('Unidades', style: headerStyle),
+              column: 1,
+              header: true,
+            ),
+            cell(number('%', style: headerStyle), column: 2, header: true),
+          ],
+        ),
+        for (var index = 0; index < rows.length; index++)
+          TableRow(
+            children: [
+              cell(
+                Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: rows[index].$2,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        rows[index].$1.name,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                column: 0,
+                last: index == lastIndex,
+              ),
+              cell(
+                number('${rows[index].$1.quantity}'),
+                column: 1,
+                last: index == lastIndex,
+              ),
+              cell(
+                number(
+                  total == 0
+                      ? '0'
+                      : (rows[index].$1.quantity * 100 / total).toStringAsFixed(
+                          0,
+                        ),
+                ),
+                column: 2,
+                last: index == lastIndex,
+              ),
+            ],
+          ),
+        TableRow(
+          children: [
+            cell(
+              Text(
+                'Total',
+                style: valueStyle?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              column: 0,
+            ),
+            cell(
+              number(
+                '$total',
+                style: valueStyle?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              column: 1,
+            ),
+            cell(
+              number(
+                '100',
+                style: valueStyle?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              column: 2,
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
