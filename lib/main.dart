@@ -56,7 +56,6 @@ import 'shared/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const _LoadingScreen());
 
   final configuration = AppConfiguration.local();
   await Supabase.initialize(
@@ -148,44 +147,6 @@ Future<void> main() async {
       child: const SerpApp(),
     ),
   );
-}
-
-class _LoadingScreen extends StatelessWidget {
-  const _LoadingScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
-      home: const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.inventory_2_outlined, size: 64),
-              SizedBox(height: 16),
-              Text(
-                'SERP',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
-              ),
-              SizedBox(height: 24),
-              SizedBox(
-                width: 200,
-                child: LinearProgressIndicator(minHeight: 4),
-              ),
-              SizedBox(height: 16),
-              Text('Iniciando...'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class SerpApp extends ConsumerWidget {
