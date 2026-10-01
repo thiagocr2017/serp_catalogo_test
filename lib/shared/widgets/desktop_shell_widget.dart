@@ -34,12 +34,12 @@ class DesktopShellWidget extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
                 children: [
-                  const Center(
-                    child: CircleAvatar(
-                      radius: 24,
-                      child: Text(
-                        'S',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                  Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.asset(
+                        'assets/icon/serp_logo_mini.png',
+                        height: 64,
                       ),
                     ),
                   ),
