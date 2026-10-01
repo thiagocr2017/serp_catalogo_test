@@ -6,7 +6,10 @@ import '../../api/inventory_api.dart';
 import '../../di/inventory_providers.dart';
 
 class InventoryPage extends ConsumerStatefulWidget {
-  const InventoryPage({super.key});
+  const InventoryPage({super.key, this.productId, this.productSku});
+
+  final String? productId;
+  final String? productSku;
 
   @override
   ConsumerState<InventoryPage> createState() => _InventoryPageState();
@@ -38,7 +41,9 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
             Center(child: Text('No fue posible cargar: $error')),
         data: (items) {
           final query = _query.trim().toLowerCase();
+          final productId = widget.productId;
           final filtered = items.where((item) {
+            if (productId != null && item.productId != productId) return false;
             if (query.isEmpty) return true;
             return (item.productSku ?? '').toLowerCase().contains(query) ||
                 _reason(item.reason).toLowerCase().contains(query) ||
@@ -51,6 +56,22 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
           }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
           return Column(
             children: [
+              if (productId != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Chip(
+                      avatar: const Icon(Icons.filter_alt_outlined, size: 16),
+                      label: Text(
+                        widget.productSku?.trim().isNotEmpty == true
+                            ? 'Movimientos de ${widget.productSku!.trim()}'
+                            : 'Movimientos de un solo producto',
+                      ),
+                      onDeleted: () => context.go('/inventory'),
+                    ),
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
                 child: TextField(
@@ -76,7 +97,13 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
               ),
               Expanded(
                 child: filtered.isEmpty
-                    ? const Center(child: Text('No hay movimientos.'))
+                    ? Center(
+                        child: Text(
+                          productId == null
+                              ? 'No hay movimientos.'
+                              : 'No hay movimientos para este producto.',
+                        ),
+                      )
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(24, 8, 24, 96),
                         itemCount: filtered.length,

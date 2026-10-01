@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -247,6 +249,14 @@ class _Profile extends ConsumerWidget {
           const SizedBox(height: 24),
           _Section(
             title: 'Ubicación y stock por almacén',
+            trailing: TextButton.icon(
+              onPressed: () => context.go(
+                '/inventory?productId=${product.id}'
+                '&sku=${Uri.encodeComponent(product.sku)}',
+              ),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: const Text('Ver en Inventario'),
+            ),
             child: _LocationBalances(
               balances: locationBalances,
               productStock: product.currentStock,
@@ -652,6 +662,20 @@ class _LocationBalances extends StatelessWidget {
 
       final total = visible.fold<int>(0, (sum, item) => sum + item.quantity);
       final difference = total - productStock;
+      final warehouseTotals = <String, int>{};
+      for (final item in visible) {
+        final name = item.warehouseName ?? 'Almacén sin nombre';
+        warehouseTotals.update(
+          name,
+          (value) => value + item.quantity,
+          ifAbsent: () => item.quantity,
+        );
+      }
+      final groups = [
+        for (final entry in warehouseTotals.entries)
+          if (entry.value > 0)
+            _WarehouseGroup(name: entry.key, quantity: entry.value),
+      ]..sort((a, b) => b.quantity.compareTo(a.quantity));
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -679,6 +703,10 @@ class _LocationBalances extends StatelessWidget {
                 ),
             ],
           ),
+          if (groups.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _WarehouseDistribution(groups: groups),
+          ],
           const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -716,6 +744,160 @@ class _LocationBalances extends StatelessWidget {
       );
     },
   );
+}
+
+class _WarehouseGroup {
+  const _WarehouseGroup({required this.name, required this.quantity});
+
+  final String name;
+  final int quantity;
+}
+
+const _distributionColors = <MaterialColor>[
+  Colors.blue,
+  Colors.teal,
+  Colors.purple,
+  Colors.orange,
+  Colors.pink,
+  Colors.cyan,
+  Colors.indigo,
+  Colors.amber,
+];
+
+class _WarehouseDistribution extends StatelessWidget {
+  const _WarehouseDistribution({required this.groups});
+
+  final List<_WarehouseGroup> groups;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = groups.fold<int>(0, (sum, group) => sum + group.quantity);
+    final textTheme = Theme.of(context).textTheme;
+    final colored = [
+      for (var index = 0; index < groups.length; index++)
+        (
+          groups[index],
+          _distributionColors[index % _distributionColors.length],
+        ),
+    ];
+    const chartSize = 150.0;
+    final chart = SizedBox(
+      width: chartSize,
+      height: chartSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(
+            size: const Size(chartSize, chartSize),
+            painter: _DistributionPainter(
+              values: [for (final entry in colored) entry.$1.quantity],
+              colors: [for (final entry in colored) entry.$2],
+              total: total,
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('$total', style: textTheme.headlineSmall),
+              Text('unidades', style: textTheme.bodySmall),
+            ],
+          ),
+        ],
+      ),
+    );
+    final legend = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final entry in colored)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: entry.$2,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(entry.$1.name, overflow: TextOverflow.ellipsis),
+                ),
+                Text(
+                  '${entry.$1.quantity} · '
+                  '${total == 0 ? 0 : (entry.$1.quantity * 100 / total).toStringAsFixed(0)} %',
+                  style: textTheme.labelLarge,
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 520) {
+          return Column(
+            children: [
+              chart,
+              const SizedBox(height: 16),
+              Align(alignment: Alignment.centerLeft, child: legend),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            chart,
+            const SizedBox(width: 28),
+            Expanded(child: legend),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DistributionPainter extends CustomPainter {
+  const _DistributionPainter({
+    required this.values,
+    required this.colors,
+    required this.total,
+  });
+
+  final List<int> values;
+  final List<MaterialColor> colors;
+  final int total;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (total <= 0 || values.isEmpty) return;
+    const stroke = 24.0;
+    final center = size.center(Offset.zero);
+    final radius = (size.shortestSide - stroke) / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    var startAngle = -math.pi / 2;
+    for (var index = 0; index < values.length; index++) {
+      final sweep = 2 * math.pi * (values[index] / total);
+      canvas.drawArc(
+        rect,
+        startAngle,
+        sweep,
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..color = colors[index % colors.length],
+      );
+      startAngle += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DistributionPainter oldDelegate) =>
+      oldDelegate.total != total ||
+      oldDelegate.values != values ||
+      oldDelegate.colors != colors;
 }
 
 class _LocationBalanceTile extends StatelessWidget {
@@ -885,9 +1067,10 @@ class _Metric extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child});
+  const _Section({required this.title, required this.child, this.trailing});
   final String title;
   final Widget child;
+  final Widget? trailing;
   @override
   Widget build(BuildContext context) => Card(
     child: Padding(
@@ -895,7 +1078,18 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              ?trailing,
+            ],
+          ),
           const Divider(),
           child,
         ],

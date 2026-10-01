@@ -9,7 +9,10 @@ import '../presentation/pages/warehouses_page.dart';
 final List<RouteBase> inventoryRoutes = [
   GoRoute(
     path: '/inventory',
-    builder: (context, state) => const InventoryPage(),
+    builder: (context, state) => InventoryPage(
+      productId: state.uri.queryParameters['productId'],
+      productSku: state.uri.queryParameters['sku'],
+    ),
   ),
   GoRoute(
     path: '/inventory/warehouses',
