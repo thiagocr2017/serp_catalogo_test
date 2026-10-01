@@ -331,17 +331,17 @@ class _Profile extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           _Section(
-            title: 'Historial de cambios y costos',
+            title: 'Historial de cambios de costos y precios',
             child: audit.when(
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('$e'),
               data: (items) {
-                final filtered = items.where(_isUsefulProductChange).toList()
+                final filtered = items.where(_isCostOrPriceChange).toList()
                   ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
                 return filtered.isEmpty
-                    ? const Text('Sin cambios registrados.')
+                    ? const Text('Sin cambios de costos o precios registrados.')
                     : _SearchableHistory<AuditEntry>(
-                        searchLabel: 'Buscar en cambios y costos',
+                        searchLabel: 'Buscar en historial de costos y precios',
                         emptyText: 'No hay cambios que coincidan.',
                         items: filtered,
                         searchableText: (item) => [
@@ -380,28 +380,14 @@ class _Profile extends ConsumerWidget {
     InventoryReason.transferIn => 'Entrada por traslado',
   };
 
-  bool _isUsefulProductChange(AuditEntry entry) =>
+  /// Solo se muestra el histórico de costo de fábrica y precios
+  /// (unitario y por empaque) del producto.
+  bool _isCostOrPriceChange(AuditEntry entry) =>
       (entry.oldValue != null || entry.newValue != null) &&
       const {
-        'name',
-        'sku',
-        'barcode',
-        'description',
-        'category_id',
+        'factory_cost',
         'unit_price',
         'package_price',
-        'factory_cost',
-        'min_order_quantity',
-        'minimum_sale_quantity',
-        'packaging_type',
-        'cbm_per_moq',
-        'reorder_point',
-        'promo_price',
-        'promo_text',
-        'image_url',
-        'image_position_x',
-        'image_position_y',
-        'is_active',
       }.contains(entry.fieldName);
 
   String _auditValue(String field, String? value) {
