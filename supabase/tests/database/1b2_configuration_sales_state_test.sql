@@ -1,0 +1,10 @@
+begin;
+select plan(6);
+select ok(not has_function_privilege('authenticated','public.clear_selected_catalog_agent_internal(uuid,uuid)'::regprocedure,'EXECUTE'),'authenticated no ejecuta limpieza interna');
+select ok((select audit_record_id is not null from public.app_settings where id=true),'audit_record_id existe');
+select ok(not has_table_privilege('authenticated','public.sales_agent_create_commands','SELECT'),'authenticated no lee recibos');
+select ok(not has_table_privilege('authenticated','public.packaging_presentation_create_commands','INSERT'),'authenticated no escribe recibos');
+select ok(not has_table_privilege('anon','public.catalog_logo_operations','UPDATE'),'anon no modifica recibos de logo');
+select ok((select reloptions @> array['security_invoker=true'] from pg_class where oid='public.catalog_agents'::regclass),'vista heredada conserva security_invoker');
+select * from finish();
+rollback;
