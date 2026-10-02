@@ -303,8 +303,7 @@ class _Profile extends ConsumerWidget {
               data: (items) => _SearchableHistory<InventoryTransaction>(
                 searchLabel: 'Buscar en historial de inventario',
                 emptyText: 'Sin movimientos de inventario.',
-                items: [...items]
-                  ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+                items: [...items]..sort(compareInventoryHistory),
                 searchableText: (item) => [
                   describeInventoryTransaction(item, items),
                   item.documentNumber,

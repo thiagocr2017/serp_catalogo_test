@@ -69,7 +69,28 @@ String describeInventoryTransaction(
       final destination = item.reason == InventoryReason.transferOut
           ? counterpart
           : item;
-      return 'Traslado de ${transactionPlace(origin)} → '
-          '${transactionPlace(destination)}';
+      final route =
+          '${transactionPlace(origin)} → ${transactionPlace(destination)}';
+      return item.reason == InventoryReason.transferOut
+          ? 'Salida de $route'
+          : 'Entrada en ${transactionPlace(destination)} '
+                'desde ${transactionPlace(origin)}';
   }
+}
+
+/// Orden del historial: lo más reciente primero; dentro del mismo
+/// documento la salida va antes que la entrada.
+int compareInventoryHistory(InventoryTransaction a, InventoryTransaction b) {
+  final byDate = b.createdAt.compareTo(a.createdAt);
+  if (byDate != 0) return byDate;
+  final byDocument = (a.documentId ?? '').compareTo(b.documentId ?? '');
+  if (byDocument != 0) return byDocument;
+  int leg(InventoryReason reason) => switch (reason) {
+    InventoryReason.transferOut => 0,
+    InventoryReason.transferIn => 1,
+    _ => 2,
+  };
+  final byLeg = leg(a.reason).compareTo(leg(b.reason));
+  if (byLeg != 0) return byLeg;
+  return a.id.compareTo(b.id);
 }

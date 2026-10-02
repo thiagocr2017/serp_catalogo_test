@@ -71,7 +71,7 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                 item.createdAt.toLocal().toString().toLowerCase().contains(
                   query,
                 );
-          }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          }).toList()..sort(compareInventoryHistory);
           return Column(
             children: [
               if (productId != null)

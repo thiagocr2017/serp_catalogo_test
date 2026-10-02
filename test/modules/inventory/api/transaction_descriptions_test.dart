@@ -41,15 +41,20 @@ void main() {
     locationName: 'Anaquel 424',
   );
 
-  test('transfer legs describe the full route in both directions', () {
+  test('transfer legs read as output then input', () {
     expect(
       describeInventoryTransaction(outLeg, [outLeg, inLeg]),
-      'Traslado de Principal · General → Principal · Anaquel 424',
+      'Salida de Principal · General → Principal · Anaquel 424',
     );
     expect(
       describeInventoryTransaction(inLeg, [outLeg, inLeg]),
-      'Traslado de Principal · General → Principal · Anaquel 424',
+      'Entrada en Principal · Anaquel 424 desde Principal · General',
     );
+  });
+
+  test('same document sorts output before input', () {
+    final sorted = [inLeg, outLeg]..sort(compareInventoryHistory);
+    expect(sorted.map((item) => item.id), ['out', 'in']);
   });
 
   test('transfer leg without counterpart falls back to single endpoint', () {
