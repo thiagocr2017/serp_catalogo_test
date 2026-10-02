@@ -380,8 +380,8 @@ begin
 end;
 $$;
 
-revoke all on function public.create_order_with_reservation(uuid, text, char, numeric, text, text, uuid, jsonb, uuid, uuid, text, text, text) from public;
-grant execute on function public.create_order_with_reservation(uuid, text, char, numeric, text, text, uuid, jsonb, uuid, uuid, text, text, text) to anon, authenticated;
+revoke all on function public.create_order_with_reservation(uuid, text, char, numeric, text, uuid, uuid, jsonb, uuid, uuid, text, text, text) from public;
+grant execute on function public.create_order_with_reservation(uuid, text, char, numeric, text, uuid, uuid, jsonb, uuid, uuid, text, text, text) to anon, authenticated;
 
 -- ============================================================
 -- 10. RPC: create_return
@@ -526,5 +526,5 @@ begin
 end;
 $$;
 
-revoke all on function public.create_consignment(uuid, text, char, text, text, jsonb, uuid, uuid, text, text, text) from public;
-grant execute on function public.create_consignment(uuid, text, char, text, text, jsonb, uuid, uuid, text, text, text) to anon, authenticated;
+revoke all on function public.create_consignment(uuid, text, char, text, uuid, jsonb, uuid, uuid, text, text, text) from public;
+grant execute on function public.create_consignment(uuid, text, char, text, uuid, jsonb, uuid, uuid, text, text, text) to anon, authenticated;
