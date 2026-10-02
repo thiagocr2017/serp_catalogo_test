@@ -67,19 +67,23 @@ class SupabaseQuoteDataSource {
   }
 
   Future<SalesQuote> updateQuoteStatus(String id, QuoteStatus status) async {
-    final row = await _client
-        .from('sales_quotes')
-        .update({'status': switch (status) {
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'update_quote_status',
+      params: {
+        'p_quote_id': id,
+        'p_status': switch (status) {
           QuoteStatus.draft => 'DRAFT',
           QuoteStatus.sent => 'SENT',
           QuoteStatus.accepted => 'ACCEPTED',
           QuoteStatus.rejected => 'REJECTED',
           QuoteStatus.expired => 'EXPIRED',
           QuoteStatus.converted => 'CONVERTED',
-        }})
-        .eq('id', id)
-        .select()
-        .single();
+        },
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
     return _quote(row);
   }
 

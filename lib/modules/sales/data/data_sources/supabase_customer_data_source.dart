@@ -60,30 +60,34 @@ class SupabaseCustomerDataSource {
     String? taxId,
     double? creditLimit,
   }) async {
-    final row = await _client
-        .from('customers')
-        .update({
-          'name': name,
-          'phone': phone,
-          'email': email,
-          'address': address,
-          'tax_id': taxId,
-          'credit_limit': creditLimit,
-          'updated_by': _device.actorName,
-          'updated_device_name': _device.name,
-          'updated_device_identifier': _device.identifier,
-        })
-        .eq('id', id)
-        .select()
-        .single();
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'update_customer',
+      params: {
+        'p_customer_id': id,
+        'p_name': name,
+        'p_phone': phone,
+        'p_email': email,
+        'p_address': address,
+        'p_tax_id': taxId,
+        'p_credit_limit': creditLimit,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
     return _customer(row);
   }
 
   Future<void> deactivateCustomer(String id) async {
-    await _client
-        .from('customers')
-        .update({'is_active': false})
-        .eq('id', id);
+    await _client.rpc(
+      'deactivate_customer',
+      params: {
+        'p_customer_id': id,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
   }
 
   Customer _customer(Map<String, dynamic> row) => Customer(

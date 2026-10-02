@@ -70,13 +70,17 @@ class SupabaseConsignmentDataSource {
     required String productId,
     required int quantity,
   }) async {
-    final row = await _client
-        .from('sales_consignment_lines')
-        .update({'returned_quantity': quantity})
-        .eq('consignment_id', consignmentId)
-        .eq('product_id', productId)
-        .select()
-        .single();
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'register_consignment_return',
+      params: {
+        'p_consignment_id': consignmentId,
+        'p_product_id': productId,
+        'p_quantity': quantity,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
     return _consignment(row);
   }
 

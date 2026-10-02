@@ -71,18 +71,15 @@ class SupabaseOrderDataSource {
   }
 
   Future<SalesOrder> cancelOrder(String id) async {
-    final row = await _client
-        .from('sales_orders')
-        .update({
-          'status': 'CANCELLED',
-          'cancelled_at': DateTime.now().toIso8601String(),
-          'updated_by': _device.actorName,
-          'updated_device_name': _device.name,
-          'updated_device_identifier': _device.identifier,
-        })
-        .eq('id', id)
-        .select()
-        .single();
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'cancel_order',
+      params: {
+        'p_order_id': id,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
     return _order(row);
   }
 
