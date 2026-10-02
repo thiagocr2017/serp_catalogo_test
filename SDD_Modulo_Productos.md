@@ -221,7 +221,7 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 - MOQ de recompra, CBM y costo de fábrica como información interna de abastecimiento.
 - Precio unitario, precio por paquete y gestión de márgenes.
 - Compresión local de imágenes antes de subirlas.
-- La imagen se almacena como `<SKU>.JPG`; al reemplazarla se elimina el objeto anterior y la nueva URL incorpora una versión para evitar caché obsoleta.
+- La imagen se almacena como `<SKU>.jpg`; al reemplazarla se elimina el objeto anterior y la nueva URL incorpora una versión para evitar caché obsoleta.
 - Cada producto conserva punto focal horizontal, punto focal vertical y zoom
   para controlar su fotografía en la lista, ficha y catálogo.
 - En edición se puede activar nuevamente un producto inactivo; la reactivación limpia los metadatos de eliminación lógica.

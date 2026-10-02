@@ -62,7 +62,7 @@ class BulkProductTransferService {
           product.currentStock,
           product.reorderPoint,
           product.isActive ? 'SI' : 'NO',
-          product.imageUrl == null ? '' : '${product.sku}.JPG',
+          product.imageUrl == null ? '' : '${product.sku}.jpg',
         ],
     ]);
   }
@@ -212,7 +212,7 @@ class BulkProductTransferService {
     for (final row in preview.rows) {
       try {
         final existing = row.existing;
-        final imageKey = (row.imageName ?? '${row.sku}.JPG').toLowerCase();
+        final imageKey = (row.imageName ?? '${row.sku}.jpg').toLowerCase();
         final imageBytes = images[imageKey];
         final imageUrl = imageBytes == null
             ? existing?.imageUrl
@@ -284,7 +284,7 @@ class BulkProductTransferService {
           [],
           (all, chunk) => all..addAll(chunk),
         );
-        archive.addFile(ArchiveFile('${product.sku}.JPG', bytes.length, bytes));
+        archive.addFile(ArchiveFile('${product.sku}.jpg', bytes.length, bytes));
       }
     } finally {
       client.close();

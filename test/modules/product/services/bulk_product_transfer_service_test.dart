@@ -23,7 +23,7 @@ void main() {
     );
     final csv =
         '${service.templateCsv()}\r\n'
-        'ABC-1;Producto;Descripción;General;;12.50;;1;Unidad;1;0;5;3;2;SI;ABC-1.JPG';
+        'ABC-1;Producto;Descripción;General;;12.50;;1;Unidad;1;0;5;3;2;SI;ABC-1.jpg';
     final preview = service.parseCsv(
       csv,
       categories: const [

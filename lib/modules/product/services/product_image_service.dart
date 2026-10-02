@@ -43,7 +43,8 @@ class ProductImageService {
       );
     }
     // Minúsculas obligatorias: las políticas RLS de product-images solo
-    // aceptan extensiones jpg|jpeg|png|webp en minúsculas (.JPG → 403).
+    // aceptan extensiones jpg|jpeg|png|webp en minúsculas (una extensión
+    // en mayúsculas devuelve 403).
     final path = '$safeSku.jpg';
     final previousPath = _storagePath(previousUrl);
     if (previousPath != null) {

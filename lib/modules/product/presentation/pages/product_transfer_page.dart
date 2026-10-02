@@ -46,7 +46,7 @@ class _ProductTransferPageState extends ConsumerState<ProductTransferPage> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Usa un CSV compatible con Excel. Las imágenes se manejan en un ZIP y deben llamarse igual que el SKU, por ejemplo HJ300-1.JPG.',
+            'Usa un CSV compatible con Excel. Las imágenes se manejan en un ZIP y deben llamarse igual que el SKU, por ejemplo HJ300-1.jpg.',
           ),
           const SizedBox(height: 20),
           Wrap(
