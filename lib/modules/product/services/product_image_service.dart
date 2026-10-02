@@ -42,7 +42,9 @@ class ProductImageService {
         'El SKU no permite crear un nombre de imagen.',
       );
     }
-    final path = '$safeSku.JPG';
+    // Minúsculas obligatorias: las políticas RLS de product-images solo
+    // aceptan extensiones jpg|jpeg|png|webp en minúsculas (.JPG → 403).
+    final path = '$safeSku.jpg';
     final previousPath = _storagePath(previousUrl);
     if (previousPath != null) {
       await _client.storage.from('product-images').remove([previousPath]);
