@@ -59,7 +59,12 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
             if (query.isEmpty) return true;
             return (prefilledSku != null && query == prefilledSku) ||
                 (item.productSku ?? '').toLowerCase().contains(query) ||
-                _reason(item.reason).toLowerCase().contains(query) ||
+                describeInventoryTransaction(
+                  item,
+                  items,
+                ).toLowerCase().contains(query) ||
+                (item.warehouseName ?? '').toLowerCase().contains(query) ||
+                (item.locationName ?? '').toLowerCase().contains(query) ||
                 (item.documentNumber ?? '').toLowerCase().contains(query) ||
                 (item.notes ?? '').toLowerCase().contains(query) ||
                 item.quantity.toString().contains(query) ||
@@ -136,6 +141,11 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                                 ? StatusTone.success
                                 : StatusTone.danger,
                           );
+                          final description = describeInventoryTransaction(
+                            item,
+                            items,
+                          );
+                          final notes = item.notes?.trim();
                           return ListTile(
                             leading: CircleAvatar(
                               backgroundColor: background,
@@ -146,13 +156,16 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                             ),
                             title: Text(
                               '${item.productSku ?? 'SKU no disponible'} · '
-                              '${item.quantity > 0 ? '+' : ''}${item.quantity} · ${_reason(item.reason)}',
+                              '${item.quantity > 0 ? '+' : ''}${item.quantity} · $description',
                             ),
                             subtitle: Text(
-                              '${item.warehouseName ?? 'Bodega'} · '
-                              '${item.locationName ?? 'Ubicación'}\n'
-                              '${item.documentNumber ?? item.notes ?? 'Movimiento anterior'} · '
-                              '${item.createdAt.toLocal()}',
+                              [
+                                if (item.documentNumber?.trim().isNotEmpty ==
+                                    true)
+                                  'Doc. ${item.documentNumber!.trim()}',
+                                if (notes != null && notes.isNotEmpty) notes,
+                                '${item.createdAt.toLocal()}',
+                              ].join(' · '),
                             ),
                             isThreeLine: true,
                             trailing: item.documentId == null
@@ -175,14 +188,4 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
     );
   }
 
-  String _reason(InventoryReason value) => switch (value) {
-    InventoryReason.initialStock => 'Stock inicial',
-    InventoryReason.purchase => 'Compra',
-    InventoryReason.sale => 'Venta',
-    InventoryReason.adjustment => 'Ajuste',
-    InventoryReason.returnItem => 'Devolución',
-    InventoryReason.reversal => 'Reversión',
-    InventoryReason.transferOut => 'Salida por traslado',
-    InventoryReason.transferIn => 'Entrada por traslado',
-  };
 }

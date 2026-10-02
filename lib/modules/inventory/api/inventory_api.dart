@@ -17,6 +17,7 @@ export '../domain/entities/inventory_reservation.dart';
 export '../domain/entities/inventory_count.dart';
 export '../domain/entities/warehouse.dart';
 export 'inventory_commands.dart';
+export 'transaction_descriptions.dart';
 
 final inventoryApiProvider = Provider<InventoryApi>(
   (ref) => throw StateError('InventoryApi must be overridden.'),
