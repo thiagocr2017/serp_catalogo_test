@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
@@ -991,6 +991,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
           promotionDescriptionColor: promotionDescriptionColor,
           imageFit: imageFit,
         ),
+        fontLoader: rootBundle.load,
       );
 
   Future<void> _savePdf(List<Product> data) async {

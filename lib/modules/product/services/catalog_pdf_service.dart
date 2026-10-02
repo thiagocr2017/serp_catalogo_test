@@ -55,12 +55,50 @@ class CatalogPdfOptions {
   final CatalogImageFit imageFit;
 }
 
+/// Carga los bytes de una fuente tipográfica empaquetada como asset.
+///
+/// La app Flutter inyecta `rootBundle.load`; las herramientas de desarrollo
+/// (Dart puro) usan la lectura por defecto desde disco.
+typedef PdfFontLoader = Future<ByteData> Function(String assetPath);
+
 class CatalogPdfService {
+  static const _unicodeFontAssets = [
+    'assets/fonts/Roboto-Regular.ttf',
+    'assets/fonts/Roboto-Bold.ttf',
+    'assets/fonts/Roboto-Italic.ttf',
+    'assets/fonts/Roboto-BoldItalic.ttf',
+  ];
+
+  static Future<ByteData> _diskFontLoader(String assetPath) async {
+    final bytes = await File(assetPath).readAsBytes();
+    return ByteData.view(
+      bytes.buffer,
+      bytes.offsetInBytes,
+      bytes.lengthInBytes,
+    );
+  }
+
+  /// Sustituye las fuentes estándar (Helvetica/Courier, sin Unicode) por
+  /// Roboto en todos los estilos por defecto del documento: cuerpo, negritas,
+  /// cursivas, encabezados y tablas. Sin este cambio, los caracteres fuera
+  /// del conjunto WinAnsi (→, •, emojis, etc.) se pierden al generar el PDF.
+  static Future<void> _installUnicodeFonts(PdfFontLoader loader) async {
+    final fonts = await Future.wait(_unicodeFontAssets.map(loader));
+    pw.ThemeData.buildThemeData = () => pw.ThemeData.withFont(
+      base: pw.Font.ttf(fonts[0]),
+      bold: pw.Font.ttf(fonts[1]),
+      italic: pw.Font.ttf(fonts[2]),
+      boldItalic: pw.Font.ttf(fonts[3]),
+    );
+  }
+
   Future<Uint8List> generate(
     List<Product> products,
-    CatalogPdfOptions options,
-  ) async {
+    CatalogPdfOptions options, {
+    PdfFontLoader fontLoader = _diskFontLoader,
+  }) async {
     products = eligibleCatalogProducts(products);
+    await _installUnicodeFonts(fontLoader);
     final background = PdfColor.fromHex(options.backgroundColor);
     final card = PdfColor.fromHex(options.cardColor);
     final accent = PdfColor.fromHex(options.accentColor);
@@ -164,6 +202,9 @@ class CatalogPdfService {
                       'https://wa.me/${options.agentPhone.replaceAll(RegExp(r'[^0-9]'), '')}',
                   width: 90,
                   height: 90,
+                  // El QR no dibuja texto; desactivarlo evita que se registre
+                  // la fuente Courier (sin Unicode) en el documento.
+                  drawText: false,
                 ),
               ],
             ),
