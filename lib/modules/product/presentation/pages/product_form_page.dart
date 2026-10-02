@@ -9,6 +9,7 @@ import '../../../configuration/configuration_module.dart';
 import '../../../inventory/inventory_module.dart' as inventory;
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
+import '../../services/product_image_service.dart';
 import '../controllers/product_list_controller.dart';
 
 class ProductFormPage extends ConsumerStatefulWidget {
@@ -44,6 +45,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   double _imagePositionY = 0.5;
   double _imageScale = 1;
   Uint8List? _imageBytes;
+  ({int width, int height})? _imageSize;
   Product? _existing;
   bool _loading = false;
 
@@ -210,13 +212,24 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
     setState(() => _saving = true);
     try {
       final productId = _existing?.id ?? const Uuid().v4();
-      final imageUrl = _imageBytes == null
+      // Con imagen nueva el encuadre se hornea en los bytes al guardar y se
+      // persisten parámetros neutros; la imagen existente conserva los suyos.
+      final framingNewImage = _imageBytes != null;
+      final uploadBytes = framingNewImage
+          ? ProductImageService.applyFraming(
+              _imageBytes!,
+              focalX: _imagePositionX,
+              focalY: _imagePositionY,
+              zoom: _imageScale,
+            )
+          : null;
+      final imageUrl = uploadBytes == null
           ? _existing?.imageUrl
           : await ref
                 .read(productImageServiceProvider)
                 .replace(
                   sku: _sku.text,
-                  bytes: _imageBytes!,
+                  bytes: uploadBytes,
                   previousUrl: _existing?.imageUrl,
                 );
       final product = Product(
@@ -243,9 +256,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
         factoryCostInCents: _cents(_factoryCost.text),
         extraCostsInCents: _tryCents(_extraCosts.text) ?? 0,
         imageUrl: imageUrl,
-        imagePositionX: _imagePositionX,
-        imagePositionY: _imagePositionY,
-        imageScale: _imageScale,
+        imagePositionX: framingNewImage ? 0.5 : _imagePositionX,
+        imagePositionY: framingNewImage ? 0.5 : _imagePositionY,
+        imageScale: framingNewImage ? 1 : _imageScale,
         catalogSortOrder: _existing?.catalogSortOrder ?? 0,
         currentStock: _existing?.currentStock ?? 0,
         reorderPoint: int.parse(_reorderPoint.text),
@@ -755,6 +768,11 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                         if (bytes != null && mounted) {
                           setState(() {
                             _imageBytes = bytes;
+                            _imageSize =
+                                ProductImageService.dimensionsOf(bytes);
+                            _imagePositionX = 0.5;
+                            _imagePositionY = 0.5;
+                            _imageScale = 1;
                             _dirty = true;
                           });
                         }
@@ -790,39 +808,53 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                       color: Theme.of(context).colorScheme.outlineVariant,
                     ),
                   ),
-                  child: FractionalTranslation(
-                    translation: Offset(
-                      (_imagePositionX - .5) * .9,
-                      (_imagePositionY - .5) * .9,
-                    ),
-                    child: Transform.scale(
-                      scale: _imageScale,
-                      child: _imageBytes != null
-                          ? Image.memory(_imageBytes!, fit: BoxFit.cover)
-                          : Image.network(
-                              _existing!.imageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => const Center(
-                                child: Icon(Icons.broken_image_outlined),
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: _imageBytes != null
+                            ? Image.memory(_imageBytes!, fit: BoxFit.contain)
+                            : Image.network(
+                                _existing!.imageUrl!,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) => const Center(
+                                  child: Icon(Icons.broken_image_outlined),
+                                ),
                               ),
+                      ),
+                      if (_imageBytes != null && _imageSize != null)
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: _CropOverlayPainter(
+                              imageWidth: _imageSize!.width,
+                              imageHeight: _imageSize!.height,
+                              focalX: _imagePositionX,
+                              focalY: _imagePositionY,
+                              zoom: _imageScale,
+                              overlayColor: Colors.black54,
+                              frameColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
                             ),
-                    ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
-              SizedBox(
-                width: fullWidth > 560 ? 560 : fullWidth,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Reposicionar imagen',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const Text(
-                      'Mueve el punto focal; la vista previa muestra el recorte usado en pantallas y PDF.',
-                    ),
+              if (_imageBytes != null && _imageSize != null)
+                SizedBox(
+                  width: fullWidth > 560 ? 560 : fullWidth,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Encuadrar imagen',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const Text(
+                        'La imagen se muestra completa. Mueve el punto focal o acerca para elegir el recorte; al guardar se corta así.',
+                      ),
                     Row(
                       children: [
                         const SizedBox(width: 82, child: Text('Horizontal')),
@@ -979,4 +1011,95 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       ),
     ),
   );
+}
+
+/// Muestra sobre la imagen completa el rectángulo que se recortará al
+/// guardar, usando exactamente la misma ventana que
+/// [ProductImageService.cropWindow].
+class _CropOverlayPainter extends CustomPainter {
+  const _CropOverlayPainter({
+    required this.imageWidth,
+    required this.imageHeight,
+    required this.focalX,
+    required this.focalY,
+    required this.zoom,
+    required this.overlayColor,
+    required this.frameColor,
+  });
+
+  final int imageWidth;
+  final int imageHeight;
+  final double focalX;
+  final double focalY;
+  final double zoom;
+  final Color overlayColor;
+  final Color frameColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Rectángulo que ocupa la imagen con BoxFit.contain.
+    final aspect = imageWidth / imageHeight;
+    final renderedWidth = aspect >= 1 ? size.width : size.width * aspect;
+    final renderedHeight = aspect >= 1 ? size.height / aspect : size.height;
+    final offsetX = (size.width - renderedWidth) / 2;
+    final offsetY = (size.height - renderedHeight) / 2;
+
+    // La misma ventana en píxeles que se horneará al guardar.
+    final window = ProductImageService.cropWindow(
+      imageWidth,
+      imageHeight,
+      focalX: focalX,
+      focalY: focalY,
+      zoom: zoom,
+    );
+    final crop = Rect.fromLTWH(
+      offsetX + window.x / imageWidth * renderedWidth,
+      offsetY + window.y / imageHeight * renderedHeight,
+      window.width / imageWidth * renderedWidth,
+      window.height / imageHeight * renderedHeight,
+    );
+
+    canvas.drawPath(
+      Path()
+        ..addRect(Offset.zero & size)
+        ..addRect(crop)
+        ..fillType = PathFillType.evenOdd,
+      Paint()..color = overlayColor,
+    );
+    canvas.drawRect(
+      crop,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = frameColor,
+    );
+    final thirds = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = frameColor.withValues(alpha: 0.5);
+    for (var i = 1; i < 3; i++) {
+      final dx = crop.left + crop.width * i / 3;
+      canvas.drawLine(
+        Offset(dx, crop.top),
+        Offset(dx, crop.bottom),
+        thirds,
+      );
+      final dy = crop.top + crop.height * i / 3;
+      canvas.drawLine(
+        Offset(crop.left, dy),
+        Offset(crop.right, dy),
+        thirds,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CropOverlayPainter oldDelegate) =>
+      oldDelegate.imageWidth != imageWidth ||
+      oldDelegate.imageHeight != imageHeight ||
+      oldDelegate.focalX != focalX ||
+      oldDelegate.focalY != focalY ||
+      oldDelegate.zoom != zoom ||
+      oldDelegate.overlayColor != overlayColor ||
+      oldDelegate.frameColor != frameColor;
 }
