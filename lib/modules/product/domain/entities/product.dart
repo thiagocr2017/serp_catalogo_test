@@ -14,6 +14,7 @@ class Product {
     this.packagingPresentationName,
     required this.cbmPerMoq,
     required this.factoryCostInCents,
+    this.extraCostsInCents = 0,
     required this.currentStock,
     required this.reorderPoint,
     required this.isActive,
@@ -50,6 +51,7 @@ class Product {
   final String? packagingPresentationName;
   final double cbmPerMoq;
   final int factoryCostInCents;
+  final int extraCostsInCents;
   final String? imageUrl;
   final double imagePositionX;
   final double imagePositionY;

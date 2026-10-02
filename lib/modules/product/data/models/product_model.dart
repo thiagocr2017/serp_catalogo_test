@@ -21,6 +21,9 @@ class ProductModel {
       data['packaging_presentation_name'] as String?;
   double get cbmPerMoq => _asDouble(data['cbm_per_moq']);
   int get factoryCostInCents => _moneyToCents(data['factory_cost']);
+  int get extraCostsInCents => data['extra_costs'] == null
+      ? 0
+      : _moneyToCents(data['extra_costs']);
   String? get imageUrl => data['image_url'] as String?;
   double get imagePositionX => _asDouble(data['image_position_x'] ?? 0.5);
   double get imagePositionY => _asDouble(data['image_position_y'] ?? 0.5);

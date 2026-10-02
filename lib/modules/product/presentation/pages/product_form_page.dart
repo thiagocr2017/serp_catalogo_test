@@ -32,8 +32,10 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   final _minimumSaleQuantity = TextEditingController(text: '1');
   final _cbm = TextEditingController(text: '0');
   final _factoryCost = TextEditingController(text: '0');
+  final _extraCosts = TextEditingController();
   final _initialStock = TextEditingController(text: '0');
   final _reorderPoint = TextEditingController(text: '0');
+  bool _packagePriceManual = false;
   String? _categoryId;
   String? _packagingPresentationId;
   bool _saving = false;
@@ -78,6 +80,10 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       _minimumSaleQuantity.text = '${product.minimumSaleQuantity}';
       _cbm.text = '${product.cbmPerMoq}';
       _factoryCost.text = (product.factoryCostInCents / 100).toStringAsFixed(2);
+      _extraCosts.text = product.extraCostsInCents == 0
+          ? ''
+          : (product.extraCostsInCents / 100).toStringAsFixed(2);
+      _packagePriceManual = product.packagePriceInCents != null;
       _reorderPoint.text = '${product.reorderPoint}';
       _categoryId = product.categoryId;
       _packagingPresentationId = product.packagingPresentationId;
@@ -103,6 +109,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       _minimumSaleQuantity,
       _cbm,
       _factoryCost,
+      _extraCosts,
       _initialStock,
       _reorderPoint,
     ]) {
@@ -128,13 +135,29 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   String? _required(String? value) =>
       value == null || value.trim().isEmpty ? 'Campo requerido' : null;
 
-  /// Margen en vivo a partir de costo de fábrica y precio unitario.
-  ({int profitCents, double percent})? _margin() {
+  /// Margen en vivo contra el costo total (fábrica + extras).
+  ({int totalCents, int profitCents, double percent})? _margin() {
     final price = _tryCents(_unitPrice.text);
-    final cost = _tryCents(_factoryCost.text);
-    if (price == null || price <= 0 || cost == null) return null;
-    final profit = price - cost;
-    return (profitCents: profit, percent: profit / price * 100);
+    final factory = _tryCents(_factoryCost.text);
+    final extras = _tryCents(_extraCosts.text) ?? 0;
+    if (price == null || price <= 0 || factory == null) return null;
+    final total = factory + extras;
+    final profit = price - total;
+    return (
+      totalCents: total,
+      profitCents: profit,
+      percent: profit / price * 100,
+    );
+  }
+
+  /// Precio por bulto sugerido: unitario × venta mínima, hasta que el
+  /// usuario lo edite manualmente.
+  void _maybeAutofillPackage() {
+    if (_packagePriceManual) return;
+    final unit = _tryCents(_unitPrice.text);
+    final quantity = int.tryParse(_minimumSaleQuantity.text.trim());
+    if (unit == null || unit <= 0 || quantity == null || quantity <= 0) return;
+    _packagePrice.text = ((unit * quantity) / 100).toStringAsFixed(2);
   }
 
   /// Descuento efectivo de la promoción individual sobre el precio unitario.
@@ -218,6 +241,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
             ?.name,
         cbmPerMoq: _decimal(_cbm.text),
         factoryCostInCents: _cents(_factoryCost.text),
+        extraCostsInCents: _tryCents(_extraCosts.text) ?? 0,
         imageUrl: imageUrl,
         imagePositionX: _imagePositionX,
         imagePositionY: _imagePositionY,
@@ -388,7 +412,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                 _imageSection(fullWidth),
                                 _section(
                                   'Precio de venta',
-                                  'Lo que paga el cliente. El margen se calcula contra el costo de fábrica.',
+                                  'Lo que paga el cliente. El margen se calcula contra el costo total (fábrica + extras).',
                                   halfWidth,
                                   [
                                     _field(
@@ -397,12 +421,33 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                       width: halfWidth,
                                       number: true,
                                       validator: _required,
+                                      onChanged: (_) =>
+                                          _maybeAutofillPackage(),
                                     ),
                                     _field(
                                       _packagePrice,
                                       'Precio por bulto USD (opcional)',
                                       width: halfWidth,
                                       number: true,
+                                      helper: _packagePriceManual
+                                          ? 'Precio manual.'
+                                          : 'Calculado: unitario × venta mínima (editable).',
+                                      suffixIcon: _packagePriceManual
+                                          ? IconButton(
+                                              tooltip:
+                                                  'Volver al cálculo automático',
+                                              onPressed: () => setState(() {
+                                                _packagePriceManual = false;
+                                                _dirty = true;
+                                                _maybeAutofillPackage();
+                                              }),
+                                              icon: const Icon(
+                                                Icons.calculate_outlined,
+                                              ),
+                                            )
+                                          : null,
+                                      onChanged: (_) =>
+                                          _packagePriceManual = true,
                                     ),
                                     _field(
                                       _minimumSaleQuantity,
@@ -412,6 +457,8 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                       helper:
                                           'Unidades mínimas por venta.',
                                       validator: _required,
+                                      onChanged: (_) =>
+                                          _maybeAutofillPackage(),
                                     ),
                                     SizedBox(
                                       width: halfWidth,
@@ -463,6 +510,14 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                       width: halfWidth,
                                       number: true,
                                       validator: _required,
+                                    ),
+                                    _field(
+                                      _extraCosts,
+                                      'Costos extra por unidad USD (opcional)',
+                                      width: halfWidth,
+                                      number: true,
+                                      helper:
+                                          'Flete, empaque o impuestos prorrateados. Mejora el cálculo del margen.',
                                     ),
                                     _field(
                                       _moq,
@@ -626,8 +681,10 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
     final positive = margin.profitCents >= 0;
     final color = positive ? Colors.green.shade700 : scheme.error;
     final sign = positive ? '+' : '−';
-    final profit =
-        '${margin.profitCents.abs() ~/ 100}.${((margin.profitCents.abs() % 100).toString().padLeft(2, '0'))}';
+    String dollars(int cents) =>
+        '${cents.abs() ~/ 100}.${(cents.abs() % 100).toString().padLeft(2, '0')}';
+    final factory = _tryCents(_factoryCost.text) ?? 0;
+    final extras = _tryCents(_extraCosts.text) ?? 0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -635,12 +692,25 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Text(
-        'Margen: $sign\$$profit USD ($sign${margin.percent.abs().toStringAsFixed(1)}%)'
-        '${positive ? '' : ' · el precio no cubre el costo'}',
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: color),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Costo total: \$${dollars(margin.totalCents)} USD '
+            '(fábrica \$${dollars(factory)}'
+            '${extras > 0 ? ' + extras \$${dollars(extras)}' : ''})',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Margen: $sign\$${dollars(margin.profitCents)} USD '
+            '($sign${margin.percent.abs().toStringAsFixed(1)}%)'
+            '${positive ? '' : ' · el precio no cubre el costo'}',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: color),
+          ),
+        ],
       ),
     );
   }
@@ -874,6 +944,8 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
     bool number = false,
     bool autofocus = false,
     String? helper,
+    Widget? suffixIcon,
+    ValueChanged<String>? onChanged,
     String? Function(String?)? validator,
   }) => SizedBox(
     width: width,
@@ -895,10 +967,14 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
               return null;
             }
           : validator,
-      onChanged: (_) => setState(() => _dirty = true),
+      onChanged: (value) {
+        onChanged?.call(value);
+        setState(() => _dirty = true);
+      },
       decoration: InputDecoration(
         labelText: label,
         helperText: helper,
+        suffixIcon: suffixIcon,
         border: const OutlineInputBorder(),
       ),
     ),

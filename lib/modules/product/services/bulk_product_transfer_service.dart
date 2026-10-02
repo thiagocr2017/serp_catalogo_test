@@ -238,6 +238,7 @@ class BulkProductTransferService {
               existing?.packagingPresentationName,
           cbmPerMoq: row.cbmPerMoq,
           factoryCostInCents: row.factoryCostInCents,
+          extraCostsInCents: existing?.extraCostsInCents ?? 0,
           imageUrl: imageUrl,
           imagePositionX: existing?.imagePositionX ?? .5,
           imagePositionY: existing?.imagePositionY ?? .5,
