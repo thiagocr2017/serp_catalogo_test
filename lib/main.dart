@@ -32,7 +32,6 @@ import 'modules/sales/data/repositories/supabase_sales_invoice_repository.dart';
 import 'modules/sales/api/sales_invoice_api.dart';
 import 'modules/sales/data/data_sources/supabase_customer_data_source.dart';
 import 'modules/sales/data/repositories/supabase_customer_repository.dart';
-import 'modules/sales/api/customer_api.dart';
 import 'modules/sales/data/data_sources/supabase_quote_data_source.dart';
 import 'modules/sales/data/repositories/supabase_quote_repository.dart';
 import 'modules/sales/api/quote_api.dart';

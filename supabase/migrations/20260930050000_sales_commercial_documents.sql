@@ -367,13 +367,6 @@ begin
     values ((v_line->>'product_id')::uuid, p_warehouse_id, p_location_id, extensions.gen_random_uuid(), -(v_line->>'quantity')::integer, 'SALE', p_actor_name, p_device_name, p_device_identifier, v_document_id);
   end loop;
 
-  for v_line in select * from jsonb_array_elements(p_lines) loop
-    update public.inventory_balances set quantity = quantity - (v_line->>'quantity')::integer
-    where product_id = (v_line->>'product_id')::uuid and location_id = p_location_id;
-    update public.products set current_stock = current_stock - (v_line->>'quantity')::integer
-    where id = (v_line->>'product_id')::uuid;
-  end loop;
-
   update public.sales_orders set inventory_document_id = v_document_id where id = v_order.id;
 
   return v_order;
@@ -435,13 +428,6 @@ begin
   for v_line in select * from jsonb_array_elements(p_lines) loop
     insert into public.inventory_transactions (product_id, warehouse_id, location_id, command_id, quantity, reason, actor_name, device_name, device_identifier, document_id)
     values ((v_line->>'product_id')::uuid, (select destination_warehouse_id from public.inventory_documents where id = v_document_id), (select destination_location_id from public.inventory_documents where id = v_document_id), extensions.gen_random_uuid(), (v_line->>'quantity')::integer, 'RETURN', p_actor_name, p_device_name, p_device_identifier, v_document_id);
-  end loop;
-
-  for v_line in select * from jsonb_array_elements(p_lines) loop
-    update public.inventory_balances set quantity = quantity + (v_line->>'quantity')::integer
-    where product_id = (v_line->>'product_id')::uuid;
-    update public.products set current_stock = current_stock + (v_line->>'quantity')::integer
-    where id = (v_line->>'product_id')::uuid;
   end loop;
 
   update public.sales_returns set inventory_document_id = v_document_id where id = v_return.id;
@@ -511,13 +497,6 @@ begin
   for v_line in select * from jsonb_array_elements(p_lines) loop
     insert into public.inventory_transactions (product_id, warehouse_id, location_id, command_id, quantity, reason, actor_name, device_name, device_identifier, document_id)
     values ((v_line->>'product_id')::uuid, p_warehouse_id, p_location_id, extensions.gen_random_uuid(), -(v_line->>'quantity')::integer, 'SALE', p_actor_name, p_device_name, p_device_identifier, v_document_id);
-  end loop;
-
-  for v_line in select * from jsonb_array_elements(p_lines) loop
-    update public.inventory_balances set quantity = quantity - (v_line->>'quantity')::integer
-    where product_id = (v_line->>'product_id')::uuid and location_id = p_location_id;
-    update public.products set current_stock = current_stock - (v_line->>'quantity')::integer
-    where id = (v_line->>'product_id')::uuid;
   end loop;
 
   update public.sales_consignments set inventory_document_id = v_document_id where id = v_consignment.id;

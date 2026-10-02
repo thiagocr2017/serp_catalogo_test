@@ -123,18 +123,47 @@ language plpgsql security definer set search_path = '' as $$
 declare
   v public.sales_orders%rowtype;
 begin
-  update public.sales_orders
-     set status = 'CANCELLED',
-         cancelled_at = now(),
-         updated_by = p_actor_name,
-         updated_device_name = p_device_name,
-         updated_device_identifier = p_device_identifier,
-         updated_at = now()
+  select * into v
+    from public.sales_orders
    where id = p_order_id
-  returning * into v;
+     for update;
   if not found then
     raise exception using errcode = 'P0001', message = 'NOT_FOUND';
   end if;
+
+  -- El pedido descuenta stock al crearse; al anular se devuelve con un
+  -- movimiento RETURN (el trigger lo aplica a saldos y stock).
+  if v.status <> 'CANCELLED' then
+    if v.inventory_document_id is not null then
+      insert into public.inventory_transactions (
+        product_id, warehouse_id, location_id, command_id, quantity, reason,
+        actor_name, device_name, device_identifier, document_id
+      )
+      select
+        l.product_id,
+        d.origin_warehouse_id,
+        d.origin_location_id,
+        extensions.gen_random_uuid(),
+        l.quantity,
+        'RETURN',
+        p_actor_name, p_device_name, p_device_identifier,
+        v.inventory_document_id
+      from public.sales_order_lines l
+      join public.inventory_documents d on d.id = v.inventory_document_id
+      where l.order_id = p_order_id;
+    end if;
+
+    update public.sales_orders
+       set status = 'CANCELLED',
+           cancelled_at = now(),
+           updated_by = p_actor_name,
+           updated_device_name = p_device_name,
+           updated_device_identifier = p_device_identifier,
+           updated_at = now()
+     where id = p_order_id
+    returning * into v;
+  end if;
+
   return v;
 end;
 $$;

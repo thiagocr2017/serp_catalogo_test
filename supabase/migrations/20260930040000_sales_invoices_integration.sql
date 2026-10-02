@@ -184,18 +184,7 @@ begin
     );
   end loop;
 
-  -- Actualizar stock
-  for v_line in select * from jsonb_array_elements(p_lines) loop
-    update public.inventory_balances
-    set quantity = quantity - (v_line->>'quantity')::integer
-    where product_id = (v_line->>'product_id')::uuid and location_id = p_location_id;
-
-    update public.products
-    set current_stock = current_stock - (v_line->>'quantity')::integer
-    where id = (v_line->>'product_id')::uuid;
-  end loop;
-
-  -- Vincular documento a factura
+    -- Vincular documento a factura
   update public.sales_invoices set inventory_document_id = v_document_id where id = v_invoice.id;
 
   -- Marcar comando completado
@@ -239,19 +228,6 @@ begin
     raise exception using errcode = 'P0001', message = 'INVOICE_NOT_CANCELLABLE';
   end if;
 
-  -- Revertir stock
-  for v_line in
-    select * from public.sales_invoice_lines where invoice_id = p_invoice_id
-  loop
-    update public.inventory_balances
-    set quantity = quantity + v_line.quantity
-    where product_id = v_line.product_id;
-
-    update public.products
-    set current_stock = current_stock + v_line.quantity
-    where id = v_line.product_id;
-  end loop;
-
   -- Crear documento de devolución
   select inventory_document_id into v_document_id from public.sales_invoices where id = p_invoice_id;
 
@@ -265,13 +241,28 @@ begin
       d.origin_warehouse_id,
       d.origin_location_id,
       extensions.gen_random_uuid(),
-      l.quantity,
+      l.quantity - coalesce((
+        select sum(rl.quantity)
+          from public.sales_return_lines rl
+          join public.sales_returns r on r.id = rl.return_id
+         where r.invoice_id = p_invoice_id
+           and r.status <> 'CANCELLED'
+           and rl.product_id = l.product_id
+      ), 0),
       'RETURN',
       p_actor_name, p_device_name, p_device_identifier,
       v_document_id
     from public.sales_invoice_lines l
     join public.inventory_documents d on d.id = v_document_id
-    where l.invoice_id = p_invoice_id;
+    where l.invoice_id = p_invoice_id
+      and l.quantity > coalesce((
+        select sum(rl.quantity)
+          from public.sales_return_lines rl
+          join public.sales_returns r on r.id = rl.return_id
+         where r.invoice_id = p_invoice_id
+           and r.status <> 'CANCELLED'
+           and rl.product_id = l.product_id
+      ), 0);
   end if;
 
   -- Cancelar factura
