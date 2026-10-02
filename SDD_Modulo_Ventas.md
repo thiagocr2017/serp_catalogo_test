@@ -13,8 +13,11 @@ El módulo de Ventas administra agentes, clientes, cotizaciones, pedidos, factur
 
 ### Clientes
 - CRUD completo de clientes con nombre, teléfono, email, dirección, tax ID.
+- Datos comerciales: provincia y gira (agrupación comercial libre, p. ej. la ruta de visita).
+- Contactos de la empresa: cada cliente tiene personas de contacto con nombre, teléfono y rol (Compras, Gerencia…).
 - Límite de crédito y saldo actual.
 - Desactivación lógica.
+- Compradores por producto: `product_buyers` lista quiénes compran un producto a partir de líneas de facturas confirmadas/pagadas y pedidos no anulados, con última compra, cantidad total, conteo de documentos y contactos embebidos. Las facturas creadas solo con nombre (sin `customer_id`) se vinculan por coincidencia exacta de nombre; si el nombre no existe como cliente aparece como fila invitada.
 
 ### Cotizaciones
 - Creación de cotizaciones con líneas de producto.
@@ -64,6 +67,17 @@ El módulo de Ventas administra agentes, clientes, cotizaciones, pedidos, factur
 | `is_active` | Boolean | Estado lógico. |
 | `credit_limit` | Numeric(18,2) | Límite de crédito. |
 | `current_balance` | Numeric(18,2) | Saldo actual. |
+| `province` | Text | Provincia (opcional). |
+| `gira` | Text | Agrupación comercial libre, p. ej. la ruta de visita (opcional). |
+
+### `customer_contacts`
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | UUID | Identificador. |
+| `customer_id` | UUID | Cliente (borrado en cascada). |
+| `name` | Text | Nombre del contacto. |
+| `phone` | Text | Teléfono (opcional). |
+| `role` | Text | Rol en la empresa: Compras, Gerencia… (opcional). |
 
 ### `sales_quotes`
 | Campo | Tipo | Descripción |

@@ -22,6 +22,8 @@ class SupabaseCustomerRepository
     String? address,
     String? taxId,
     double? creditLimit,
+    String? province,
+    String? gira,
   }) => _source.createCustomer(
     name: name,
     phone: phone,
@@ -29,6 +31,8 @@ class SupabaseCustomerRepository
     address: address,
     taxId: taxId,
     creditLimit: creditLimit,
+    province: province,
+    gira: gira,
   );
 
   @override
@@ -40,6 +44,8 @@ class SupabaseCustomerRepository
     String? address,
     String? taxId,
     double? creditLimit,
+    String? province,
+    String? gira,
   }) => _source.updateCustomer(
     id: id,
     name: name,
@@ -48,9 +54,38 @@ class SupabaseCustomerRepository
     address: address,
     taxId: taxId,
     creditLimit: creditLimit,
+    province: province,
+    gira: gira,
   );
 
   @override
   Future<void> deactivateCustomer(String id) =>
       _source.deactivateCustomer(id);
+
+  @override
+  Future<List<CustomerContact>> getCustomerContacts(String customerId) =>
+      _source.getCustomerContacts(customerId);
+
+  @override
+  Future<CustomerContact> saveCustomerContact({
+    String? id,
+    required String customerId,
+    required String name,
+    String? phone,
+    String? role,
+  }) => _source.saveCustomerContact(
+    id: id,
+    customerId: customerId,
+    name: name,
+    phone: phone,
+    role: role,
+  );
+
+  @override
+  Future<void> deleteCustomerContact(String id) =>
+      _source.deleteCustomerContact(id);
+
+  @override
+  Future<List<ProductBuyer>> getProductBuyers(String productId) =>
+      _source.getProductBuyers(productId);
 }

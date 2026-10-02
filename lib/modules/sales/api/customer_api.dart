@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/entities/customer.dart';
+import '../domain/entities/customer_commercial.dart';
 
 export '../domain/entities/customer.dart';
+export '../domain/entities/customer_commercial.dart';
 export '../domain/repositories/customer_repository.dart';
 
 abstract interface class CustomerApi {
@@ -15,6 +17,8 @@ abstract interface class CustomerApi {
     String? address,
     String? taxId,
     double? creditLimit,
+    String? province,
+    String? gira,
   });
   Future<Customer> updateCustomer({
     required String id,
@@ -24,8 +28,22 @@ abstract interface class CustomerApi {
     String? address,
     String? taxId,
     double? creditLimit,
+    String? province,
+    String? gira,
   });
   Future<void> deactivateCustomer(String id);
+
+  Future<List<CustomerContact>> getCustomerContacts(String customerId);
+  Future<CustomerContact> saveCustomerContact({
+    String? id,
+    required String customerId,
+    required String name,
+    String? phone,
+    String? role,
+  });
+  Future<void> deleteCustomerContact(String id);
+
+  Future<List<ProductBuyer>> getProductBuyers(String productId);
 }
 
 final customerApiProvider = Provider<CustomerApi>(
@@ -35,3 +53,9 @@ final customerApiProvider = Provider<CustomerApi>(
 final customersProvider = FutureProvider<List<Customer>>(
   (ref) => ref.watch(customerApiProvider).getCustomers(),
 );
+
+final productBuyersProvider =
+    FutureProvider.family<List<ProductBuyer>, String>(
+      (ref, productId) =>
+          ref.watch(customerApiProvider).getProductBuyers(productId),
+    );

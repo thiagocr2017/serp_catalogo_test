@@ -233,6 +233,7 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 - Calculadora de precio basada en costo, importación y margen.
 - Historial de cambios de `factory_cost` mediante `audit_logs`.
 - Historial completo e inmutable de inventario.
+- Compradores del producto: lista de clientes que compran el producto (facturas confirmadas/pagadas y pedidos no anulados) con última compra, cantidad total y documentos. Barra de búsqueda por nombre del negocio, contactos de la empresa, provincia y gira.
 - Cuando el stock llega a cero, la ficha calcula y muestra la fecha en que se agotó a partir del libro de movimientos.
 - Promoción activa y regla de prioridad aplicada.
 - Espacios para futuros módulos de inventario avanzado, ventas, CRM y reportes.

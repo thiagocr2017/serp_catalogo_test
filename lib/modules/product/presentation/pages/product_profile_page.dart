@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../inventory/inventory_module.dart';
+import '../../../sales/sales_module.dart';
 import '../../di/product_providers.dart';
 import '../../di/promotion_providers.dart';
 import '../../domain/entities/product.dart';
@@ -265,6 +266,7 @@ class _Profile extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
+          _ProductBuyers(productId: product.id),
           const SizedBox(height: 16),
           _Section(
             title: 'Promoción aplicada',
@@ -750,6 +752,119 @@ class _LocationBalances extends StatelessWidget {
       );
     },
   );
+}
+
+class _ProductBuyers extends ConsumerStatefulWidget {
+  const _ProductBuyers({required this.productId});
+
+  final String productId;
+
+  @override
+  ConsumerState<_ProductBuyers> createState() => _ProductBuyersState();
+}
+
+class _ProductBuyersState extends ConsumerState<_ProductBuyers> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final buyers = ref.watch(productBuyersProvider(widget.productId));
+    return _Section(
+      title: 'Clientes que compran este producto',
+      child: buyers.when(
+        loading: () => const LinearProgressIndicator(),
+        error: (e, _) => Text('No fue posible cargar compradores: $e'),
+        data: (items) {
+          final filtered = filterProductBuyers(items, _query);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _search,
+                onChanged: (value) => setState(() => _query = value),
+                decoration: InputDecoration(
+                  labelText: 'Buscar comprador',
+                  hintText: 'Negocio, contacto, provincia o gira',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _query.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Limpiar búsqueda',
+                          onPressed: () {
+                            _search.clear();
+                            setState(() => _query = '');
+                          },
+                          icon: const Icon(Icons.close),
+                        ),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (items.isEmpty)
+                const Text(
+                  'Aún no hay compras registradas de este producto '
+                  'en facturas ni pedidos.',
+                )
+              else if (filtered.isEmpty)
+                const Text(
+                  'Sin coincidencias. Prueba con otro negocio, contacto, '
+                  'provincia o gira.',
+                )
+              else
+                for (final buyer in filtered) _BuyerTile(buyer: buyer),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BuyerTile extends StatelessWidget {
+  const _BuyerTile({required this.buyer});
+
+  final ProductBuyer buyer;
+
+  @override
+  Widget build(BuildContext context) {
+    final place = [
+      if (buyer.gira?.trim().isNotEmpty == true) 'Gira ${buyer.gira!.trim()}',
+      if (buyer.province?.trim().isNotEmpty == true) buyer.province!.trim(),
+    ].join(' · ');
+    final contacts = buyer.contacts
+        .map(
+          (contact) => [
+            contact.name,
+            if (contact.role?.trim().isNotEmpty == true) '(${contact.role!.trim()})',
+            if (contact.phone?.trim().isNotEmpty == true)
+              contact.phone!.trim(),
+          ].join(' '),
+        )
+        .join(' · ');
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      title: Text(
+        buyer.isActive ? buyer.name : '${buyer.name} (Inactivo)',
+      ),
+      subtitle: Text(
+        [
+          if (place.isNotEmpty) place,
+          if (contacts.isNotEmpty) 'Contactos: $contacts',
+          'Última compra: ${buyer.lastPurchaseAt == null ? '—' : buyer.lastPurchaseAt!.toLocal()}'
+              ' · ${buyer.totalQuantity} uds en ${buyer.documentsCount} docs',
+        ].join('\n'),
+      ),
+      isThreeLine: true,
+    );
+  }
 }
 
 class _WarehouseGroup {

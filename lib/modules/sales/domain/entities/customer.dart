@@ -6,6 +6,8 @@ class Customer {
     this.email,
     this.address,
     this.taxId,
+    this.province,
+    this.gira,
     this.isActive = true,
     this.creditLimit = 0,
     this.currentBalance = 0,
@@ -19,6 +21,8 @@ class Customer {
   final String? email;
   final String? address;
   final String? taxId;
+  final String? province;
+  final String? gira;
   final bool isActive;
   final double creditLimit;
   final double currentBalance;
