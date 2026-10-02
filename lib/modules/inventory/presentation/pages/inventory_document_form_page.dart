@@ -20,6 +20,7 @@ class _InventoryDocumentFormPageState
     extends ConsumerState<InventoryDocumentFormPage> {
   InventoryDocumentType _type = InventoryDocumentType.adjustment;
   String? _originWarehouseId;
+  String? _originLocationId;
   String? _destinationWarehouseId;
   String? _destinationLocationId;
   final _reference = TextEditingController();
@@ -47,21 +48,24 @@ class _InventoryDocumentFormPageState
         error: (error, _) =>
             Center(child: Text('No fue posible cargar: $error')),
         data: (items) {
-          _destinationWarehouseId ??= _defaultWarehouse(items)?.id;
-          _originWarehouseId ??= _defaultWarehouse(items)?.id;
-          _destinationLocationId ??= _defaultLocation(
-            items,
-            _destinationWarehouseId,
-          )?.id;
-          return FutureBuilder<List<Product>>(
-            future: ref
-                .read(productApiProvider)
-                .getProducts(const ProductQuery(isActive: true)),
+          _ensureDefaults(items);
+          return FutureBuilder<List<dynamic>>(
+            future: Future.wait([
+              ref
+                  .read(productApiProvider)
+                  .getProducts(const ProductQuery(isActive: true)),
+              ref.read(inventoryApiProvider).getLocationBalances(),
+            ]),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-              return _content(context, items, snapshot.data!);
+              return _content(
+                context,
+                items,
+                snapshot.data![0] as List<Product>,
+                snapshot.data![1] as List<InventoryBalance>,
+              );
             },
           );
         },
@@ -69,102 +73,399 @@ class _InventoryDocumentFormPageState
     );
   }
 
+  /// Propone valores iniciales sin pisar lo que el usuario ya eligió.
+  void _ensureDefaults(List<Warehouse> warehouses) {
+    _destinationWarehouseId ??= _defaultWarehouse(warehouses)?.id;
+    _originWarehouseId ??= _defaultWarehouse(warehouses)?.id;
+    _destinationLocationId ??= _defaultLocation(
+      warehouses,
+      _destinationWarehouseId,
+    )?.id;
+    _originLocationId ??= _defaultLocation(
+      warehouses,
+      _originWarehouseId,
+    )?.id;
+  }
+
   Widget _content(
     BuildContext context,
     List<Warehouse> warehouses,
     List<Product> products,
-  ) => ListView(
-    padding: const EdgeInsets.all(24),
-    children: [
-      SegmentedButton<InventoryDocumentType>(
-        segments: const [
-          ButtonSegment(
-            value: InventoryDocumentType.adjustment,
-            icon: Icon(Icons.tune),
-            label: Text('Ajuste'),
+    List<InventoryBalance> balances,
+  ) {
+    final isTransfer = _type == InventoryDocumentType.transfer;
+    final availability = <String, int>{
+      for (final balance in balances)
+        if (balance.locationId == _originLocationId)
+          balance.productId: balance.quantity,
+    };
+    final movementError = isTransfer ? _movementError() : null;
+    final lineErrors = [
+      for (final line in _lines)
+        _lineError(line, isTransfer: isTransfer, availability: availability),
+    ];
+    final canSave =
+        !_saving &&
+        movementError == null &&
+        _lines.isNotEmpty &&
+        !lineErrors.any((error) => error != null) &&
+        _lines.every(
+          (line) =>
+              line.productId != null &&
+              int.tryParse(line.quantity.text.trim()) != null &&
+              int.parse(line.quantity.text.trim()) != 0,
+        );
+    final totalUnits = _lines.fold<int>(
+      0,
+      (total, line) =>
+          total + (int.tryParse(line.quantity.text.trim())?.abs() ?? 0),
+    );
+
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        SegmentedButton<InventoryDocumentType>(
+          segments: const [
+            ButtonSegment(
+              value: InventoryDocumentType.adjustment,
+              icon: Icon(Icons.tune),
+              label: Text('Ajuste'),
+            ),
+            ButtonSegment(
+              value: InventoryDocumentType.transfer,
+              icon: Icon(Icons.move_down),
+              label: Text('Traslado'),
+            ),
+          ],
+          selected: {_type},
+          onSelectionChanged: (value) => setState(() => _type = value.single),
+        ),
+        const SizedBox(height: 20),
+        if (isTransfer)
+          _movementCard(context, warehouses, movementError)
+        else
+          _adjustmentCard(context, warehouses),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _reference,
+          decoration: const InputDecoration(
+            labelText: 'Referencia externa opcional',
           ),
-          ButtonSegment(
-            value: InventoryDocumentType.transfer,
-            icon: Icon(Icons.move_down),
-            label: Text('Traslado'),
-          ),
-        ],
-        selected: {_type},
-        onSelectionChanged: (value) => setState(() => _type = value.single),
-      ),
-      const SizedBox(height: 20),
-      if (_type == InventoryDocumentType.transfer) ...[
-        _warehouseField(
-          warehouses,
-          label: 'Bodega de origen',
-          value: _originWarehouseId,
-          onChanged: (value) => setState(() => _originWarehouseId = value),
         ),
         const SizedBox(height: 12),
+        TextField(
+          controller: _notes,
+          decoration: const InputDecoration(labelText: 'Motivo u observaciones'),
+        ),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Text('Productos', style: Theme.of(context).textTheme.titleLarge),
+            const Spacer(),
+            OutlinedButton.icon(
+              onPressed: _addLine,
+              icon: const Icon(Icons.add),
+              label: const Text('Agregar producto'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        for (var index = 0; index < _lines.length; index++)
+          _lineCard(
+            context,
+            products,
+            index,
+            lineError: lineErrors[index],
+            available: isTransfer && _lines[index].productId != null
+                ? availability[_lines[index].productId]
+                : null,
+            isTransfer: isTransfer,
+          ),
+        const SizedBox(height: 8),
+        Text(
+          '${_lines.length} ${_lines.length == 1 ? 'línea' : 'líneas'} · $totalUnits ${totalUnits == 1 ? 'unidad' : 'unidades'}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 24),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.icon(
+            onPressed: canSave ? () => _save(context) : null,
+            icon: _saving
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check),
+            label: Text(
+              isTransfer ? 'Confirmar traslado' : 'Confirmar ajuste',
+            ),
+          ),
+        ),
+        if (!canSave && !_saving)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                    movementError ??
+                        'Completa productos y cantidades para continuar.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+            ),
+          ),
       ],
-      _warehouseField(
-        warehouses,
-        label: _type == InventoryDocumentType.transfer
-            ? 'Bodega de destino'
-            : 'Bodega',
-        value: _destinationWarehouseId,
-        onChanged: (value) => setState(() {
-          _destinationWarehouseId = value;
-          _destinationLocationId = _defaultLocation(warehouses, value)?.id;
-        }),
-      ),
-      const SizedBox(height: 12),
-      _locationField(
-        warehouses,
-        warehouseId: _destinationWarehouseId,
-        value: _destinationLocationId,
-        label: _type == InventoryDocumentType.transfer
-            ? 'Ubicación de destino'
-            : 'Ubicación',
-        onChanged: (value) => setState(() => _destinationLocationId = value),
-      ),
-      const SizedBox(height: 8),
-      Text(
-        _type == InventoryDocumentType.transfer
-            ? 'El origen usa automáticamente su ubicación predeterminada. El destino puede elegirse.'
-            : 'La ubicación predeterminada se propone automáticamente y puedes cambiarla.',
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
-      const SizedBox(height: 20),
-      TextField(
-        controller: _reference,
-        decoration: const InputDecoration(
-          labelText: 'Referencia externa opcional',
+    );
+  }
+
+  /// Tarjeta Desde → Hacia con botón para intercambiar el sentido.
+  /// La misma bodega está permitida: lo que debe diferir es la ubicación.
+  Widget _movementCard(
+    BuildContext context,
+    List<Warehouse> warehouses,
+    String? movementError,
+  ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _endpointColumn(
+                    context,
+                    title: 'Desde',
+                    icon: Icons.upload,
+                    warehouseLabel: 'Bodega de origen',
+                    locationLabel: 'Ubicación de origen',
+                    warehouseId: _originWarehouseId,
+                    locationId: _originLocationId,
+                    warehouses: warehouses,
+                    onWarehouseChanged: (value) => setState(() {
+                      _originWarehouseId = value;
+                      _originLocationId =
+                          _defaultLocation(warehouses, value)?.id;
+                    }),
+                    onLocationChanged: (value) =>
+                        setState(() => _originLocationId = value),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 40, left: 4, right: 4),
+                  child: IconButton.filledTonal(
+                    tooltip: 'Intercambiar origen y destino',
+                    onPressed: () => setState(() {
+                      final warehouseId = _originWarehouseId;
+                      final locationId = _originLocationId;
+                      _originWarehouseId = _destinationWarehouseId;
+                      _originLocationId = _destinationLocationId;
+                      _destinationWarehouseId = warehouseId;
+                      _destinationLocationId = locationId;
+                    }),
+                    icon: const Icon(Icons.swap_horiz),
+                  ),
+                ),
+                Expanded(
+                  child: _endpointColumn(
+                    context,
+                    title: 'Hacia',
+                    icon: Icons.download,
+                    warehouseLabel: 'Bodega de destino',
+                    locationLabel: 'Ubicación de destino',
+                    warehouseId: _destinationWarehouseId,
+                    locationId: _destinationLocationId,
+                    warehouses: warehouses,
+                    onWarehouseChanged: (value) => setState(() {
+                      _destinationWarehouseId = value;
+                      _destinationLocationId =
+                          _defaultLocation(warehouses, value)?.id;
+                    }),
+                    onLocationChanged: (value) =>
+                        setState(() => _destinationLocationId = value),
+                  ),
+                ),
+              ],
+            ),
+            if (movementError != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      movementError,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ] else ...[
+              const SizedBox(height: 8),
+              Text(
+                'Puedes mover entre ubicaciones de la misma bodega o entre bodegas.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ],
         ),
       ),
-      const SizedBox(height: 12),
-      TextField(
-        controller: _notes,
-        decoration: const InputDecoration(labelText: 'Motivo u observaciones'),
+    );
+  }
+
+  Widget _endpointColumn(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required String warehouseLabel,
+    required String locationLabel,
+    required String? warehouseId,
+    required String? locationId,
+    required List<Warehouse> warehouses,
+    required ValueChanged<String?> onWarehouseChanged,
+    required ValueChanged<String?> onLocationChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18),
+            const SizedBox(width: 6),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _warehouseField(
+          warehouses,
+          label: warehouseLabel,
+          value: warehouseId,
+          onChanged: onWarehouseChanged,
+        ),
+        const SizedBox(height: 12),
+        _locationField(
+          warehouses,
+          warehouseId: warehouseId,
+          value: locationId,
+          label: locationLabel,
+          onChanged: onLocationChanged,
+        ),
+      ],
+    );
+  }
+
+  Widget _adjustmentCard(
+    BuildContext context,
+    List<Warehouse> warehouses,
+  ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Aplicar en',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            _warehouseField(
+              warehouses,
+              label: 'Bodega',
+              value: _destinationWarehouseId,
+              onChanged: (value) => setState(() {
+                _destinationWarehouseId = value;
+                _destinationLocationId =
+                    _defaultLocation(warehouses, value)?.id;
+              }),
+            ),
+            const SizedBox(height: 12),
+            _locationField(
+              warehouses,
+              warehouseId: _destinationWarehouseId,
+              value: _destinationLocationId,
+              label: 'Ubicación',
+              onChanged: (value) =>
+                  setState(() => _destinationLocationId = value),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'La ubicación predeterminada se propone automáticamente y puedes cambiarla.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
       ),
-      const SizedBox(height: 24),
-      Row(
-        children: [
-          Text('Productos', style: Theme.of(context).textTheme.titleLarge),
-          const Spacer(),
-          OutlinedButton.icon(
-            onPressed: _addLine,
-            icon: const Icon(Icons.add),
-            label: const Text('Agregar producto'),
-          ),
-        ],
-      ),
-      const SizedBox(height: 12),
-      for (var index = 0; index < _lines.length; index++)
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+    );
+  }
+
+  /// Error del movimiento o null si origen y destino son válidos.
+  String? _movementError() {
+    if (_originWarehouseId == null ||
+        _originLocationId == null ||
+        _destinationWarehouseId == null ||
+        _destinationLocationId == null) {
+      return 'Selecciona bodega y ubicación de origen y destino.';
+    }
+    if (_originLocationId == _destinationLocationId) {
+      return 'El origen y el destino no pueden ser la misma ubicación. '
+          'Elige otra ubicación o intercambia el sentido.';
+    }
+    return null;
+  }
+
+  /// Error de una línea o null si está lista para guardar.
+  String? _lineError(
+    _DocumentLineDraft line, {
+    required bool isTransfer,
+    required Map<String, int> availability,
+  }) {
+    final quantity = int.tryParse(line.quantity.text.trim());
+    if (line.productId == null || quantity == null || quantity == 0) {
+      return null;
+    }
+    if (!isTransfer) return null;
+    final available = availability[line.productId] ?? 0;
+    if (quantity.abs() > available) {
+      return available == 0
+          ? 'Sin existencias en la ubicación de origen.'
+          : 'Solo hay $available disponible(s) en el origen.';
+    }
+    return null;
+  }
+
+  Widget _lineCard(
+    BuildContext context,
+    List<Product> products,
+    int index, {
+    required String? lineError,
+    required int? available,
+    required bool isTransfer,
+  }) {
+    final line = _lines[index];
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   flex: 3,
-                  child: _productField(products, _lines[index]),
+                  child: _productField(products, line),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -173,25 +474,28 @@ class _InventoryDocumentFormPageState
                       if (event is KeyDownEvent &&
                           event.logicalKey == LogicalKeyboardKey.tab &&
                           index == _lines.length - 1 &&
-                          _lines[index].productId != null &&
-                          int.tryParse(_lines[index].quantity.text) != null) {
+                          line.productId != null &&
+                          int.tryParse(line.quantity.text) != null) {
                         _addLine();
                         return KeyEventResult.handled;
                       }
                       return KeyEventResult.ignored;
                     },
                     child: TextField(
-                      focusNode: _lines[index].quantityFocus,
-                      controller: _lines[index].quantity,
+                      focusNode: line.quantityFocus,
+                      controller: line.quantity,
                       keyboardType: const TextInputType.numberWithOptions(
                         signed: true,
                       ),
                       decoration: InputDecoration(
                         labelText: 'Cantidad',
-                        helperText: _type == InventoryDocumentType.adjustment
+                        helperText:
+                            _type == InventoryDocumentType.adjustment
                             ? '+ suma / − resta'
                             : 'Cantidad a trasladar',
+                        errorText: lineError,
                       ),
+                      onChanged: (_) => setState(() {}),
                     ),
                   ),
                 ),
@@ -211,24 +515,29 @@ class _InventoryDocumentFormPageState
                 ),
               ],
             ),
-          ),
-        ),
-      const SizedBox(height: 24),
-      Align(
-        alignment: Alignment.centerRight,
-        child: FilledButton.icon(
-          onPressed: _saving ? null : () => _save(context),
-          icon: _saving
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.check),
-          label: const Text('Confirmar documento'),
+            if (isTransfer && line.productId != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    available == null || available == 0
+                        ? 'Disponible en origen: 0'
+                        : 'Disponible en origen: $available',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color:
+                          available == null || available == 0
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
-    ],
-  );
+    );
+  }
 
   Widget _warehouseField(
     List<Warehouse> warehouses, {
@@ -292,14 +601,14 @@ class _InventoryDocumentFormPageState
           );
         },
         onSelected: (product) {
-          line.productId = product.id;
+          setState(() => line.productId = product.id);
           line.quantityFocus.requestFocus();
         },
         fieldViewBuilder: (context, controller, focusNode, onSubmitted) =>
             TextField(
               controller: controller,
               focusNode: focusNode,
-              onChanged: (_) => line.productId = null,
+              onChanged: (_) => setState(() => line.productId = null),
               onSubmitted: (_) => onSubmitted(),
               decoration: const InputDecoration(
                 labelText: 'Producto',
@@ -388,6 +697,23 @@ class _InventoryDocumentFormPageState
       );
       return;
     }
+    if (_type == InventoryDocumentType.transfer) {
+      final movementError = _movementError();
+      if (movementError != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(movementError)));
+        return;
+      }
+      if (_originWarehouseId == null || _originLocationId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Selecciona la bodega y ubicación de origen.'),
+          ),
+        );
+        return;
+      }
+    }
     final lines = <InventoryDocumentLineCommand>[];
     for (final draft in _lines) {
       final quantity = int.tryParse(draft.quantity.text.trim());
@@ -410,13 +736,6 @@ class _InventoryDocumentFormPageState
         ),
       );
     }
-    if (_type == InventoryDocumentType.transfer &&
-        _originWarehouseId == _destinationWarehouseId) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona bodegas diferentes.')),
-      );
-      return;
-    }
     setState(() => _saving = true);
     try {
       final document = await ref
@@ -428,6 +747,9 @@ class _InventoryDocumentFormPageState
               lines: lines,
               originWarehouseId: _type == InventoryDocumentType.transfer
                   ? _originWarehouseId
+                  : null,
+              originLocationId: _type == InventoryDocumentType.transfer
+                  ? _originLocationId
                   : null,
               destinationWarehouseId: _destinationWarehouseId,
               destinationLocationId: _destinationLocationId,
@@ -459,8 +781,8 @@ class _DocumentLineDraft {
 
   void dispose() {
     productSearch.dispose();
-    quantity.dispose();
     productFocus.dispose();
+    quantity.dispose();
     quantityFocus.dispose();
   }
 }
