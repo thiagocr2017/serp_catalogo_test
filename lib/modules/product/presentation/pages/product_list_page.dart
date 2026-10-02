@@ -600,12 +600,16 @@ class _StockBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = product.isOutOfStock
+    final label = !product.isActive
+        ? 'Inactivo'
+        : product.isOutOfStock
         ? 'Agotado'
         : product.requiresRestock
         ? 'Stock bajo'
         : 'Disponible';
-    final tone = product.isOutOfStock
+    final tone = !product.isActive
+        ? StatusTone.neutral
+        : product.isOutOfStock
         ? StatusTone.danger
         : product.requiresRestock
         ? StatusTone.warning

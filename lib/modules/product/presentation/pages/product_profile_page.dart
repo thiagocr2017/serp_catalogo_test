@@ -46,9 +46,11 @@ class _Profile extends ConsumerWidget {
     final packagingLabel =
         product.packagingPresentationName ?? 'Presentación no disponible';
     final marginPercent = product.unitPriceInCents > 0
-        ? (product.unitPriceInCents - product.factoryCostInCents) /
-              product.unitPriceInCents *
-              100
+        ? (product.unitPriceInCents -
+                      product.factoryCostInCents -
+                      product.extraCostsInCents) /
+                  product.unitPriceInCents *
+                  100
         : null;
     return Scaffold(
       appBar: AppBar(
@@ -263,9 +265,6 @@ class _Profile extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          _Section(title: 'Descripción', child: Text(product.description)),
-          const SizedBox(height: 16),
-          _PricingCalculator(product: product),
           const SizedBox(height: 16),
           _Section(
             title: 'Promoción aplicada',
@@ -307,25 +306,38 @@ class _Profile extends ConsumerWidget {
                 items: [...items]
                   ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
                 searchableText: (item) => [
-                  _inventoryReason(item.reason),
+                  describeInventoryTransaction(item, items),
+                  item.documentNumber,
                   item.quantity,
                   item.notes,
                   item.createdAt.toLocal(),
                 ].join(' '),
-                itemBuilder: (context, item) => ListTile(
-                  dense: true,
-                  leading: Icon(
-                    item.quantity > 0
-                        ? Icons.add_circle_outline
-                        : Icons.remove_circle_outline,
-                  ),
-                  title: Text(
-                    '${item.quantity > 0 ? '+' : ''}${item.quantity} · ${_inventoryReason(item.reason)}',
-                  ),
-                  subtitle: Text(
-                    '${item.notes?.trim().isEmpty ?? true ? 'Sin notas' : item.notes} · ${item.createdAt.toLocal()}',
-                  ),
-                ),
+                itemBuilder: (context, item) {
+                  final description = describeInventoryTransaction(
+                    item,
+                    items,
+                  );
+                  final notes = item.notes?.trim();
+                  return ListTile(
+                    dense: true,
+                    leading: Icon(
+                      item.quantity > 0
+                          ? Icons.add_circle_outline
+                          : Icons.remove_circle_outline,
+                    ),
+                    title: Text(
+                      '${item.quantity > 0 ? '+' : ''}${item.quantity} · $description',
+                    ),
+                    subtitle: Text(
+                      [
+                        if (item.documentNumber?.trim().isNotEmpty == true)
+                          'Doc. ${item.documentNumber!.trim()}',
+                        if (notes != null && notes.isNotEmpty) notes,
+                        '${item.createdAt.toLocal()}',
+                      ].join(' · '),
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -368,17 +380,6 @@ class _Profile extends ConsumerWidget {
       ),
     );
   }
-
-  String _inventoryReason(InventoryReason reason) => switch (reason) {
-    InventoryReason.initialStock => 'Stock inicial',
-    InventoryReason.purchase => 'Compra',
-    InventoryReason.sale => 'Venta',
-    InventoryReason.adjustment => 'Ajuste',
-    InventoryReason.returnItem => 'Devolución',
-    InventoryReason.reversal => 'Reversión',
-    InventoryReason.transferOut => 'Salida por traslado',
-    InventoryReason.transferIn => 'Entrada por traslado',
-  };
 
   /// Solo se muestra el histórico de costo de fábrica y precios
   /// (unitario y por empaque) del producto.
@@ -1365,96 +1366,5 @@ class _BulkProductConditionEditorState
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-  }
-}
-
-class _PricingCalculator extends StatefulWidget {
-  const _PricingCalculator({required this.product});
-  final Product product;
-  @override
-  State<_PricingCalculator> createState() => _PricingCalculatorState();
-}
-
-class _PricingCalculatorState extends State<_PricingCalculator> {
-  final expenses = TextEditingController(text: '0');
-  final margin = TextEditingController(text: '30');
-  @override
-  void dispose() {
-    expenses.dispose();
-    margin.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cost = widget.product.factoryCostInCents / 100;
-    final result =
-        (cost + (double.tryParse(expenses.text) ?? 0)) *
-        (1 + (double.tryParse(margin.text) ?? 0) / 100);
-    return _Section(
-      title: 'Herramienta de precios',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'El precio recomendado suma el costo de fábrica y los gastos de '
-            'importación por unidad. Después aplica el margen deseado sobre '
-            'ese costo total.',
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Text(
-              'Fórmula: (costo de fábrica + importación por unidad) × '
-              '(1 + margen ÷ 100)',
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: expenses,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Gastos de importación por unidad',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: TextField(
-                  controller: margin,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Margen deseado %',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 24),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Costo base: USD ${cost.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  Text(
-                    'Recomendado: USD ${result.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
   }
 }
