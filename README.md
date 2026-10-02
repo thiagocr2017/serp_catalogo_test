@@ -67,8 +67,10 @@ Documentación:
 - [`MODULE_STRUCTURE.md`](MODULE_STRUCTURE.md): convenciones y deuda técnica.
 - [`MODULE_SECURITY_CONTRACT.md`](MODULE_SECURITY_CONTRACT.md): comunicación,
   exposición, transacciones y seguridad obligatorias entre módulos.
-- [`DOCUMENT_STANDARDS.md`](DOCUMENT_STANDARDS.md): reglas comunes para PDF A4,
-  ticket térmico de 80 mm e impresión ESC/POS directa por Bluetooth o USB.
+- [`DOCUMENT_STANDARDS.md`](DOCUMENT_STANDARDS.md): reglas comunes para
+  documentos operativos con PDF A4, ticket térmico de 80 mm e impresión
+  ESC/POS directa por Bluetooth o USB. El catálogo comercial de Productos se
+  genera sólo como PDF.
 - [`SDD_Modulo_Productos.md`](SDD_Modulo_Productos.md): productos, categorías,
   promociones, importación/exportación y catálogo PDF.
 - [`SDD_Modulo_Inventario.md`](SDD_Modulo_Inventario.md): movimientos, stock y

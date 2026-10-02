@@ -245,6 +245,9 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
 
 ### Pantalla D: generador avanzado de PDF
 
+- El catálogo comercial se representa exclusivamente como PDF. No es un
+  documento operativo confirmado y no requiere ticket térmico de 80 mm ni
+  impresión ESC/POS directa.
 - Diseños de 1, 2, 4 o 6 tarjetas por página y lista compacta. La cuadrícula reserva automáticamente una página completa, media página, un cuarto o un sexto para cada producto, y escala la fotografía según ese espacio.
 - Portada con logo, nombre de empresa y métodos de pago. El logo se administra
   exclusivamente desde Configuración.
@@ -306,3 +309,7 @@ Esto no reemplaza las validaciones de la aplicación. La aplicación valida para
 - Empresa, pagos, logo, preferencias del catálogo y presentaciones pertenecen
   al módulo Configuración. Productos los consume exclusivamente mediante
   `configuration_module.dart`.
+- Las validaciones de formularios del módulo deben contar con pruebas de UI que
+  comprueben que datos inválidos no cierran el formulario ni ejecutan comandos
+  de guardado. La cobertura inicial incluye producto y promociones; se ampliará
+  al resto de formularios conforme se estabilicen sus contratos.

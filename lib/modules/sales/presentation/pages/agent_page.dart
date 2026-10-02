@@ -83,42 +83,60 @@ class AgentPage extends ConsumerWidget {
   ]) async {
     final name = TextEditingController(text: existing?.name ?? '');
     final phone = TextEditingController(text: existing?.phone ?? '+506');
+    String? nameError;
     final accepted = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(existing == null ? 'Nuevo agente' : 'Editar agente'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: name,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Nombre',
-                border: OutlineInputBorder(),
-              ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          void submit() {
+            if (name.text.trim().isEmpty) {
+              setDialogState(() {
+                nameError = 'Escriba el nombre del agente.';
+              });
+              return;
+            }
+            Navigator.pop(context, true);
+          }
+
+          return AlertDialog(
+            title: Text(existing == null ? 'Nuevo agente' : 'Editar agente'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre',
+                    errorText: nameError,
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (_) {
+                    if (nameError != null) {
+                      setDialogState(() => nameError = null);
+                    }
+                  },
+                  onSubmitted: (_) => submit(),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phone,
+                  decoration: const InputDecoration(
+                    labelText: 'WhatsApp',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: phone,
-              decoration: const InputDecoration(
-                labelText: 'WhatsApp',
-                border: OutlineInputBorder(),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(context, name.text.trim().isNotEmpty),
-            child: const Text('Guardar'),
-          ),
-        ],
+              FilledButton(onPressed: submit, child: const Text('Guardar')),
+            ],
+          );
+        },
       ),
     );
     if (accepted == true) {
@@ -146,8 +164,10 @@ class AgentPage extends ConsumerWidget {
       }
       ref.invalidate(salesAgentsProvider);
     }
-    name.dispose();
-    phone.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      name.dispose();
+      phone.dispose();
+    });
   }
 
   Future<void> _deactivate(

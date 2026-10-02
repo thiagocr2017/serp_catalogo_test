@@ -219,370 +219,383 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(32),
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _saving
-                        ? null
-                        : () async {
-                            try {
-                              final bytes = await ref
-                                  .read(productImageServiceProvider)
-                                  .selectAndCompress();
-                              if (bytes != null && mounted) {
-                                setState(() => _imageBytes = bytes);
-                              }
-                            } catch (error) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'No se pudo abrir la imagen: $error',
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(32),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _saving
+                          ? null
+                          : () async {
+                              try {
+                                final bytes = await ref
+                                    .read(productImageServiceProvider)
+                                    .selectAndCompress();
+                                if (bytes != null && mounted) {
+                                  setState(() => _imageBytes = bytes);
+                                }
+                              } catch (error) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'No se pudo abrir la imagen: $error',
+                                      ),
                                     ),
-                                  ),
-                                );
+                                  );
+                                }
                               }
-                            }
-                          },
-                    icon: const Icon(Icons.image_outlined),
-                    label: Text(
-                      _imageBytes == null
-                          ? 'Seleccionar imagen'
-                          : 'Imagen lista (${(_imageBytes!.length / 1024).round()} KB)',
-                    ),
-                  ),
-                  if (_imageBytes != null || _existing?.imageUrl != null) ...[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        width: 280,
-                        height: 280,
-                        margin: const EdgeInsets.only(top: 12),
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                        ),
-                        child: FractionalTranslation(
-                          translation: Offset(
-                            (_imagePositionX - .5) * .9,
-                            (_imagePositionY - .5) * .9,
-                          ),
-                          child: Transform.scale(
-                            scale: _imageScale,
-                            child: _imageBytes != null
-                                ? Image.memory(_imageBytes!, fit: BoxFit.cover)
-                                : Image.network(
-                                    _existing!.imageUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) => const Center(
-                                      child: Icon(Icons.broken_image_outlined),
-                                    ),
-                                  ),
-                          ),
-                        ),
+                            },
+                      icon: const Icon(Icons.image_outlined),
+                      label: Text(
+                        _imageBytes == null
+                            ? 'Seleccionar imagen'
+                            : 'Imagen lista (${(_imageBytes!.length / 1024).round()} KB)',
                       ),
                     ),
-                    SizedBox(
-                      width: 560,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Reposicionar imagen',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const Text(
-                            'Mueve el punto focal; la vista previa muestra el recorte usado en pantallas y PDF.',
-                          ),
-                          Row(
-                            children: [
-                              const SizedBox(
-                                width: 82,
-                                child: Text('Horizontal'),
-                              ),
-                              Expanded(
-                                child: Slider(
-                                  value: _imagePositionX,
-                                  onChanged: (value) =>
-                                      setState(() => _imagePositionX = value),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              const SizedBox(width: 82, child: Text('Zoom')),
-                              IconButton(
-                                tooltip: 'Alejar',
-                                onPressed: _imageScale <= 1
-                                    ? null
-                                    : () => setState(
-                                        () => _imageScale = (_imageScale - 0.1)
-                                            .clamp(1, 3)
-                                            .toDouble(),
-                                      ),
-                                icon: const Icon(Icons.zoom_out),
-                              ),
-                              Expanded(
-                                child: Slider(
-                                  min: 1,
-                                  max: 3,
-                                  divisions: 20,
-                                  label: '${_imageScale.toStringAsFixed(1)}×',
-                                  value: _imageScale,
-                                  onChanged: (value) =>
-                                      setState(() => _imageScale = value),
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Acercar',
-                                onPressed: _imageScale >= 3
-                                    ? null
-                                    : () => setState(
-                                        () => _imageScale = (_imageScale + 0.1)
-                                            .clamp(1, 3)
-                                            .toDouble(),
-                                      ),
-                                icon: const Icon(Icons.zoom_in),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              const SizedBox(
-                                width: 82,
-                                child: Text('Vertical'),
-                              ),
-                              Expanded(
-                                child: Slider(
-                                  value: _imagePositionY,
-                                  onChanged: (value) =>
-                                      setState(() => _imagePositionY = value),
-                                ),
-                              ),
-                            ],
-                          ),
-                          TextButton.icon(
-                            onPressed: () => setState(() {
-                              _imagePositionX = 0.5;
-                              _imagePositionY = 0.5;
-                              _imageScale = 1;
-                            }),
-                            icon: const Icon(Icons.center_focus_strong),
-                            label: const Text('Centrar imagen'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  _section(
-                    'Información general',
-                    'Identificación y descripción del producto.',
-                    [
-                      _field(_sku, 'SKU', validator: _required),
-                      _field(_barcode, 'Código de barras'),
-                      _field(_name, 'Nombre', validator: _required),
-                      SizedBox(
-                        width: 320,
-                        child: categories.when(
-                          loading: () => const LinearProgressIndicator(),
-                          error: (e, _) => Text('Error de categorías: $e'),
-                          data: (items) => DropdownButtonFormField<String>(
-                            initialValue: _categoryId,
-                            decoration: const InputDecoration(
-                              labelText: 'Categoría',
-                              border: OutlineInputBorder(),
+                    if (_imageBytes != null || _existing?.imageUrl != null) ...[
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          width: 280,
+                          height: 280,
+                          margin: const EdgeInsets.only(top: 12),
+                          clipBehavior: Clip.antiAlias,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .outlineVariant,
                             ),
-                            items: [
-                              for (final item in items)
-                                DropdownMenuItem(
-                                  value: item.id,
-                                  child: Text(item.name),
+                          ),
+                          child: FractionalTranslation(
+                            translation: Offset(
+                              (_imagePositionX - .5) * .9,
+                              (_imagePositionY - .5) * .9,
+                            ),
+                            child: Transform.scale(
+                              scale: _imageScale,
+                              child: _imageBytes != null
+                                  ? Image.memory(
+                                      _imageBytes!,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.network(
+                                      _existing!.imageUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => const Center(
+                                        child: Icon(
+                                          Icons.broken_image_outlined,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 560,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Reposicionar imagen',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const Text(
+                              'Mueve el punto focal; la vista previa muestra el recorte usado en pantallas y PDF.',
+                            ),
+                            Row(
+                              children: [
+                                const SizedBox(
+                                  width: 82,
+                                  child: Text('Horizontal'),
                                 ),
-                            ],
-                            validator: (value) => value == null
-                                ? 'Seleccione una categoría'
-                                : null,
-                            onChanged: (value) =>
-                                setState(() => _categoryId = value),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 656,
-                        child: TextFormField(
-                          controller: _description,
-                          maxLines: 3,
-                          decoration: const InputDecoration(
-                            labelText: 'Descripción para catálogo',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  _section(
-                    'Información comercial y de catálogo',
-                    'Datos que utiliza el cliente para comprar el producto.',
-                    [
-                      _field(
-                        _unitPrice,
-                        'Precio unitario USD',
-                        number: true,
-                        validator: _required,
-                      ),
-                      _field(
-                        _packagePrice,
-                        'Precio por presentación USD',
-                        number: true,
-                      ),
-                      _field(
-                        _minimumSaleQuantity,
-                        'Cantidad mínima de venta',
-                        number: true,
-                        validator: _required,
-                      ),
-                      SizedBox(
-                        width: 320,
-                        child: DropdownButtonFormField<String>(
-                          key: ValueKey(_packagingPresentationId),
-                          initialValue: _packagingPresentationId,
-                          decoration: const InputDecoration(
-                            labelText: 'Presentación de venta',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: presentations
-                              .map(
-                                (item) => DropdownMenuItem(
-                                  value: item.id,
-                                  child: Text(item.name),
+                                Expanded(
+                                  child: Slider(
+                                    value: _imagePositionX,
+                                    onChanged: (value) =>
+                                        setState(() => _imagePositionX = value),
+                                  ),
                                 ),
-                              )
-                              .toList(),
-                          onChanged: (value) =>
-                              setState(() => _packagingPresentationId = value),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                const SizedBox(width: 82, child: Text('Zoom')),
+                                IconButton(
+                                  tooltip: 'Alejar',
+                                  onPressed: _imageScale <= 1
+                                      ? null
+                                      : () => setState(
+                                          () =>
+                                              _imageScale = (_imageScale - 0.1)
+                                                  .clamp(1, 3)
+                                                  .toDouble(),
+                                        ),
+                                  icon: const Icon(Icons.zoom_out),
+                                ),
+                                Expanded(
+                                  child: Slider(
+                                    min: 1,
+                                    max: 3,
+                                    divisions: 20,
+                                    label: '${_imageScale.toStringAsFixed(1)}×',
+                                    value: _imageScale,
+                                    onChanged: (value) =>
+                                        setState(() => _imageScale = value),
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Acercar',
+                                  onPressed: _imageScale >= 3
+                                      ? null
+                                      : () => setState(
+                                          () =>
+                                              _imageScale = (_imageScale + 0.1)
+                                                  .clamp(1, 3)
+                                                  .toDouble(),
+                                        ),
+                                  icon: const Icon(Icons.zoom_in),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                const SizedBox(
+                                  width: 82,
+                                  child: Text('Vertical'),
+                                ),
+                                Expanded(
+                                  child: Slider(
+                                    value: _imagePositionY,
+                                    onChanged: (value) =>
+                                        setState(() => _imagePositionY = value),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            TextButton.icon(
+                              onPressed: () => setState(() {
+                                _imagePositionX = 0.5;
+                                _imagePositionY = 0.5;
+                                _imageScale = 1;
+                              }),
+                              icon: const Icon(Icons.center_focus_strong),
+                              label: const Text('Centrar imagen'),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
-                  _section(
-                    'Información de recompra e importación',
-                    'Datos internos que no aparecen en la lista ni en el catálogo.',
-                    [
-                      _field(
-                        _factoryCost,
-                        'Costo de fábrica USD',
-                        number: true,
-                        validator: _required,
-                      ),
-                      _field(
-                        _moq,
-                        'MOQ de recompra',
-                        number: true,
-                        validator: _required,
-                      ),
-                      _field(
-                        _cbm,
-                        'CBM por MOQ',
-                        number: true,
-                        validator: _required,
-                      ),
-                      _field(
-                        _reorderPoint,
-                        'Punto de reorden',
-                        number: true,
-                        validator: _required,
-                      ),
-                    ],
-                  ),
-                  _section(
-                    'Promoción individual',
-                    'Tiene prioridad sobre cualquier promoción masiva vigente.',
-                    [
-                      _field(
-                        _promotionPrice,
-                        'Precio promocional USD',
-                        number: true,
-                      ),
-                      SizedBox(
-                        width: 656,
-                        child: TextFormField(
-                          controller: _promotionText,
-                          maxLines: 2,
-                          decoration: const InputDecoration(
-                            labelText: 'Condiciones de la promoción',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_isEditing && _existing != null)
                     _section(
-                      'Inventario',
-                      'El stock es de solo lectura y cambia únicamente mediante movimientos.',
+                      'Información general',
+                      'Identificación y descripción del producto.',
                       [
+                        _field(_sku, 'SKU', validator: _required),
+                        _field(_barcode, 'Código de barras'),
+                        _field(_name, 'Nombre', validator: _required),
                         SizedBox(
                           width: 320,
-                          child: InputDecorator(
+                          child: categories.when(
+                            loading: () => const LinearProgressIndicator(),
+                            error: (e, _) => Text('Error de categorías: $e'),
+                            data: (items) => DropdownButtonFormField<String>(
+                              initialValue: _categoryId,
+                              decoration: const InputDecoration(
+                                labelText: 'Categoría',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: [
+                                for (final item in items)
+                                  DropdownMenuItem(
+                                    value: item.id,
+                                    child: Text(item.name),
+                                  ),
+                              ],
+                              validator: (value) => value == null
+                                  ? 'Seleccione una categoría'
+                                  : null,
+                              onChanged: (value) =>
+                                  setState(() => _categoryId = value),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 656,
+                          child: TextFormField(
+                            controller: _description,
+                            maxLines: 3,
                             decoration: const InputDecoration(
-                              labelText: 'Stock actual',
+                              labelText: 'Descripción para catálogo',
                               border: OutlineInputBorder(),
                             ),
-                            child: Text('${_existing!.currentStock}'),
                           ),
                         ),
                       ],
                     ),
-                  if (!_isEditing)
                     _section(
-                      'Inventario inicial',
-                      'Crea el primer movimiento inmutable del inventario.',
+                      'Información comercial y de catálogo',
+                      'Datos que utiliza el cliente para comprar el producto.',
                       [
                         _field(
-                          _initialStock,
-                          'Stock inicial',
+                          _unitPrice,
+                          'Precio unitario USD',
+                          number: true,
+                          validator: _required,
+                        ),
+                        _field(
+                          _packagePrice,
+                          'Precio por presentación USD',
+                          number: true,
+                        ),
+                        _field(
+                          _minimumSaleQuantity,
+                          'Cantidad mínima de venta',
+                          number: true,
+                          validator: _required,
+                        ),
+                        SizedBox(
+                          width: 320,
+                          child: DropdownButtonFormField<String>(
+                            key: ValueKey(_packagingPresentationId),
+                            initialValue: _packagingPresentationId,
+                            decoration: const InputDecoration(
+                              labelText: 'Presentación de venta',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: presentations
+                                .map(
+                                  (item) => DropdownMenuItem(
+                                    value: item.id,
+                                    child: Text(item.name),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) => setState(
+                              () => _packagingPresentationId = value,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    _section(
+                      'Información de recompra e importación',
+                      'Datos internos que no aparecen en la lista ni en el catálogo.',
+                      [
+                        _field(
+                          _factoryCost,
+                          'Costo de fábrica USD',
+                          number: true,
+                          validator: _required,
+                        ),
+                        _field(
+                          _moq,
+                          'MOQ de recompra',
+                          number: true,
+                          validator: _required,
+                        ),
+                        _field(
+                          _cbm,
+                          'CBM por MOQ',
+                          number: true,
+                          validator: _required,
+                        ),
+                        _field(
+                          _reorderPoint,
+                          'Punto de reorden',
                           number: true,
                           validator: _required,
                         ),
                       ],
                     ),
-                  const SizedBox(height: 28),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: _saving
-                            ? null
-                            : () => context.go('/products'),
-                        child: const Text('Cancelar'),
+                    _section(
+                      'Promoción individual',
+                      'Tiene prioridad sobre cualquier promoción masiva vigente.',
+                      [
+                        _field(
+                          _promotionPrice,
+                          'Precio promocional USD',
+                          number: true,
+                        ),
+                        SizedBox(
+                          width: 656,
+                          child: TextFormField(
+                            controller: _promotionText,
+                            maxLines: 2,
+                            decoration: const InputDecoration(
+                              labelText: 'Condiciones de la promoción',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_isEditing && _existing != null)
+                      _section(
+                        'Inventario',
+                        'El stock es de solo lectura y cambia únicamente mediante movimientos.',
+                        [
+                          SizedBox(
+                            width: 320,
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Stock actual',
+                                border: OutlineInputBorder(),
+                              ),
+                              child: Text('${_existing!.currentStock}'),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      FilledButton.icon(
-                        onPressed: _saving ? null : _save,
-                        icon: _saving
-                            ? const SizedBox.square(
-                                dimension: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.save),
-                        label: const Text('Guardar producto'),
+                    if (!_isEditing)
+                      _section(
+                        'Inventario inicial',
+                        'Crea el primer movimiento inmutable del inventario.',
+                        [
+                          _field(
+                            _initialStock,
+                            'Stock inicial',
+                            number: true,
+                            validator: _required,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ],
+                    const SizedBox(height: 28),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: _saving
+                              ? null
+                              : () => context.go('/products'),
+                          child: const Text('Cancelar'),
+                        ),
+                        const SizedBox(width: 12),
+                        FilledButton.icon(
+                          onPressed: _saving ? null : _save,
+                          icon: _saving
+                              ? const SizedBox.square(
+                                  dimension: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.save),
+                          label: const Text('Guardar producto'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
     );

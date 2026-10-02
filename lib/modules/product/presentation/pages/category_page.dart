@@ -108,32 +108,53 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
 
   Future<void> _editCategory([Category? existing]) async {
     final controller = TextEditingController(text: existing?.name ?? '');
+    String? errorText;
     final name = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(existing == null ? 'Nueva categoría' : 'Editar categoría'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Nombre',
-            border: OutlineInputBorder(),
-          ),
-          onSubmitted: (_) => Navigator.pop(context, controller.text.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Guardar'),
-          ),
-        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          void submit() {
+            final value = controller.text.trim();
+            if (value.isEmpty) {
+              setDialogState(() {
+                errorText = 'Escriba el nombre de la categoría.';
+              });
+              return;
+            }
+            Navigator.pop(context, value);
+          }
+
+          return AlertDialog(
+            title: Text(
+              existing == null ? 'Nueva categoría' : 'Editar categoría',
+            ),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Nombre',
+                errorText: errorText,
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (_) {
+                if (errorText != null) {
+                  setDialogState(() => errorText = null);
+                }
+              },
+              onSubmitted: (_) => submit(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(onPressed: submit, child: const Text('Guardar')),
+            ],
+          );
+        },
       ),
     );
-    controller.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
     if (name == null || name.isEmpty) return;
     final repository = ref.read(productRepositoryProvider);
     if (existing == null) {

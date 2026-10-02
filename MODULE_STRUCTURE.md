@@ -201,10 +201,12 @@ Una función futura no debe describirse como implementada. Cuando el código se
 aparte temporalmente de estas convenciones, la diferencia se registra como
 deuda técnica y no como una nueva regla arquitectónica.
 
-Todos los documentos generados por cualquier módulo deben cumplir
+Todos los documentos operativos generados por cualquier módulo deben cumplir
 `DOCUMENT_STANDARDS.md`, incluyendo las salidas PDF A4 y ticket térmico de
 80 mm y la impresión ESC/POS directa por Bluetooth o USB. Los módulos conservan
-sus reglas; el renderizado común no contiene lógica de negocio.
+sus reglas; el renderizado común no contiene lógica de negocio. El catálogo
+comercial de Productos queda explícitamente fuera de esa obligación y se
+representa sólo como PDF.
 
 ## 11. Estado modular actual
 

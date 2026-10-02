@@ -2,10 +2,16 @@
 
 ## 1. Propósito
 
-Este estándar aplica a todos los documentos creados por SERP, sin importar el
-módulo propietario: facturas, pedidos, cotizaciones, consignaciones, recibos,
-pagos, gastos, reembolsos, notas de crédito, compras, devoluciones, ajustes,
-traslados, conteos, aperturas, cierres, reportes y comprobantes numerados.
+Este estándar aplica a todos los documentos operativos creados por SERP, sin
+importar el módulo propietario: facturas, pedidos, cotizaciones,
+consignaciones, recibos, pagos, gastos, reembolsos, notas de crédito, compras,
+devoluciones, ajustes, traslados, conteos, aperturas, cierres, reportes y
+comprobantes numerados.
+
+El catálogo comercial de Productos es una pieza de presentación y venta, no un
+documento operativo confirmado. Por decisión funcional, el catálogo se entrega
+únicamente como PDF y no está obligado a generar ticket térmico de 80 mm ni
+salida ESC/POS directa.
 
 Cada SDD define el contenido y reglas de su documento. Este archivo define las
 salidas visuales, el comportamiento común y las responsabilidades técnicas.
