@@ -290,7 +290,7 @@ begin
   end loop;
 
   insert into public.sales_quotes (quote_number, customer_id, customer_name, status, total_amount, currency_code, exchange_rate, valid_until, notes, agent_id, created_by, created_device_name, created_device_identifier)
-  values ('COT-' || lpad(nextval('quote_number_seq')::text, 6, '0'), p_customer_id, btrim(p_customer_name), 'DRAFT', v_total, p_currency_code, p_exchange_rate, p_valid_until, p_notes, p_agent_id, p_actor_name, p_device_name, p_device_identifier)
+  values ('COT-' || lpad(nextval('public.quote_number_seq')::text, 6, '0'), p_customer_id, btrim(p_customer_name), 'DRAFT', v_total, p_currency_code, p_exchange_rate, p_valid_until, p_notes, p_agent_id, p_actor_name, p_device_name, p_device_identifier)
   returning * into v_quote;
 
   for v_line in select * from jsonb_array_elements(p_lines) loop
@@ -344,7 +344,7 @@ begin
   end loop;
 
   insert into public.sales_orders (order_number, customer_id, customer_name, status, total_amount, currency_code, exchange_rate, notes, agent_id, quote_id, created_by, created_device_name, created_device_identifier)
-  values ('PED-' || lpad(nextval('order_number_seq')::text, 6, '0'), p_customer_id, btrim(p_customer_name), 'CONFIRMED', v_total, p_currency_code, p_exchange_rate, p_notes, p_agent_id, p_quote_id, p_actor_name, p_device_name, p_device_identifier)
+  values ('PED-' || lpad(nextval('public.order_number_seq')::text, 6, '0'), p_customer_id, btrim(p_customer_name), 'CONFIRMED', v_total, p_currency_code, p_exchange_rate, p_notes, p_agent_id, p_quote_id, p_actor_name, p_device_name, p_device_identifier)
   returning * into v_order;
 
   for v_line in select * from jsonb_array_elements(p_lines) loop
@@ -354,7 +354,7 @@ begin
 
   -- Crear documento de inventario SALE_DISPATCH
   insert into public.inventory_documents (command_id, document_number, document_type, status, origin_warehouse_id, origin_location_id, external_reference, notes, confirmed_at)
-  values (extensions.gen_random_uuid(), 'DES-' || lpad(nextval('inventory_document_number_seq')::text, 6, '0'), 'SALE_DISPATCH', 'CONFIRMED', p_warehouse_id, p_location_id, v_order.order_number, 'Pedido: ' || v_order.order_number, now())
+  values (extensions.gen_random_uuid(), 'DES-' || lpad(nextval('public.inventory_document_number_seq')::text, 6, '0'), 'SALE_DISPATCH', 'CONFIRMED', p_warehouse_id, p_location_id, v_order.order_number, 'Pedido: ' || v_order.order_number, now())
   returning id into v_document_id;
 
   for v_line in select * from jsonb_array_elements(p_lines) loop
@@ -414,7 +414,7 @@ begin
   end loop;
 
   insert into public.sales_returns (return_number, invoice_id, customer_id, customer_name, status, total_amount, reason, created_by, created_device_name, created_device_identifier)
-  values ('DEV-' || lpad(nextval('return_number_seq')::text, 6, '0'), p_invoice_id, p_customer_id, btrim(p_customer_name), 'CONFIRMED', v_total, btrim(p_reason), p_actor_name, p_device_name, p_device_identifier)
+  values ('DEV-' || lpad(nextval('public.return_number_seq')::text, 6, '0'), p_invoice_id, p_customer_id, btrim(p_customer_name), 'CONFIRMED', v_total, btrim(p_reason), p_actor_name, p_device_name, p_device_identifier)
   returning * into v_return;
 
   for v_line in select * from jsonb_array_elements(p_lines) loop
@@ -424,7 +424,7 @@ begin
 
   -- Crear documento de inventario CUSTOMER_RETURN
   insert into public.inventory_documents (command_id, document_number, document_type, status, destination_warehouse_id, destination_location_id, external_reference, notes, confirmed_at)
-  values (extensions.gen_random_uuid(), 'DEV-' || lpad(nextval('inventory_document_number_seq')::text, 6, '0'), 'CUSTOMER_RETURN', 'CONFIRMED', (select origin_warehouse_id from public.inventory_documents where id = (select inventory_document_id from public.sales_invoices where id = p_invoice_id)), (select origin_location_id from public.inventory_documents where id = (select inventory_document_id from public.sales_invoices where id = p_invoice_id)), v_return.return_number, 'Devolución: ' || v_return.return_number, now())
+  values (extensions.gen_random_uuid(), 'DEV-' || lpad(nextval('public.inventory_document_number_seq')::text, 6, '0'), 'CUSTOMER_RETURN', 'CONFIRMED', (select origin_warehouse_id from public.inventory_documents where id = (select inventory_document_id from public.sales_invoices where id = p_invoice_id)), (select origin_location_id from public.inventory_documents where id = (select inventory_document_id from public.sales_invoices where id = p_invoice_id)), v_return.return_number, 'Devolución: ' || v_return.return_number, now())
   returning id into v_document_id;
 
   for v_line in select * from jsonb_array_elements(p_lines) loop
@@ -434,7 +434,7 @@ begin
 
   for v_line in select * from jsonb_array_elements(p_lines) loop
     insert into public.inventory_transactions (product_id, warehouse_id, location_id, command_id, quantity, reason, actor_name, device_name, device_identifier, document_id)
-    values ((v_line->>'product_id')::uuid, (select origin_warehouse_id from public.inventory_documents where id = v_document_id), (select origin_location_id from public.inventory_documents where id = v_document_id), extensions.gen_random_uuid(), (v_line->>'quantity')::integer, 'RETURN', p_actor_name, p_device_name, p_device_identifier, v_document_id);
+    values ((v_line->>'product_id')::uuid, (select destination_warehouse_id from public.inventory_documents where id = v_document_id), (select destination_location_id from public.inventory_documents where id = v_document_id), extensions.gen_random_uuid(), (v_line->>'quantity')::integer, 'RETURN', p_actor_name, p_device_name, p_device_identifier, v_document_id);
   end loop;
 
   for v_line in select * from jsonb_array_elements(p_lines) loop
@@ -490,7 +490,7 @@ begin
   end loop;
 
   insert into public.sales_consignments (consignment_number, customer_id, customer_name, status, total_amount, currency_code, notes, agent_id, created_by, created_device_name, created_device_identifier)
-  values ('CON-' || lpad(nextval('consignment_number_seq')::text, 6, '0'), p_customer_id, btrim(p_customer_name), 'SENT', v_total, p_currency_code, p_notes, p_agent_id, p_actor_name, p_device_name, p_device_identifier)
+  values ('CON-' || lpad(nextval('public.consignment_number_seq')::text, 6, '0'), p_customer_id, btrim(p_customer_name), 'SENT', v_total, p_currency_code, p_notes, p_agent_id, p_actor_name, p_device_name, p_device_identifier)
   returning * into v_consignment;
 
   for v_line in select * from jsonb_array_elements(p_lines) loop
@@ -500,7 +500,7 @@ begin
 
   -- Crear documento de inventario CONSIGNMENT
   insert into public.inventory_documents (command_id, document_number, document_type, status, origin_warehouse_id, origin_location_id, external_reference, notes, confirmed_at)
-  values (extensions.gen_random_uuid(), 'CON-' || lpad(nextval('inventory_document_number_seq')::text, 6, '0'), 'CONSIGNMENT', 'CONFIRMED', p_warehouse_id, p_location_id, v_consignment.consignment_number, 'Consignación: ' || v_consignment.consignment_number, now())
+  values (extensions.gen_random_uuid(), 'CON-' || lpad(nextval('public.inventory_document_number_seq')::text, 6, '0'), 'CONSIGNMENT', 'CONFIRMED', p_warehouse_id, p_location_id, v_consignment.consignment_number, 'Consignación: ' || v_consignment.consignment_number, now())
   returning id into v_document_id;
 
   for v_line in select * from jsonb_array_elements(p_lines) loop

@@ -412,7 +412,7 @@ declare
 begin
   update public.payments
      set status = 'CONFIRMED',
-         receipt_number = 'RC-' || lpad(nextval('payment_receipt_seq')::text, 6, '0'),
+         receipt_number = 'RC-' || lpad(nextval('public.payment_receipt_seq')::text, 6, '0'),
          updated_by = p_actor_name,
          updated_device_name = p_device_name,
          updated_device_identifier = p_device_identifier

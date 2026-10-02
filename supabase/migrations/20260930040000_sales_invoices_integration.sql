@@ -118,7 +118,7 @@ begin
     invoice_number, customer_name, status, total_amount, currency_code, exchange_rate, notes,
     created_by, created_device_name, created_device_identifier
   ) values (
-    'FAC-' || lpad(nextval('sales_invoice_number_seq')::text, 6, '0'),
+    'FAC-' || lpad(nextval('public.sales_invoice_number_seq')::text, 6, '0'),
     btrim(p_customer_name),
     'CONFIRMED',
     v_total,
@@ -151,7 +151,7 @@ begin
     external_reference, notes, confirmed_at
   ) values (
     extensions.gen_random_uuid(),
-    'DES-' || lpad(nextval('inventory_document_number_seq')::text, 6, '0'),
+    'DES-' || lpad(nextval('public.inventory_document_number_seq')::text, 6, '0'),
     'SALE_DISPATCH',
     'CONFIRMED',
     p_warehouse_id,
