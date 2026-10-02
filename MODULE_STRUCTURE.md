@@ -201,6 +201,15 @@ Una función futura no debe describirse como implementada. Cuando el código se
 aparte temporalmente de estas convenciones, la diferencia se registra como
 deuda técnica y no como una nueva regla arquitectónica.
 
+Todo formulario nuevo o modificado debe incluir pruebas de presentación en
+`test/` antes de considerarse completo. Si el formulario permite CRUD, las
+pruebas cubren crear, leer/cargar valores existentes, actualizar y eliminar o
+desactivar según corresponda. Si el formulario no es CRUD, las pruebas cubren
+la operación para la que fue creado. En ambos casos deben comprobar que los
+datos inválidos no ejecutan comandos, que el formulario permanece abierto o
+visible, que los errores aparecen junto al campo afectado cuando aplique y que
+cada campo acepta sólo el tipo de dato esperado.
+
 Todos los documentos operativos generados por cualquier módulo deben cumplir
 `DOCUMENT_STANDARDS.md`, incluyendo las salidas PDF A4 y ticket térmico de
 80 mm y la impresión ESC/POS directa por Bluetooth o USB. Los módulos conservan

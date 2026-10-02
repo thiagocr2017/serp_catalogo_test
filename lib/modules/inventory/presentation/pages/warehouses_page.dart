@@ -100,55 +100,22 @@ class WarehousesPage extends ConsumerWidget {
     WidgetRef ref, [
     Warehouse? warehouse,
   ]) async {
-    final code = TextEditingController(text: warehouse?.code);
-    final name = TextEditingController(text: warehouse?.name);
-    final accepted = await _formDialog(
-      context,
-      title: warehouse == null ? 'Nueva bodega' : 'Editar bodega',
-      code: code,
-      name: name,
+    final result = await showDialog<_WarehouseResult>(
+      context: context,
+      builder: (context) => _WarehouseDialog(
+        title: warehouse == null ? 'Nueva bodega' : 'Editar bodega',
+        initialCode: warehouse?.code ?? '',
+        initialName: warehouse?.name ?? '',
+      ),
     );
-    if (accepted && context.mounted) {
+    if (result != null && context.mounted) {
       try {
         await ref
             .read(inventoryRepositoryProvider)
-            .saveWarehouse(id: warehouse?.id, code: code.text, name: name.text);
-        ref.read(inventoryDataRevisionProvider.notifier).notifyChanged();
-      } catch (error) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('No fue posible guardar: $error')),
-          );
-        }
-      }
-    }
-    code.dispose();
-    name.dispose();
-  }
-
-  Future<void> _editLocation(
-    BuildContext context,
-    WidgetRef ref,
-    Warehouse warehouse, [
-    InventoryLocation? location,
-  ]) async {
-    final code = TextEditingController(text: location?.code);
-    final name = TextEditingController(text: location?.name);
-    final accepted = await _formDialog(
-      context,
-      title: location == null ? 'Nueva ubicación' : 'Editar ubicación',
-      code: code,
-      name: name,
-    );
-    if (accepted && context.mounted) {
-      try {
-        await ref
-            .read(inventoryRepositoryProvider)
-            .saveLocation(
-              id: location?.id,
-              warehouseId: warehouse.id,
-              code: code.text,
-              name: name.text,
+            .saveWarehouse(
+              id: warehouse?.id,
+              code: result.code,
+              name: result.name,
             );
         ref.read(inventoryDataRevisionProvider.notifier).notifyChanged();
       } catch (error) {
@@ -159,59 +126,144 @@ class WarehousesPage extends ConsumerWidget {
         }
       }
     }
-    code.dispose();
-    name.dispose();
   }
 
-  Future<bool> _formDialog(
-    BuildContext context, {
-    required String title,
-    required TextEditingController code,
-    required TextEditingController name,
-  }) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(title),
-          content: SizedBox(
-            width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: code,
-                  decoration: const InputDecoration(
-                    labelText: 'Código',
-                    border: OutlineInputBorder(),
-                  ),
+  Future<void> _editLocation(
+    BuildContext context,
+    WidgetRef ref,
+    Warehouse warehouse, [
+    InventoryLocation? location,
+  ]) async {
+    final result = await showDialog<_WarehouseResult>(
+      context: context,
+      builder: (context) => _WarehouseDialog(
+        title: location == null ? 'Nueva ubicación' : 'Editar ubicación',
+        initialCode: location?.code ?? '',
+        initialName: location?.name ?? '',
+      ),
+    );
+    if (result != null && context.mounted) {
+      try {
+        await ref
+            .read(inventoryRepositoryProvider)
+            .saveLocation(
+              id: location?.id,
+              warehouseId: warehouse.id,
+              code: result.code,
+              name: result.name,
+            );
+        ref.read(inventoryDataRevisionProvider.notifier).notifyChanged();
+      } catch (error) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('No fue posible guardar: $error')),
+          );
+        }
+      }
+    }
+  }
+}
+
+class _WarehouseResult {
+  const _WarehouseResult({required this.code, required this.name});
+
+  final String code;
+  final String name;
+}
+
+class _WarehouseDialog extends StatefulWidget {
+  const _WarehouseDialog({
+    required this.title,
+    required this.initialCode,
+    required this.initialName,
+  });
+
+  final String title;
+  final String initialCode;
+  final String initialName;
+
+  @override
+  State<_WarehouseDialog> createState() => _WarehouseDialogState();
+}
+
+class _WarehouseDialogState extends State<_WarehouseDialog> {
+  late final TextEditingController _code;
+  late final TextEditingController _name;
+  String? _codeError;
+  String? _nameError;
+
+  @override
+  void initState() {
+    super.initState();
+    _code = TextEditingController(text: widget.initialCode);
+    _name = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  void dispose() {
+    _code.dispose();
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _code,
+                decoration: InputDecoration(
+                  labelText: 'Código',
+                  errorText: _codeError,
+                  border: const OutlineInputBorder(),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: name,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre',
-                    border: OutlineInputBorder(),
-                  ),
+                onChanged: (_) {
+                  if (_codeError != null) setState(() => _codeError = null);
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _name,
+                decoration: InputDecoration(
+                  labelText: 'Nombre',
+                  errorText: _nameError,
+                  border: const OutlineInputBorder(),
                 ),
-              ],
-            ),
+                onChanged: (_) {
+                  if (_nameError != null) setState(() => _nameError = null);
+                },
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (code.text.trim().isNotEmpty &&
-                    name.text.trim().isNotEmpty) {
-                  Navigator.pop(context, true);
-                }
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
         ),
-      ) ??
-      false;
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final code = _code.text.trim();
+            final name = _name.text.trim();
+            if (code.isEmpty || name.isEmpty) {
+              setState(() {
+                _codeError = code.isEmpty ? 'Escriba el código.' : null;
+                _nameError = name.isEmpty ? 'Escriba el nombre.' : null;
+              });
+              return;
+            }
+            Navigator.pop(context, _WarehouseResult(code: code, name: name));
+          },
+          child: const Text('Guardar'),
+        ),
+      ],
+    );
+  }
 }

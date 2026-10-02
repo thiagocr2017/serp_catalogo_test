@@ -29,8 +29,7 @@ class CustomersPage extends ConsumerWidget {
             for (final customer in customers)
               if (customer.gira?.trim().isNotEmpty == true)
                 customer.gira!.trim(),
-          }.toList()
-            ..sort();
+          }.toList()..sort();
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: customers.length,
@@ -135,6 +134,7 @@ class _CustomerDialogState extends ConsumerState<_CustomerDialog> {
   bool _loadingContacts = false;
   bool _saving = false;
   String? _nameError;
+  String? _creditLimitError;
   String? _contactsError;
 
   @override
@@ -265,10 +265,16 @@ class _CustomerDialogState extends ConsumerState<_CustomerDialog> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Límite de crédito',
-                  border: OutlineInputBorder(),
+                  errorText: _creditLimitError,
+                  border: const OutlineInputBorder(),
                 ),
+                onChanged: (_) {
+                  if (_creditLimitError != null) {
+                    setState(() => _creditLimitError = null);
+                  }
+                },
               ),
               const SizedBox(height: 12),
               TextField(
@@ -284,7 +290,8 @@ class _CustomerDialogState extends ConsumerState<_CustomerDialog> {
                 optionsBuilder: (value) {
                   final query = value.text.trim().toLowerCase();
                   final options = widget.existingGiras.where(
-                    (gira) => gira.toLowerCase() != _gira.text.trim().toLowerCase(),
+                    (gira) =>
+                        gira.toLowerCase() != _gira.text.trim().toLowerCase(),
                   );
                   if (query.isEmpty) return options;
                   return options.where(
@@ -309,15 +316,15 @@ class _CustomerDialogState extends ConsumerState<_CustomerDialog> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Text(
-                    'Contactos de la empresa',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: () => setState(
-                      () => _contacts.add(_ContactDraft()),
+                  Expanded(
+                    child: Text(
+                      'Contactos de la empresa',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () =>
+                        setState(() => _contacts.add(_ContactDraft())),
                     icon: const Icon(Icons.add),
                     label: const Text('Agregar'),
                   ),
@@ -378,6 +385,7 @@ class _CustomerDialogState extends ConsumerState<_CustomerDialog> {
         child: Column(
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Expanded(
                   child: TextField(
@@ -393,6 +401,7 @@ class _CustomerDialogState extends ConsumerState<_CustomerDialog> {
                     },
                   ),
                 ),
+                const SizedBox(width: 8),
                 IconButton(
                   tooltip: 'Quitar contacto',
                   onPressed: () => setState(() {
@@ -402,13 +411,17 @@ class _CustomerDialogState extends ConsumerState<_CustomerDialog> {
                     _contacts.removeAt(index).dispose();
                   }),
                   icon: const Icon(Icons.delete_outline),
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
+                Flexible(
+                  flex: 1,
                   child: TextField(
                     controller: draft.phone,
                     decoration: const InputDecoration(
@@ -418,7 +431,8 @@ class _CustomerDialogState extends ConsumerState<_CustomerDialog> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(
+                Flexible(
+                  flex: 1,
                   child: TextField(
                     controller: draft.role,
                     decoration: const InputDecoration(
@@ -441,18 +455,21 @@ class _CustomerDialogState extends ConsumerState<_CustomerDialog> {
       return;
     }
     if (_contacts.any((draft) => draft.name.text.trim().isEmpty)) {
-      setState(
-        () => _contactsError = 'Cada contacto necesita un nombre.',
-      );
+      setState(() => _contactsError = 'Cada contacto necesita un nombre.');
+      return;
+    }
+    final creditLimitText = _creditLimit.text.trim();
+    final creditLimit = creditLimitText.isEmpty
+        ? null
+        : double.tryParse(creditLimitText.replaceAll(',', '.'));
+    if (creditLimitText.isNotEmpty && creditLimit == null) {
+      setState(() => _creditLimitError = 'Ingrese un número válido.');
       return;
     }
     setState(() => _saving = true);
     try {
       final api = ref.read(customerApiProvider);
       final existing = widget.existing;
-      final creditLimit = double.tryParse(
-        _creditLimit.text.trim().replaceAll(',', '.'),
-      );
       final province = _province.text.trim().isEmpty
           ? null
           : _province.text.trim();

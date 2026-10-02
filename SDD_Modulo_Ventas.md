@@ -236,5 +236,6 @@ lib/modules/sales/
 - No existe búsqueda ni filtros avanzados en las pantallas.
 - Los formularios de Ventas deben mantener el diálogo abierto y mostrar el error
   cuando el usuario intenta guardar datos inválidos. La cobertura inicial valida
-  el formulario de agentes; los documentos comerciales se probarán cuando sus
-  pantallas de creación/edición estén implementadas.
+  agentes y clientes. Clientes valida nombre obligatorio, contactos sin nombre
+  y límite de crédito numérico. Los documentos comerciales se probarán cuando
+  sus pantallas de creación/edición estén implementadas.

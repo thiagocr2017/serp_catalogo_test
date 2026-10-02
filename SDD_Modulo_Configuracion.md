@@ -55,6 +55,11 @@ la implementación Supabase porque es la raíz de composición de la aplicación
 - El modo oscuro es el valor local predeterminado; la preferencia se conserva
   por equipo y no se guarda en Supabase.
 - Las presentaciones son dinámicas y obligatorias para todo producto.
+- Los formularios de configuración deben tener pruebas de presentación que
+  cubran la operación real y validaciones. La cobertura inicial comprueba que
+  configuración comercial guarda por la API pública, que decimales no
+  normalizados no se guardan y que una presentación vacía mantiene el diálogo
+  abierto sin crear registros.
 - La transición a producción y eliminación de datos de prueba solo puede
   ejecutarse desde el equipo superadministrador.
 - Productos consume preferencias y presentaciones a través de la API pública

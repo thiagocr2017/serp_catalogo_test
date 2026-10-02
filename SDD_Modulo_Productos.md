@@ -312,5 +312,7 @@ Esto no reemplaza las validaciones de la aplicación. La aplicación valida para
   `configuration_module.dart`.
 - Las validaciones de formularios del módulo deben contar con pruebas de UI que
   comprueben que datos inválidos no cierran el formulario ni ejecutan comandos
-  de guardado. La cobertura inicial incluye producto y promociones; se ampliará
-  al resto de formularios conforme se estabilicen sus contratos.
+  de guardado. Para formularios CRUD, la cobertura requerida incluye crear,
+  cargar, actualizar y eliminar/desactivar según corresponda. La cobertura
+  inicial incluye producto, categorías y promociones; se ampliará al catálogo e
+  importación/exportación conforme se estabilicen esos contratos.

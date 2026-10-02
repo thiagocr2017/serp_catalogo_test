@@ -206,7 +206,71 @@ Cada nuevo documento debe probar:
 - reconexión y reimpresión sin duplicar ni modificar el documento;
 - equivalencia de datos entre A4, ticket PDF y ESC/POS directo.
 
-## 12. Alcance futuro
+## 12. Definición de formulario listo para uso
+
+Esta sección es **normativa y obligatoria** para todos los módulos actuales y
+futuros. Un formulario **NO** se considera listo para uso ni se registra como
+tarea completada hasta que cumple **todas** las condiciones siguientes.
+
+### 12.1 Pruebas CRUD obligatorias
+
+Todo formulario debe tener pruebas que verifiquen:
+
+| Operación | Descripción |
+|---|---|
+| **Create** | Crear un registro con datos válidos y verificar que se persiste correctamente. |
+| **Read** | Cargar un registro existente y verificar que todos los campos se muestran con los valores correctos. |
+| **Update** | Modificar un registro existente y verificar que los cambios se persisten correctamente. |
+| **Delete** | Eliminar o desactivar un registro y verificar que el estado es correcto. |
+
+### 12.2 Pruebas de validación de campos y tipos de datos
+
+Todo formulario debe tener pruebas que verifiquen:
+
+| Tipo de validación | Descripción |
+|---|---|
+| **Campos obligatorios** | Verificar que el formulario no se envía si faltan campos requeridos. |
+| **Tipos de datos** | Verificar que cada campo acepta solo el tipo de dato correcto (texto, número, fecha, etc.). |
+| **Longitudes** | Verificar límites mínimos y máximos de caracteres. |
+| **Rangos numéricos** | Verificar valores mínimos y máximos para campos numéricos. |
+| **Formato** | Verificar formatos específicos (email, teléfono, SKU, etc.). |
+| **Valores únicos** | Verificar que campos únicos (SKU, email, etc.) no aceptan duplicados. |
+| **Listas de selección** | Verificar que los dropdowns solo aceptan valores de la lista. |
+
+### 12.3 Comportamiento del formulario
+
+Las pruebas deben verificar que:
+
+- El formulario **no se cierra** cuando hay errores de validación;
+- Los errores se muestran **dentro del formulario**, junto al campo afectado;
+- El formulario **no ejecuta comandos de guardado** cuando hay errores;
+- El formulario **limpia los errores** cuando el usuario corrige el campo;
+- El formulario **previene envíos duplicados** durante el proceso de guardado.
+
+### 12.4 Criterio de completitud
+
+Un formulario se registra como **tarea completada** únicamente cuando:
+
+1. Todas las pruebas CRUD pasan;
+2. Todas las pruebas de validación pasan;
+3. Las pruebas de comportamiento pasan;
+4. Las pruebas están incluidas en el directorio `test/` del módulo correspondiente.
+
+Si un formulario no tiene estas pruebas, **NO** se considera terminado y se
+deben crear las pruebas **una por una** antes de marcar la tarea como completada.
+
+### 12.5 Aplicación a módulos actuales y futuros
+
+Esta regla aplica a:
+
+- Productos: formulario de producto, categorías, promociones, catálogo PDF;
+- Inventario: documentos de inventario, bodegas, ubicaciones;
+- Ventas: agentes, clientes, cotizaciones, pedidos, facturas, devoluciones, consignaciones;
+- Configuración: ajustes, presentaciones, preferencias de catálogo;
+- Pagos: pagos, recibos, gastos, reembolsos, traslados (cuando se implementen);
+- Cualquier módulo futuro que se agregue al proyecto.
+
+## 13. Alcance futuro
 
 - perfiles adicionales de 58 mm y otros anchos;
 - envío por correo, WhatsApp u otros canales;

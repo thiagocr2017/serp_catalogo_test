@@ -365,29 +365,37 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     ],
   );
   Future<void> _save() async {
-    final saved = await ref
-        .read(configurationApiProvider)
-        .saveBusinessSettings(
-          SaveBusinessSettingsCommand(
-            defaultCurrency: currency,
-            decimalPlaces: decimals,
-            taxPercentage: tax.text.trim(),
-            pricesIncludeTax: includesTax,
-            roundingMode: rounding,
-            roundingIncrement: increment.text.trim(),
-            companyName: company.text.trim(),
-            paymentMethods: payments.text.trim(),
-            expectedVersion: businessVersion,
-            identity: ref.read(identityContextProvider),
-          ),
+    try {
+      final saved = await ref
+          .read(configurationApiProvider)
+          .saveBusinessSettings(
+            SaveBusinessSettingsCommand(
+              defaultCurrency: currency,
+              decimalPlaces: decimals,
+              taxPercentage: tax.text.trim(),
+              pricesIncludeTax: includesTax,
+              roundingMode: rounding,
+              roundingIncrement: increment.text.trim(),
+              companyName: company.text.trim(),
+              paymentMethods: payments.text.trim(),
+              expectedVersion: businessVersion,
+              identity: ref.read(identityContextProvider),
+            ),
+          );
+      businessVersion = saved.version;
+      ref.invalidate(businessSettingsProvider);
+      ref.invalidate(businessSettingsDtoProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Configuración guardada')));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No fue posible guardar: $error')),
         );
-    businessVersion = saved.version;
-    ref.invalidate(businessSettingsProvider);
-    ref.invalidate(businessSettingsDtoProvider);
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Configuración guardada')));
+      }
     }
   }
 
@@ -432,34 +440,50 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
 
   Future<void> _editPresentation([PackagingPresentationDto? existing]) async {
     final controller = TextEditingController(text: existing?.name ?? '');
+    String? nameError;
     final accepted = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          existing == null ? 'Nueva presentación' : 'Editar presentación',
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Nombre',
-            hintText: 'Ej. Cartón',
-            border: OutlineInputBorder(),
-          ),
-          onSubmitted: (_) =>
-              Navigator.pop(context, controller.text.trim().isNotEmpty),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(context, controller.text.trim().isNotEmpty),
-            child: const Text('Guardar'),
-          ),
-        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          void submit() {
+            if (controller.text.trim().isEmpty) {
+              setDialogState(
+                () => nameError = 'Escriba el nombre de la presentación.',
+              );
+              return;
+            }
+            Navigator.pop(context, true);
+          }
+
+          return AlertDialog(
+            title: Text(
+              existing == null ? 'Nueva presentación' : 'Editar presentación',
+            ),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Nombre',
+                hintText: 'Ej. Cartón',
+                errorText: nameError,
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (_) {
+                if (nameError != null) {
+                  setDialogState(() => nameError = null);
+                }
+              },
+              onSubmitted: (_) => submit(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(onPressed: submit, child: const Text('Guardar')),
+            ],
+          );
+        },
       ),
     );
     if (accepted == true) {
@@ -485,7 +509,9 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
       }
       ref.invalidate(packagingPresentationDtosProvider);
     }
-    controller.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.dispose();
+    });
   }
 
   Future<void> _confirmProduction() async {

@@ -135,6 +135,12 @@ consolidado.
 - Ubicaciones administradas dentro de cada bodega.
 - Bodega principal y ubicación general creadas durante la migración.
 - Búsqueda de saldos por producto disponible mediante la API pública.
+- Los formularios de bodega y ubicación deben validar código y nombre antes de
+  guardar. La prueba de UI debe demostrar que el diálogo permanece abierto, que
+  no se ejecuta el comando y que los errores aparecen junto al campo afectado.
+- El formulario de documento de inventario debe probar la operación de
+  confirmación y sus bloqueos de validación. Esa cobertura queda pendiente
+  hasta estabilizar la pantalla de documentos y su autocomplete de productos.
 
 ### Historial en la ficha del producto
 
