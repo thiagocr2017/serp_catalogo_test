@@ -204,8 +204,9 @@ deuda técnica y no como una nueva regla arquitectónica.
 Todo formulario nuevo o modificado debe incluir pruebas de presentación en
 `test/` antes de considerarse completo. Si el formulario permite CRUD, las
 pruebas cubren crear, leer/cargar valores existentes, actualizar y eliminar o
-desactivar según corresponda. Si el formulario no es CRUD, las pruebas cubren
-la operación para la que fue creado. En ambos casos deben comprobar que los
+desactivar según corresponda. Si sólo permite CRU, sólo se prueban esas tres
+operaciones. Si el formulario no es CRUD ni CRU, las pruebas cubren la
+operación para la que fue creado. En todos los casos deben comprobar que los
 datos inválidos no ejecutan comandos, que el formulario permanece abierto o
 visible, que los errores aparecen junto al campo afectado cuando aplique y que
 cada campo acepta sólo el tipo de dato esperado.

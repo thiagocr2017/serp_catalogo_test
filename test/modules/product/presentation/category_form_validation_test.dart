@@ -37,14 +37,50 @@ void main() {
 
     expect(repository.createdCategories, 1);
   });
+
+  testWidgets('categoria existente carga, actualiza y elimina', (tester) async {
+    final repository = _RecordingCategoryRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [productRepositoryProvider.overrideWithValue(repository)],
+        child: const MaterialApp(home: CategoryPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Editar categoría').first);
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(TextField, 'Nombre'), findsOneWidget);
+    expect(find.text('General'), findsWidgets);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Nombre'), 'Retail');
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(repository.updatedCategoryId, 'category-1');
+    expect(repository.updatedCategoryName, 'Retail');
+
+    await tester.tap(find.byTooltip('Eliminar categoría').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Eliminar'));
+    await tester.pumpAndSettle();
+
+    expect(repository.deletedCategoryId, 'category-1');
+  });
 }
 
 class _RecordingCategoryRepository implements ProductRepository {
   int createdCategories = 0;
+  String? updatedCategoryId;
+  String? updatedCategoryName;
+  String? deletedCategoryId;
 
   @override
   Future<List<Category>> getCategories() async => const [
     Category(id: 'category-1', name: 'General', isActive: true),
+    Category(id: 'category-2', name: 'Mayoristas', isActive: true),
   ];
 
   @override
@@ -54,8 +90,11 @@ class _RecordingCategoryRepository implements ProductRepository {
   }
 
   @override
-  Future<Category> updateCategory(String id, String name) async =>
-      Category(id: id, name: name, isActive: true);
+  Future<Category> updateCategory(String id, String name) async {
+    updatedCategoryId = id;
+    updatedCategoryName = name;
+    return Category(id: id, name: name, isActive: true);
+  }
 
   @override
   Future<List<Product>> getProducts(ProductQuery query) async => const [];
@@ -70,7 +109,9 @@ class _RecordingCategoryRepository implements ProductRepository {
   Future<void> deleteCategory({
     required String categoryId,
     String? replacementCategoryId,
-  }) async {}
+  }) async {
+    deletedCategoryId = categoryId;
+  }
 
   @override
   Future<void> deactivateProduct(String id) async {}

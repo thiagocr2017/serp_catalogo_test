@@ -472,8 +472,10 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
     if (accepted == true) {
       ref.invalidate(promotionsProvider);
     }
-    name.dispose();
-    discount.dispose();
-    conditions.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      name.dispose();
+      discount.dispose();
+      conditions.dispose();
+    });
   }
 }

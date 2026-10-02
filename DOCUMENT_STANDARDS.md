@@ -212,9 +212,11 @@ Esta sección es **normativa y obligatoria** para todos los módulos actuales y
 futuros. Un formulario **NO** se considera listo para uso ni se registra como
 tarea completada hasta que cumple **todas** las condiciones siguientes.
 
-### 12.1 Pruebas CRUD obligatorias
+### 12.1 Pruebas de operaciones obligatorias
 
-Todo formulario debe tener pruebas que verifiquen:
+Todo formulario debe tener pruebas que verifiquen las operaciones que realmente
+permite. La cobertura se define por capacidad, no por una exigencia artificial
+de CRUD completo.
 
 | Operación | Descripción |
 |---|---|
@@ -222,6 +224,12 @@ Todo formulario debe tener pruebas que verifiquen:
 | **Read** | Cargar un registro existente y verificar que todos los campos se muestran con los valores correctos. |
 | **Update** | Modificar un registro existente y verificar que los cambios se persisten correctamente. |
 | **Delete** | Eliminar o desactivar un registro y verificar que el estado es correcto. |
+
+Si el formulario sólo permite **CRU**, se prueban únicamente Create, Read y
+Update. Si sólo permite **Create**, **Update**, **Delete/desactivar** o una
+acción específica, se prueba esa operación y no se exige CRUD completo. Si el
+formulario fue creado para generar, importar, exportar, confirmar, seleccionar,
+ordenar, calcular o configurar, la prueba debe cubrir esa operación real.
 
 ### 12.2 Pruebas de validación de campos y tipos de datos
 
@@ -251,7 +259,7 @@ Las pruebas deben verificar que:
 
 Un formulario se registra como **tarea completada** únicamente cuando:
 
-1. Todas las pruebas CRUD pasan;
+1. Todas las pruebas de sus operaciones reales pasan;
 2. Todas las pruebas de validación pasan;
 3. Las pruebas de comportamiento pasan;
 4. Las pruebas están incluidas en el directorio `test/` del módulo correspondiente.

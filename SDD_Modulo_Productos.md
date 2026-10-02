@@ -314,5 +314,8 @@ Esto no reemplaza las validaciones de la aplicación. La aplicación valida para
   comprueben que datos inválidos no cierran el formulario ni ejecutan comandos
   de guardado. Para formularios CRUD, la cobertura requerida incluye crear,
   cargar, actualizar y eliminar/desactivar según corresponda. La cobertura
-  inicial incluye producto, categorías y promociones; se ampliará al catálogo e
-  importación/exportación conforme se estabilicen esos contratos.
+  inicial incluye producto, categorías y promociones. Categorías ya cubre
+  creación inválida/válida, carga, actualización y eliminación vacía;
+  promociones cubre creación inválida/válida. Se ampliará al catálogo,
+  importación/exportación y a los casos restantes conforme se estabilicen esos
+  contratos.

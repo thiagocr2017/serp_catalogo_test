@@ -45,6 +45,40 @@ void main() {
     expect(find.text('Nueva promoción masiva'), findsOneWidget);
     expect(promotionRepository.savedPromotions, 0);
   });
+
+  testWidgets('promocion valida se crea con alcance todos los productos', (
+    tester,
+  ) async {
+    final promotionRepository = _RecordingPromotionRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          productRepositoryProvider.overrideWithValue(_ProductCatalogStub()),
+          promotionRepositoryProvider.overrideWithValue(promotionRepository),
+        ],
+        child: const MaterialApp(home: PromotionPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nueva promoción'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Nombre'), 'Verano');
+    await tester.enterText(find.widgetWithText(TextField, 'Descuento %'), '15');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Condiciones'),
+      'Compra mínima 6 unidades',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Crear'));
+    await tester.pumpAndSettle();
+
+    expect(promotionRepository.savedPromotions, 1);
+    expect(promotionRepository.lastPromotion?.name, 'Verano');
+    expect(promotionRepository.lastPromotion?.discountPercentage, 15);
+    expect(promotionRepository.lastPromotion?.appliesToAllProducts, isTrue);
+    expect(promotionRepository.lastProductIds, isEmpty);
+  });
 }
 
 class _ProductCatalogStub implements ProductRepository {
@@ -111,6 +145,8 @@ class _ProductCatalogStub implements ProductRepository {
 
 class _RecordingPromotionRepository implements PromotionRepository {
   int savedPromotions = 0;
+  BulkPromotion? lastPromotion;
+  Set<String> lastProductIds = const {};
 
   @override
   Future<List<BulkPromotion>> getPromotions() async => const [];
@@ -123,6 +159,8 @@ class _RecordingPromotionRepository implements PromotionRepository {
     Map<String, String> productConditions = const {},
   }) async {
     savedPromotions++;
+    lastPromotion = promotion;
+    lastProductIds = productIds;
     return promotion;
   }
 
@@ -134,6 +172,8 @@ class _RecordingPromotionRepository implements PromotionRepository {
     Map<String, String> productConditions = const {},
   }) async {
     savedPromotions++;
+    lastPromotion = promotion;
+    lastProductIds = productIds;
     return promotion;
   }
 

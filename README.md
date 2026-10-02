@@ -71,6 +71,8 @@ Documentación:
   documentos operativos con PDF A4, ticket térmico de 80 mm e impresión
   ESC/POS directa por Bluetooth o USB. El catálogo comercial de Productos se
   genera sólo como PDF.
+- [`docs/form_test_coverage.md`](docs/form_test_coverage.md): registro de
+  formularios, operación esperada y estado de pruebas de operación/validación.
 - [`SDD_Modulo_Productos.md`](SDD_Modulo_Productos.md): productos, categorías,
   promociones, importación/exportación y catálogo PDF.
 - [`SDD_Modulo_Inventario.md`](SDD_Modulo_Inventario.md): movimientos, stock y
