@@ -12,6 +12,7 @@ refactorizaciones complejas y pantallas/formularios.
 ├── 01-module-contracts.md
 ├── 02-document-standards.md
 ├── 03-form-behavior.md
+├── 04-sales-payments-contract.md
 ├── modules/
 │   └── <module>/
 ├── refactors/
@@ -31,6 +32,12 @@ refactorizaciones complejas y pantallas/formularios.
 - Refactorizaciones necesarias: crear spec separada de refactorizacion en
   `refactors/`. Una spec de feature no esconde cambios de arquitectura.
 - Pruebas: toda pantalla o formulario debe tener `4.tests.spec.md`.
+
+## Contratos transversales
+
+- `04-sales-payments-contract.md`: frontera entre `sales` y `payments`.
+  Definido y no implementado. Obligatorio antes de crear facturas persistentes
+  con aplicaciones de pago.
 
 ## Specs de refactorizacion activas
 

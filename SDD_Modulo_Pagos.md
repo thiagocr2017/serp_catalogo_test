@@ -116,6 +116,12 @@ No se puede aplicar dinero a una factura anulada. Si se anula una factura
 pagada, el dinero aplicado se convierte en crédito del cliente; no desaparece ni
 se reasigna automáticamente.
 
+> La frontera exacta con Ventas, sus DTO, sus comandos, la atomicidad, la
+> idempotencia y las reglas de borde están definidas en
+> [`.specs/04-sales-payments-contract.md`](.specs/04-sales-payments-contract.md).
+> Este documento no las repite. Toda esa sección queda **aplazada** conforme a
+> la sección 15.
+
 ### 4.4 Anticipos y créditos
 
 Se permite recibir dinero sin factura únicamente como anticipo identificado de
