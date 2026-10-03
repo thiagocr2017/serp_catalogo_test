@@ -5,7 +5,6 @@ import '../domain/entities/customer_commercial.dart';
 
 export '../domain/entities/customer.dart';
 export '../domain/entities/customer_commercial.dart';
-export '../domain/repositories/customer_repository.dart';
 
 abstract interface class CustomerApi {
   Future<List<Customer>> getCustomers();

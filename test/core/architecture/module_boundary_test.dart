@@ -44,11 +44,13 @@ void main() {
     );
   });
 
-  test('los indices <module>_module.dart solo exponen api/', () {
+  test('api/ e <module>_module.dart solo exponen contrato, no implementacion', () {
     final violations = <String>[];
 
     for (final file in _dartFilesUnder('lib')) {
-      if (!file.path.endsWith('_module.dart')) continue;
+      final isModuleIndex = file.path.endsWith('_module.dart');
+      final isApiSurface = RegExp(r'^lib/modules/[a-z_]+/api/').hasMatch(file.path);
+      if (!isModuleIndex && !isApiSurface) continue;
 
       final lines = file.readAsLinesSync();
       for (var i = 0; i < lines.length; i++) {
@@ -57,7 +59,7 @@ void main() {
 
         final target = _resolve(file.path, uri);
         if (target == null) continue;
-        if (!_isInternalLayer(target)) continue;
+        if (!_isForbiddenFromPublicSurface(target)) continue;
 
         violations.add('${file.path}:${i + 1} -> $target');
       }
@@ -66,8 +68,8 @@ void main() {
     expect(
       violations,
       isEmpty,
-      reason: 'Indices que exponen implementacion interna:\n'
-          '${violations.join('\n')}',
+      reason: 'Superficie publica que expone implementacion interna '
+          '(MODULE_SECURITY_CONTRACT.md §3):\n${violations.join('\n')}',
     );
   });
 }
@@ -87,6 +89,30 @@ bool _isInternalLayer(String path) {
   final rest = RegExp(r'^lib/modules/[a-z_]+/(.*)$').firstMatch(path)?.group(1);
   if (rest == null) return false;
   return _internalLayers.any(rest.startsWith);
+}
+
+/// Lo que una superficie publica (`api/` o `<module>_module.dart`) jamas puede
+/// exportar.
+///
+/// `domain/entities/` **tambien** deberia estar prohibido por
+/// `MODULE_SECURITY_CONTRACT.md` §3 («entidades internas con campos que el
+/// consumidor no necesita»), pero todavia se expone en `product`, `inventory`
+/// y `sales`. Quitarlo es T5 y T7 de
+/// `.specs/refactors/03-public-dto-migration.md`; cuando se completen, hay que
+/// ampliar esta lista y comprobar que el test sigue pasando.
+const _forbiddenFromPublicSurface = [
+  'data/',
+  'di/',
+  'presentation/',
+  'services/',
+  'domain/repositories/',
+  'domain/use_cases/',
+];
+
+bool _isForbiddenFromPublicSurface(String path) {
+  final rest = RegExp(r'^lib/modules/[a-z_]+/(.*)$').firstMatch(path)?.group(1);
+  if (rest == null) return false;
+  return _forbiddenFromPublicSurface.any(rest.startsWith);
 }
 
 String? _importUriOf(String line) => _uriOf(line, 'import');

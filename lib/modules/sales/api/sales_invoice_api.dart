@@ -4,7 +4,6 @@ import '../domain/entities/sales_invoice.dart';
 import '../domain/repositories/sales_invoice_repository.dart';
 
 export '../domain/entities/sales_invoice.dart';
-export '../domain/repositories/sales_invoice_repository.dart';
 
 abstract interface class SalesInvoiceApi {
   Future<List<SalesInvoice>> getInvoices();

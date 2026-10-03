@@ -1,4 +1,5 @@
 import '../../api/customer_api.dart';
+import '../../domain/repositories/customer_repository.dart';
 import '../data_sources/supabase_customer_data_source.dart';
 
 class SupabaseCustomerRepository

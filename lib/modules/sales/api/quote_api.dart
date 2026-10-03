@@ -4,7 +4,6 @@ import '../domain/entities/sales_quote.dart';
 import '../domain/repositories/quote_repository.dart';
 
 export '../domain/entities/sales_quote.dart';
-export '../domain/repositories/quote_repository.dart';
 
 abstract interface class QuoteApi {
   Future<List<SalesQuote>> getQuotes();

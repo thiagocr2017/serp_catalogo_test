@@ -1,4 +1,5 @@
 import '../../api/consignment_api.dart';
+import '../../domain/repositories/consignment_repository.dart';
 import '../data_sources/supabase_consignment_data_source.dart';
 
 class SupabaseConsignmentRepository

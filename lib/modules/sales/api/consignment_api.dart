@@ -4,7 +4,6 @@ import '../domain/entities/sales_consignment.dart';
 import '../domain/repositories/consignment_repository.dart';
 
 export '../domain/entities/sales_consignment.dart';
-export '../domain/repositories/consignment_repository.dart';
 
 abstract interface class ConsignmentApi {
   Future<List<SalesConsignment>> getConsignments();

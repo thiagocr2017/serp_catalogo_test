@@ -4,7 +4,6 @@ import '../domain/entities/sales_return.dart';
 import '../domain/repositories/return_repository.dart';
 
 export '../domain/entities/sales_return.dart';
-export '../domain/repositories/return_repository.dart';
 
 abstract interface class ReturnApi {
   Future<List<SalesReturn>> getReturns();

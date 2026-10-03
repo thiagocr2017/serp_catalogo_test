@@ -1,4 +1,5 @@
 import '../../api/quote_api.dart';
+import '../../domain/repositories/quote_repository.dart';
 import '../data_sources/supabase_quote_data_source.dart';
 
 class SupabaseQuoteRepository implements QuoteRepository, QuoteApi {

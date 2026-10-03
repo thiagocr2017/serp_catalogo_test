@@ -4,7 +4,6 @@ import '../domain/entities/sales_order.dart';
 import '../domain/repositories/order_repository.dart';
 
 export '../domain/entities/sales_order.dart';
-export '../domain/repositories/order_repository.dart';
 
 abstract interface class OrderApi {
   Future<List<SalesOrder>> getOrders();

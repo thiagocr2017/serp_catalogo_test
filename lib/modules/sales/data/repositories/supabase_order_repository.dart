@@ -1,4 +1,5 @@
 import '../../api/order_api.dart';
+import '../../domain/repositories/order_repository.dart';
 import '../data_sources/supabase_order_data_source.dart';
 
 class SupabaseOrderRepository implements OrderRepository, OrderApi {

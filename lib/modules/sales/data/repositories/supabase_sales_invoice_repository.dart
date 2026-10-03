@@ -1,4 +1,5 @@
 import '../../api/sales_invoice_api.dart';
+import '../../domain/repositories/sales_invoice_repository.dart';
 import '../data_sources/supabase_sales_invoice_data_source.dart';
 
 class SupabaseSalesInvoiceRepository
