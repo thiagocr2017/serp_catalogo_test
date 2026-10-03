@@ -175,6 +175,8 @@ particular para un producto, adicional a la condición general de la campaña.
   al menos una categoría.
 - Un error de validación o persistencia se muestra dentro del formulario y no lo
   cierra; durante el guardado se impiden envíos duplicados.
+- La cobertura de UI debe probar creación inválida/válida, carga y edición de
+  una promoción existente, alcance por categoría y activación/desactivación.
 
 ### 4.6 Prioridad de promociones
 
@@ -226,6 +228,10 @@ Los registros de auditoría son inmutables. La captura mediante triggers de Post
   para controlar su fotografía en la lista, ficha y catálogo.
 - En edición se puede activar nuevamente un producto inactivo; la reactivación limpia los metadatos de eliminación lógica.
 - El stock inicial genera una transacción `INITIAL_STOCK`; nunca escribe directamente en `current_stock`.
+- El formulario valida requeridos y tipos numéricos antes de intentar guardar.
+  La cobertura de UI prueba creación válida con stock inicial, carga y
+  actualización de producto existente, bloqueo de campos requeridos y rechazo
+  de números inválidos.
 
 ### Pantalla C: ficha técnica
 
@@ -314,8 +320,11 @@ Esto no reemplaza las validaciones de la aplicación. La aplicación valida para
   comprueben que datos inválidos no cierran el formulario ni ejecutan comandos
   de guardado. Para formularios CRUD, la cobertura requerida incluye crear,
   cargar, actualizar y eliminar/desactivar según corresponda. La cobertura
-  inicial incluye producto, categorías y promociones. Categorías ya cubre
-  creación inválida/válida, carga, actualización y eliminación vacía;
-  promociones cubre creación inválida/válida. Se ampliará al catálogo,
-  importación/exportación y a los casos restantes conforme se estabilicen esos
-  contratos.
+  actual incluye producto, categorías y promociones. Producto cubre CRU y
+  validaciones de requeridos/tipos numéricos. Categorías cubre creación
+  inválida/válida, carga, actualización y eliminación vacía; la reasignación
+  al eliminar una categoría con productos debe cubrirse con una prueba propia.
+  Promociones cubre creación inválida/válida, carga, actualización, alcance por
+  categoría y activación/desactivación. Catálogo PDF e importación/exportación
+  no se marcarán como formularios listos hasta tener pruebas UI de sus
+  operaciones específicas.

@@ -136,6 +136,40 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   int _cents(String value) => (_decimal(value) * 100).round();
   String? _required(String? value) =>
       value == null || value.trim().isEmpty ? 'Campo requerido' : null;
+  String? _requiredDecimal(String? value) {
+    final required = _required(value);
+    if (required != null) return required;
+    return double.tryParse(value!.replaceAll(',', '.').trim()) == null
+        ? 'Ingrese un número válido'
+        : null;
+  }
+
+  String? _optionalDecimal(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return double.tryParse(value.replaceAll(',', '.').trim()) == null
+        ? 'Ingrese un número válido'
+        : null;
+  }
+
+  String? _requiredInteger(String? value) {
+    final required = _required(value);
+    if (required != null) return required;
+    return int.tryParse(value!.trim()) == null
+        ? 'Ingrese un número entero válido'
+        : null;
+  }
+
+  String? _positiveInteger(String? value) {
+    final integerError = _requiredInteger(value);
+    if (integerError != null) return integerError;
+    return int.parse(value!.trim()) <= 0 ? 'Debe ser mayor que cero' : null;
+  }
+
+  String? _nonNegativeInteger(String? value) {
+    final integerError = _requiredInteger(value);
+    if (integerError != null) return integerError;
+    return int.parse(value!.trim()) < 0 ? 'No puede ser negativo' : null;
+  }
 
   /// Margen en vivo contra el costo total (fábrica + extras).
   ({int totalCents, int profitCents, double percent})? _margin() {
@@ -378,18 +412,15 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                       child: categories.when(
                                         loading: () =>
                                             const LinearProgressIndicator(),
-                                        error: (e, _) => Text(
-                                          'Error de categorías: $e',
-                                        ),
+                                        error: (e, _) =>
+                                            Text('Error de categorías: $e'),
                                         data: (items) =>
                                             DropdownButtonFormField<String>(
                                               initialValue: _categoryId,
-                                              decoration:
-                                                  const InputDecoration(
-                                                    labelText: 'Categoría',
-                                                    border:
-                                                        OutlineInputBorder(),
-                                                  ),
+                                              decoration: const InputDecoration(
+                                                labelText: 'Categoría',
+                                                border: OutlineInputBorder(),
+                                              ),
                                               items: [
                                                 for (final item in items)
                                                   DropdownMenuItem(
@@ -401,10 +432,11 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                                   value == null
                                                   ? 'Seleccione una categoría'
                                                   : null,
-                                              onChanged: (value) => setState(() {
-                                                _categoryId = value;
-                                                _dirty = true;
-                                              }),
+                                              onChanged: (value) =>
+                                                  setState(() {
+                                                    _categoryId = value;
+                                                    _dirty = true;
+                                                  }),
                                             ),
                                       ),
                                     ),
@@ -415,7 +447,8 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                         maxLines: 3,
                                         onChanged: (_) => _markDirty(),
                                         decoration: const InputDecoration(
-                                          labelText: 'Descripción para catálogo',
+                                          labelText:
+                                              'Descripción para catálogo',
                                           border: OutlineInputBorder(),
                                         ),
                                       ),
@@ -433,22 +466,21 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                       'Precio unitario USD',
                                       width: halfWidth,
                                       number: true,
-                                      validator: _required,
-                                      onChanged: (_) =>
-                                          _maybeAutofillPackage(),
+                                      validator: _requiredDecimal,
+                                      onChanged: (_) => _maybeAutofillPackage(),
                                     ),
                                     _field(
                                       _packagePrice,
                                       'Precio por bulto USD (opcional)',
                                       width: halfWidth,
                                       number: true,
+                                      validator: _optionalDecimal,
                                       helper: _packagePriceManual
                                           ? 'Precio manual.'
                                           : 'Calculado: unitario × venta mínima (editable).',
                                       suffixIcon: _packagePriceManual
                                           ? IconButton(
-                                              tooltip:
-                                                  'Volver al cálculo automático',
+                                              tooltip: 'Volver al cálculo automático',
                                               onPressed: () => setState(() {
                                                 _packagePriceManual = false;
                                                 _dirty = true;
@@ -467,44 +499,37 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                       'Venta mínima al cliente',
                                       width: halfWidth,
                                       number: true,
-                                      helper:
-                                          'Unidades mínimas por venta.',
-                                      validator: _required,
-                                      onChanged: (_) =>
-                                          _maybeAutofillPackage(),
+                                      helper: 'Unidades mínimas por venta.',
+                                      validator: _positiveInteger,
+                                      onChanged: (_) => _maybeAutofillPackage(),
                                     ),
                                     SizedBox(
                                       width: halfWidth,
-                                      child:
-                                          DropdownButtonFormField<String>(
-                                            key: ValueKey(
-                                              _packagingPresentationId,
-                                            ),
-                                            initialValue:
-                                                _packagingPresentationId,
-                                            decoration: const InputDecoration(
-                                              labelText:
-                                                  'Presentación de venta',
-                                              border: OutlineInputBorder(),
-                                            ),
-                                            items: presentations
-                                                .map(
-                                                  (item) => DropdownMenuItem(
-                                                    value: item.id,
-                                                    child: Text(item.name),
-                                                  ),
-                                                )
-                                                .toList(),
-                                            validator: (value) => value == null
-                                                ? presentations.isEmpty
-                                                      ? 'No hay presentaciones: créalas en Configuración'
-                                                      : 'Seleccione una presentación'
-                                                : null,
-                                            onChanged: (value) => setState(() {
-                                              _packagingPresentationId = value;
-                                              _dirty = true;
-                                            }),
-                                          ),
+                                      child: DropdownButtonFormField<String>(
+                                        key: ValueKey(_packagingPresentationId),
+                                        initialValue: _packagingPresentationId,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Presentación de venta',
+                                          border: OutlineInputBorder(),
+                                        ),
+                                        items: presentations
+                                            .map(
+                                              (item) => DropdownMenuItem(
+                                                value: item.id,
+                                                child: Text(item.name),
+                                              ),
+                                            )
+                                            .toList(),
+                                        validator: (value) => value == null
+                                            ? presentations.isEmpty
+                                                  ? 'No hay presentaciones: créalas en Configuración'
+                                                  : 'Seleccione una presentación'
+                                            : null,
+                                        onChanged: (value) => setState(() {
+                                          _packagingPresentationId = value;
+                                          _dirty = true;
+                                        }),
+                                      ),
                                     ),
                                     SizedBox(
                                       width: fullWidth,
@@ -522,15 +547,15 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                       'Costo de fábrica USD',
                                       width: halfWidth,
                                       number: true,
-                                      validator: _required,
+                                      validator: _requiredDecimal,
                                     ),
                                     _field(
                                       _extraCosts,
                                       'Costos extra por unidad USD (opcional)',
                                       width: halfWidth,
                                       number: true,
-                                      helper:
-                                          'Flete, empaque o impuestos prorrateados. Mejora el cálculo del margen.',
+                                      validator: _optionalDecimal,
+                                      helper: 'Flete, empaque o impuestos prorrateados. Mejora el cálculo del margen.',
                                     ),
                                     _field(
                                       _moq,
@@ -539,16 +564,15 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                       number: true,
                                       helper:
                                           'Lote mínimo de compra para reponer.',
-                                      validator: _required,
+                                      validator: _positiveInteger,
                                     ),
                                     _field(
                                       _cbm,
                                       'CBM por MOQ',
                                       width: halfWidth,
                                       number: true,
-                                      helper:
-                                          'Volumen del lote para fletes.',
-                                      validator: _required,
+                                      helper: 'Volumen del lote para fletes.',
+                                      validator: _requiredDecimal,
                                     ),
                                     _field(
                                       _reorderPoint,
@@ -557,7 +581,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                       number: true,
                                       helper:
                                           'Avisa cuando el stock llegue aquí.',
-                                      validator: _required,
+                                      validator: _nonNegativeInteger,
                                     ),
                                   ],
                                 ),
@@ -642,7 +666,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                         'Stock inicial',
                                         width: halfWidth,
                                         number: true,
-                                        validator: _required,
+                                        validator: _nonNegativeInteger,
                                       ),
                                     ],
                                   ),
@@ -719,9 +743,8 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
             'Margen: $sign\$${dollars(margin.profitCents)} USD '
             '($sign${margin.percent.abs().toStringAsFixed(1)}%)'
             '${positive ? '' : ' · el precio no cubre el costo'}',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: color),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: color),
           ),
         ],
       ),
@@ -732,9 +755,8 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
     final discount = _promoDiscount()!;
     return Text(
       'Descuento efectivo: −${discount.toStringAsFixed(0)}% sobre el precio unitario.',
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-        color: Theme.of(context).colorScheme.primary,
-      ),
+      style: Theme.of(context).textTheme.bodySmall
+          ?.copyWith(color: Theme.of(context).colorScheme.primary),
     );
   }
 
@@ -768,8 +790,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                         if (bytes != null && mounted) {
                           setState(() {
                             _imageBytes = bytes;
-                            _imageSize =
-                                ProductImageService.dimensionsOf(bytes);
+                            _imageSize = ProductImageService.dimensionsOf(
+                              bytes,
+                            );
                             _imagePositionX = 0.5;
                             _imagePositionY = 0.5;
                             _imageScale = 1;
@@ -800,9 +823,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                   margin: const EdgeInsets.only(top: 12),
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: Theme.of(context).colorScheme.outlineVariant,
@@ -831,9 +854,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                               focalY: _imagePositionY,
                               zoom: _imageScale,
                               overlayColor: Colors.black54,
-                              frameColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
+                              frameColor: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ),
@@ -855,89 +876,89 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                       const Text(
                         'La imagen se muestra completa. Mueve el punto focal o acerca para elegir el recorte; al guardar se corta así.',
                       ),
-                    Row(
-                      children: [
-                        const SizedBox(width: 82, child: Text('Horizontal')),
-                        Expanded(
-                          child: Slider(
-                            value: _imagePositionX,
-                            onChanged: (value) => setState(() {
-                              _imagePositionX = value;
-                              _dirty = true;
-                            }),
+                      Row(
+                        children: [
+                          const SizedBox(width: 82, child: Text('Horizontal')),
+                          Expanded(
+                            child: Slider(
+                              value: _imagePositionX,
+                              onChanged: (value) => setState(() {
+                                _imagePositionX = value;
+                                _dirty = true;
+                              }),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        const SizedBox(width: 82, child: Text('Zoom')),
-                        IconButton(
-                          tooltip: 'Alejar',
-                          onPressed: _imageScale <= 1
-                              ? null
-                              : () => setState(() {
-                                  _imageScale = (_imageScale - 0.1)
-                                      .clamp(1, 3)
-                                      .toDouble();
-                                  _dirty = true;
-                                }),
-                          icon: const Icon(Icons.zoom_out),
-                        ),
-                        Expanded(
-                          child: Slider(
-                            min: 1,
-                            max: 3,
-                            divisions: 20,
-                            label: '${_imageScale.toStringAsFixed(1)}×',
-                            value: _imageScale,
-                            onChanged: (value) => setState(() {
-                              _imageScale = value;
-                              _dirty = true;
-                            }),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          const SizedBox(width: 82, child: Text('Zoom')),
+                          IconButton(
+                            tooltip: 'Alejar',
+                            onPressed: _imageScale <= 1
+                                ? null
+                                : () => setState(() {
+                                    _imageScale = (_imageScale - 0.1)
+                                        .clamp(1, 3)
+                                        .toDouble();
+                                    _dirty = true;
+                                  }),
+                            icon: const Icon(Icons.zoom_out),
                           ),
-                        ),
-                        IconButton(
-                          tooltip: 'Acercar',
-                          onPressed: _imageScale >= 3
-                              ? null
-                              : () => setState(() {
-                                  _imageScale = (_imageScale + 0.1)
-                                      .clamp(1, 3)
-                                      .toDouble();
-                                  _dirty = true;
-                                }),
-                          icon: const Icon(Icons.zoom_in),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        const SizedBox(width: 82, child: Text('Vertical')),
-                        Expanded(
-                          child: Slider(
-                            value: _imagePositionY,
-                            onChanged: (value) => setState(() {
-                              _imagePositionY = value;
-                              _dirty = true;
-                            }),
+                          Expanded(
+                            child: Slider(
+                              min: 1,
+                              max: 3,
+                              divisions: 20,
+                              label: '${_imageScale.toStringAsFixed(1)}×',
+                              value: _imageScale,
+                              onChanged: (value) => setState(() {
+                                _imageScale = value;
+                                _dirty = true;
+                              }),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    TextButton.icon(
-                      onPressed: () => setState(() {
-                        _imagePositionX = 0.5;
-                        _imagePositionY = 0.5;
-                        _imageScale = 1;
-                        _dirty = true;
-                      }),
-                      icon: const Icon(Icons.center_focus_strong),
-                      label: const Text('Centrar imagen'),
-                    ),
-                  ],
+                          IconButton(
+                            tooltip: 'Acercar',
+                            onPressed: _imageScale >= 3
+                                ? null
+                                : () => setState(() {
+                                    _imageScale = (_imageScale + 0.1)
+                                        .clamp(1, 3)
+                                        .toDouble();
+                                    _dirty = true;
+                                  }),
+                            icon: const Icon(Icons.zoom_in),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          const SizedBox(width: 82, child: Text('Vertical')),
+                          Expanded(
+                            child: Slider(
+                              value: _imagePositionY,
+                              onChanged: (value) => setState(() {
+                                _imagePositionY = value;
+                                _dirty = true;
+                              }),
+                            ),
+                          ),
+                        ],
+                      ),
+                      TextButton.icon(
+                        onPressed: () => setState(() {
+                          _imagePositionX = 0.5;
+                          _imagePositionY = 0.5;
+                          _imageScale = 1;
+                          _dirty = true;
+                        }),
+                        icon: const Icon(Icons.center_focus_strong),
+                        label: const Text('Centrar imagen'),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ],
         ),
@@ -1079,17 +1100,9 @@ class _CropOverlayPainter extends CustomPainter {
       ..color = frameColor.withValues(alpha: 0.5);
     for (var i = 1; i < 3; i++) {
       final dx = crop.left + crop.width * i / 3;
-      canvas.drawLine(
-        Offset(dx, crop.top),
-        Offset(dx, crop.bottom),
-        thirds,
-      );
+      canvas.drawLine(Offset(dx, crop.top), Offset(dx, crop.bottom), thirds);
       final dy = crop.top + crop.height * i / 3;
-      canvas.drawLine(
-        Offset(crop.left, dy),
-        Offset(crop.right, dy),
-        thirds,
-      );
+      canvas.drawLine(Offset(crop.left, dy), Offset(crop.right, dy), thirds);
     }
   }
 

@@ -52,10 +52,60 @@ void main() {
 
     expect(repository.savedWarehouses, 1);
   });
+
+  testWidgets('bodega y ubicacion existentes cargan y actualizan', (
+    tester,
+  ) async {
+    final repository = _RecordingInventoryRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [inventoryRepositoryProvider.overrideWithValue(repository)],
+        child: const MaterialApp(home: WarehousesPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Editar bodega'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar bodega'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'BOD-01'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre'),
+      'Bodega Principal',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(repository.savedWarehouseId, 'warehouse-1');
+    expect(repository.savedWarehouseName, 'Bodega Principal');
+
+    await tester.tap(find.byTooltip('Editar ubicación'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar ubicación'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'PAS-A'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre'),
+      'Pasillo Principal',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(repository.savedLocationId, 'location-1');
+    expect(repository.savedLocationWarehouseId, 'warehouse-1');
+    expect(repository.savedLocationName, 'Pasillo Principal');
+  });
 }
 
 class _RecordingInventoryRepository implements InventoryRepository {
   int savedWarehouses = 0;
+  String? savedWarehouseId;
+  String? savedWarehouseName;
+  String? savedLocationId;
+  String? savedLocationWarehouseId;
+  String? savedLocationName;
 
   @override
   Future<List<Warehouse>> getWarehouses({bool activeOnly = true}) async =>
@@ -66,7 +116,16 @@ class _RecordingInventoryRepository implements InventoryRepository {
           name: 'Bodega Central',
           isDefault: true,
           isActive: true,
-          locations: [],
+          locations: [
+            InventoryLocation(
+              id: 'location-1',
+              warehouseId: 'warehouse-1',
+              code: 'PAS-A',
+              name: 'Pasillo A',
+              isDefault: true,
+              isActive: true,
+            ),
+          ],
         ),
       ];
 
@@ -77,6 +136,8 @@ class _RecordingInventoryRepository implements InventoryRepository {
     required String name,
   }) async {
     savedWarehouses++;
+    savedWarehouseId = id;
+    savedWarehouseName = name;
     return Warehouse(
       id: id ?? 'warehouse-new',
       code: code,
@@ -92,14 +153,19 @@ class _RecordingInventoryRepository implements InventoryRepository {
     required String warehouseId,
     required String code,
     required String name,
-  }) async => InventoryLocation(
-    id: id ?? 'location-new',
-    warehouseId: warehouseId,
-    code: code,
-    name: name,
-    isDefault: false,
-    isActive: true,
-  );
+  }) async {
+    savedLocationId = id;
+    savedLocationWarehouseId = warehouseId;
+    savedLocationName = name;
+    return InventoryLocation(
+      id: id ?? 'location-new',
+      warehouseId: warehouseId,
+      code: code,
+      name: name,
+      isDefault: false,
+      isActive: true,
+    );
+  }
 
   @override
   Future<List<InventoryTransaction>> getTransactions({

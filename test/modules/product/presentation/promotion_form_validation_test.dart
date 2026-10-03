@@ -79,6 +79,65 @@ void main() {
     expect(promotionRepository.lastPromotion?.appliesToAllProducts, isTrue);
     expect(promotionRepository.lastProductIds, isEmpty);
   });
+
+  testWidgets('promocion existente carga, actualiza alcance y cambia estado', (
+    tester,
+  ) async {
+    final promotionRepository = _RecordingPromotionRepository(
+      initialPromotions: [
+        BulkPromotion(
+          id: 'promotion-1',
+          name: 'Liquidación',
+          discountPercentage: 10,
+          conditionsText: 'Hasta agotar inventario',
+          endDate: DateTime.now().add(const Duration(days: 30)),
+          appliesToAllProducts: true,
+          isActive: true,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          productRepositoryProvider.overrideWithValue(_ProductCatalogStub()),
+          promotionRepositoryProvider.overrideWithValue(promotionRepository),
+        ],
+        child: const MaterialApp(home: PromotionPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Editar promoción'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar promoción'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Liquidación'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre'),
+      'Temporada',
+    );
+    await tester.tap(find.text('Todos los productos').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Una o varias categorías').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(CheckboxListTile, 'General'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar cambios'));
+    await tester.pumpAndSettle();
+
+    expect(promotionRepository.savedPromotions, 1);
+    expect(promotionRepository.lastPromotion?.id, 'promotion-1');
+    expect(promotionRepository.lastPromotion?.name, 'Temporada');
+    expect(promotionRepository.lastPromotion?.appliesToAllProducts, isFalse);
+    expect(promotionRepository.lastCategoryIds, {'category-1'});
+
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+
+    expect(promotionRepository.activePromotionId, 'promotion-1');
+    expect(promotionRepository.activePromotionValue, isFalse);
+  });
 }
 
 class _ProductCatalogStub implements ProductRepository {
@@ -144,12 +203,18 @@ class _ProductCatalogStub implements ProductRepository {
 }
 
 class _RecordingPromotionRepository implements PromotionRepository {
+  _RecordingPromotionRepository({this.initialPromotions = const []});
+
+  final List<BulkPromotion> initialPromotions;
   int savedPromotions = 0;
   BulkPromotion? lastPromotion;
   Set<String> lastProductIds = const {};
+  Set<String> lastCategoryIds = const {};
+  String? activePromotionId;
+  bool? activePromotionValue;
 
   @override
-  Future<List<BulkPromotion>> getPromotions() async => const [];
+  Future<List<BulkPromotion>> getPromotions() async => initialPromotions;
 
   @override
   Future<BulkPromotion> createPromotion(
@@ -161,6 +226,7 @@ class _RecordingPromotionRepository implements PromotionRepository {
     savedPromotions++;
     lastPromotion = promotion;
     lastProductIds = productIds;
+    lastCategoryIds = categoryIds;
     return promotion;
   }
 
@@ -174,11 +240,15 @@ class _RecordingPromotionRepository implements PromotionRepository {
     savedPromotions++;
     lastPromotion = promotion;
     lastProductIds = productIds;
+    lastCategoryIds = categoryIds;
     return promotion;
   }
 
   @override
-  Future<void> setActive(String id, {required bool isActive}) async {}
+  Future<void> setActive(String id, {required bool isActive}) async {
+    activePromotionId = id;
+    activePromotionValue = isActive;
+  }
 
   @override
   Future<void> setProductCondition({

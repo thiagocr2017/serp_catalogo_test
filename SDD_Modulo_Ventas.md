@@ -19,6 +19,17 @@ El módulo de Ventas administra agentes, clientes, cotizaciones, pedidos, factur
 - Desactivación lógica.
 - Compradores por producto: `product_buyers` lista quiénes compran un producto a partir de líneas de facturas confirmadas/pagadas y pedidos no anulados, con última compra, cantidad total, conteo de documentos y contactos embebidos. Las facturas creadas solo con nombre (sin `customer_id`) se vinculan por coincidencia exacta de nombre; si el nombre no existe como cliente aparece como fila invitada.
 
+### Pruebas de formularios implementadas
+
+- Agentes: la prueba de UI cubre creación inválida/válida, carga, edición,
+  desactivación y activación.
+- Clientes: la prueba de UI cubre creación inválida/válida, validación de
+  contactos, validación de límite de crédito numérico, carga, edición, guardado
+  de contactos y desactivación.
+- Cotizaciones, pedidos, facturas, devoluciones y consignaciones no se marcan
+  como formularios completos mientras sus pantallas sigan siendo listas de
+  solo lectura o no tengan pruebas de operación/documento.
+
 ### Cotizaciones
 - Creación de cotizaciones con líneas de producto.
 - Estados: DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED, CONVERTED.

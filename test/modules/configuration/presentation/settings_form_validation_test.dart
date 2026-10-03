@@ -93,6 +93,44 @@ void main() {
     expect(api.createdPresentations, 1);
     expect(api.lastCreatedPresentationName, 'Cartón');
   });
+
+  testWidgets('presentacion existente carga y actualiza por API publica', (
+    tester,
+  ) async {
+    final api = _RecordingConfigurationApi(
+      presentations: const [
+        PackagingPresentationDto(
+          id: 'presentation-1',
+          name: 'Caja',
+          sortOrder: 0,
+          isActive: true,
+          version: 7,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Caja'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Caja'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar presentación'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Caja'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Nombre'), 'Cartón');
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.updatedPresentationId, 'presentation-1');
+    expect(api.updatedPresentationName, 'Cartón');
+    expect(api.updatedPresentationVersion, 7);
+  });
 }
 
 Widget _app(_RecordingConfigurationApi api) => ProviderScope(
@@ -113,10 +151,16 @@ Widget _app(_RecordingConfigurationApi api) => ProviderScope(
 );
 
 class _RecordingConfigurationApi implements ConfigurationApi {
+  _RecordingConfigurationApi({this.presentations = const []});
+
+  final List<PackagingPresentationDto> presentations;
   int savedBusinessSettings = 0;
   int createdPresentations = 0;
   SaveBusinessSettingsCommand? lastBusinessCommand;
   String? lastCreatedPresentationName;
+  String? updatedPresentationId;
+  String? updatedPresentationName;
+  int? updatedPresentationVersion;
 
   @override
   Future<BusinessSettingsDto> getBusinessSettings() async =>
@@ -156,7 +200,7 @@ class _RecordingConfigurationApi implements ConfigurationApi {
 
   @override
   Future<List<PackagingPresentationDto>> getPackagingPresentations() async =>
-      const [];
+      presentations;
 
   @override
   Future<BusinessSettingsDto> saveBusinessSettings(
@@ -205,13 +249,18 @@ class _RecordingConfigurationApi implements ConfigurationApi {
   @override
   Future<PackagingPresentationDto> updatePackagingPresentation(
     UpdatePackagingPresentationCommand command,
-  ) async => PackagingPresentationDto(
-    id: command.id,
-    name: command.name,
-    sortOrder: 0,
-    isActive: true,
-    version: command.expectedVersion + 1,
-  );
+  ) async {
+    updatedPresentationId = command.id;
+    updatedPresentationName = command.name;
+    updatedPresentationVersion = command.expectedVersion;
+    return PackagingPresentationDto(
+      id: command.id,
+      name: command.name,
+      sortOrder: 0,
+      isActive: true,
+      version: command.expectedVersion + 1,
+    );
+  }
 
   @override
   Future<CatalogLogoReferenceDto> replaceCatalogLogo(

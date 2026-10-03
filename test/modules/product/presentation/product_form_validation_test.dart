@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:serp/modules/configuration/configuration_module.dart';
 import 'package:serp/modules/product/di/product_providers.dart';
 import 'package:serp/modules/product/domain/entities/category.dart';
@@ -39,10 +40,125 @@ void main() {
     expect(repository.createdProducts, 0);
     expect(find.text('Nuevo producto'), findsOneWidget);
   });
+
+  testWidgets('producto rechaza numeros invalidos antes de guardar', (
+    tester,
+  ) async {
+    final repository = _RecordingProductRepository();
+
+    await tester.pumpWidget(_app(repository, const ProductFormPage()));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'SKU'), 'SKU-1');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nombre'),
+      'Producto test',
+    );
+    await _selectOnlyCategory(tester);
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Precio unitario USD'),
+      'abc',
+    );
+    await tester.scrollUntilVisible(
+      find.text('Guardar producto'),
+      600,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Guardar producto'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ingrese un número válido'), findsOneWidget);
+    expect(repository.createdProducts, 0);
+  });
+
+  testWidgets('producto valido se crea con stock inicial', (tester) async {
+    final repository = _RecordingProductRepository();
+
+    await tester.pumpWidget(_app(repository, const ProductFormPage()));
+    await tester.pumpAndSettle();
+
+    await _fillRequiredProductFields(tester, sku: 'SKU-1', name: 'Producto');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Stock inicial'),
+      '8',
+    );
+    await tester.scrollUntilVisible(
+      find.text('Guardar producto'),
+      600,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Guardar producto'));
+    await tester.pumpAndSettle();
+
+    expect(repository.createdProducts, 1);
+    expect(repository.lastInitialStock, 8);
+    expect(repository.lastSavedProduct?.sku, 'SKU-1');
+    expect(repository.lastSavedProduct?.categoryId, 'category-1');
+  });
+
+  testWidgets('producto existente carga y actualiza', (tester) async {
+    final repository = _RecordingProductRepository(
+      existingProduct: Product(
+        id: 'product-1',
+        sku: 'SKU-OLD',
+        name: 'Producto anterior',
+        description: 'Descripción',
+        categoryId: 'category-1',
+        unitPriceInCents: 1500,
+        minimumOrderQuantity: 1,
+        minimumSaleQuantity: 1,
+        packagingPresentationId: 'presentation-1',
+        cbmPerMoq: 0,
+        factoryCostInCents: 500,
+        currentStock: 4,
+        reorderPoint: 1,
+        isActive: true,
+        createdAt: DateTime.utc(2026),
+      ),
+    );
+
+    await tester.pumpWidget(
+      _app(repository, const ProductFormPage(productId: 'product-1')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar producto · SKU-OLD'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'Producto anterior'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nombre'),
+      'Producto actualizado',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Precio unitario USD'),
+      '22.50',
+    );
+    await tester.scrollUntilVisible(
+      find.text('Guardar producto'),
+      600,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Guardar producto'));
+    await tester.pumpAndSettle();
+
+    expect(repository.updatedProducts, 1);
+    expect(repository.lastSavedProduct?.id, 'product-1');
+    expect(repository.lastSavedProduct?.name, 'Producto actualizado');
+    expect(repository.lastSavedProduct?.unitPriceInCents, 2250);
+  });
 }
 
 class _RecordingProductRepository implements ProductRepository {
+  _RecordingProductRepository({this.existingProduct});
+
+  final Product? existingProduct;
   int createdProducts = 0;
+  int updatedProducts = 0;
+  int? lastInitialStock;
+  Product? lastSavedProduct;
 
   @override
   Future<Product> createProduct(
@@ -50,6 +166,8 @@ class _RecordingProductRepository implements ProductRepository {
     required int initialStock,
   }) async {
     createdProducts++;
+    lastInitialStock = initialStock;
+    lastSavedProduct = product;
     return product;
   }
 
@@ -76,19 +194,70 @@ class _RecordingProductRepository implements ProductRepository {
   Future<void> deactivateProduct(String id) async {}
 
   @override
-  Future<Product?> getProductById(String id) async => null;
+  Future<Product?> getProductById(String id) async =>
+      existingProduct?.id == id ? existingProduct : null;
 
   @override
   Future<List<Product>> getProducts(ProductQuery query) async => const [];
 
   @override
-  Future<Product> updateProduct(Product product) async => product;
+  Future<Product> updateProduct(Product product) async {
+    updatedProducts++;
+    lastSavedProduct = product;
+    return product;
+  }
 
   @override
   Future<void> saveCatalogOrder({
     required List<String> productIds,
     required List<String> categoryIds,
   }) async {}
+}
+
+Widget _app(ProductRepository repository, Widget child) {
+  final router = GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(path: '/', builder: (_, _) => child),
+      GoRoute(
+        path: '/products',
+        builder: (_, _) => const Scaffold(body: Text('Productos')),
+      ),
+      GoRoute(
+        path: '/products/:id',
+        builder: (_, state) =>
+            Scaffold(body: Text('Producto ${state.pathParameters['id']}')),
+      ),
+    ],
+  );
+  return ProviderScope(
+    overrides: [
+      productRepositoryProvider.overrideWithValue(repository),
+      configurationApiProvider.overrideWithValue(_FakeConfigurationApi()),
+    ],
+    child: MaterialApp.router(routerConfig: router),
+  );
+}
+
+Future<void> _selectOnlyCategory(WidgetTester tester) async {
+  await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('General').last);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _fillRequiredProductFields(
+  WidgetTester tester, {
+  required String sku,
+  required String name,
+}) async {
+  await tester.enterText(find.widgetWithText(TextFormField, 'SKU'), sku);
+  await tester.enterText(find.widgetWithText(TextFormField, 'Nombre'), name);
+  await _selectOnlyCategory(tester);
+  await tester.enterText(
+    find.widgetWithText(TextFormField, 'Precio unitario USD'),
+    '10.00',
+  );
 }
 
 class _FakeConfigurationApi implements ConfigurationApi {

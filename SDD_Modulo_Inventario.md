@@ -138,6 +138,10 @@ consolidado.
 - Los formularios de bodega y ubicación deben validar código y nombre antes de
   guardar. La prueba de UI debe demostrar que el diálogo permanece abierto, que
   no se ejecuta el comando y que los errores aparecen junto al campo afectado.
+  La cobertura actual prueba creación inválida/válida de bodega, carga y
+  actualización de bodega existente, y carga/actualización de ubicación
+  existente. La creación específica de ubicación debe agregarse como prueba
+  separada.
 - El formulario de documento de inventario debe probar la operación de
   confirmación y sus bloqueos de validación. Esa cobertura queda pendiente
   hasta estabilizar la pantalla de documentos y su autocomplete de productos.

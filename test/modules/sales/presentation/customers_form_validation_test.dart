@@ -100,13 +100,92 @@ void main() {
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(api.createdCustomers, 0);
   });
+
+  testWidgets('cliente existente carga, actualiza contactos y desactiva', (
+    tester,
+  ) async {
+    final api = _RecordingCustomerApi(
+      initialCustomers: const [
+        Customer(
+          id: 'customer-1',
+          name: 'Cliente Actual',
+          phone: '1111',
+          email: 'actual@example.com',
+          province: 'San José',
+          gira: 'Gira Central',
+          creditLimit: 25,
+          isActive: true,
+        ),
+      ],
+      initialContacts: const [
+        CustomerContact(
+          id: 'contact-1',
+          customerId: 'customer-1',
+          name: 'Comprador',
+          phone: '2222',
+          role: 'Compras',
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [customerApiProvider.overrideWithValue(api)],
+        child: const MaterialApp(home: CustomersPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Cliente Actual'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar cliente'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Cliente Actual'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Comprador'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre del negocio'),
+      'Cliente Actualizado',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Límite de crédito'),
+      '125.50',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.updatedCustomerId, 'customer-1');
+    expect(api.updatedCustomerName, 'Cliente Actualizado');
+    expect(api.updatedCreditLimit, 125.50);
+    expect(api.savedContactIds, contains('contact-1'));
+
+    await tester.tap(find.text('Cliente Actual'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Desactivar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Desactivar'));
+    await tester.pumpAndSettle();
+
+    expect(api.deactivatedCustomerId, 'customer-1');
+  });
 }
 
 class _RecordingCustomerApi implements CustomerApi {
+  _RecordingCustomerApi({
+    this.initialCustomers = const [],
+    this.initialContacts = const [],
+  });
+
+  final List<Customer> initialCustomers;
+  final List<CustomerContact> initialContacts;
   int createdCustomers = 0;
+  String? updatedCustomerId;
+  String? updatedCustomerName;
+  double? updatedCreditLimit;
+  String? deactivatedCustomerId;
+  final savedContactIds = <String?>[];
 
   @override
-  Future<List<Customer>> getCustomers() async => const [];
+  Future<List<Customer>> getCustomers() async => initialCustomers;
 
   @override
   Future<Customer?> getCustomerById(String id) async => null;
@@ -147,24 +226,33 @@ class _RecordingCustomerApi implements CustomerApi {
     double? creditLimit,
     String? province,
     String? gira,
-  }) async => Customer(
-    id: id,
-    name: name,
-    phone: phone,
-    email: email,
-    address: address,
-    taxId: taxId,
-    province: province,
-    gira: gira,
-    creditLimit: creditLimit ?? 0,
-  );
+  }) async {
+    updatedCustomerId = id;
+    updatedCustomerName = name;
+    updatedCreditLimit = creditLimit;
+    return Customer(
+      id: id,
+      name: name,
+      phone: phone,
+      email: email,
+      address: address,
+      taxId: taxId,
+      province: province,
+      gira: gira,
+      creditLimit: creditLimit ?? 0,
+    );
+  }
 
   @override
-  Future<void> deactivateCustomer(String id) async {}
+  Future<void> deactivateCustomer(String id) async {
+    deactivatedCustomerId = id;
+  }
 
   @override
   Future<List<CustomerContact>> getCustomerContacts(String customerId) async =>
-      const [];
+      initialContacts
+          .where((contact) => contact.customerId == customerId)
+          .toList();
 
   @override
   Future<CustomerContact> saveCustomerContact({
@@ -173,13 +261,16 @@ class _RecordingCustomerApi implements CustomerApi {
     required String name,
     String? phone,
     String? role,
-  }) async => CustomerContact(
-    id: id ?? 'contact-new',
-    customerId: customerId,
-    name: name,
-    phone: phone,
-    role: role,
-  );
+  }) async {
+    savedContactIds.add(id);
+    return CustomerContact(
+      id: id ?? 'contact-new',
+      customerId: customerId,
+      name: name,
+      phone: phone,
+      role: role,
+    );
+  }
 
   @override
   Future<void> deleteCustomerContact(String id) async {}
