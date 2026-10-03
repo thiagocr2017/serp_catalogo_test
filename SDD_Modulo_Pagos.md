@@ -1,21 +1,43 @@
 # SDD - Módulo 4: Pagos y Recibos
 
-## 1. Estado del documento
+## 1. Estado del documento y alcance vigente
 
-Este documento sigue siendo el **diseño funcional aprobado** del módulo de
-Pagos y Recibos. La afirmación anterior de que «el módulo todavía no está
-implementado» era incorrecta: existe una implementación funcional base en
-`lib/modules/payments/`, cableada en `main.dart`, con tablas, RPC y migraciones
-propias.
+Este documento describe el **diseño funcional** del módulo de Pagos y Recibos.
+La afirmación anterior de que «el módulo todavía no está implementado» era
+incorrecta: existe una implementación en `lib/modules/payments/`, cableada en
+`main.dart`, con tablas, RPC y migraciones propias.
 
-Sin embargo, esa implementación es **más estrecha que este diseño** y hoy sus
-operaciones de escritura **no llegan a persistir**, porque la capa de datos
-accede directamente a tablas que solo conceden `SELECT`. El detalle verificado,
-incluidas las RPC disponibles y el alcance real frente a cada sección de este
-documento, está en `.specs/modules/payments/1.status.spec.md`.
+Por decisión del propietario (2026-10-03), este documento queda **alineado al
+código**: lo que sigue es el alcance vigente y lo que queda fuera se declara
+explícitamente en «Alcance futuro» (sección 15). El detalle verificado está en
+`.specs/modules/payments/1.status.spec.md`.
 
-Ninguna capacidad descrita aquí como objetivo debe leerse como disponible
-actualmente sin comprobar esa spec de estado.
+### Alcance vigente
+
+Implementado y operativo:
+
+- pagos con uno o varios componentes de pago;
+- estados `PENDING`, `CONFIRMED`, `CANCELLED` y `REFUNDED`;
+- confirmación y anulación de pagos con motivo;
+- catálogos de métodos de pago y cuentas monetarias, con alta y listado;
+- gastos pagados desde una cuenta monetaria;
+- traslados de dinero entre cuentas, como par atómico salida/entrada;
+- reembolsos parciales o totales de un pago;
+- moneda original, tipo de cambio e equivalente en USD por componente.
+
+Las escrituras se ejecutan mediante las RPC `SECURITY DEFINER` del módulo
+(`create_payment`, `confirm_payment`, `cancel_payment`, `create_payment_method`,
+`create_money_account`, `create_expense`, `create_refund`,
+`transfer_between_accounts`), que son el camino correcto: las tablas solo
+conceden `SELECT` a `anon` y `authenticated`. Es el patrón que exige
+`MODULE_SECURITY_CONTRACT.md` §6.
+
+### Fuera de alcance por ahora
+
+Ver sección 15. En particular quedan pendientes: anticipos y créditos a favor
+del cliente, notas de crédito, depósitos sin identificar, aplicación de pagos a
+facturas, series de recibo por usuario, comprobantes impresos, permisos por
+operación, reportes mensuales y operación sin conexión.
 
 ## 2. Propósito y límites
 
@@ -324,7 +346,32 @@ Las integraciones se realizarán mediante API pública de cada módulo. Confirma
 una operación que afecte varios módulos exigirá una función transaccional de
 PostgreSQL.
 
-## 15. Fuera de alcance inicial
+## 15. Alcance futuro
+
+Por decisión del propietario (2026-10-03) el documento queda alineado al
+código. Todo lo siguiente queda **fuera del alcance vigente** y no debe
+prometerse como disponible:
+
+### Del diseño original, aplazado
+
+- aplicaciones de pago a una o varias facturas, y el límite de saldo por
+  factura (sección 4.3);
+- anticipos y créditos a favor del cliente, y su aplicación parcial
+  (sección 4.4);
+- depósitos sin identificar y su posterior identificación (sección 4.5);
+- notas de crédito comerciales (sección 7);
+- series de recibo por usuario y numeración definitiva asignada por
+  PostgreSQL al confirmar (sección 8);
+- recibo impreso o exportable con A4, ticket de 80 mm y ESC/POS (sección 8);
+- permisos independientes por operación y autorización de reembolsos por
+  gerente (sección 11);
+- alerta de referencias bancarias repetidas (sección 11);
+- reportes mensuales de entradas, salidas y comisiones (sección 10);
+- operación sin conexión con cola local cifrada y comprobante provisional
+  (sección 12);
+- límite de crédito disponible y saldo por cobrar consultables desde Ventas.
+
+### De la primera versión, excluido
 
 - cuentas por pagar y vencimientos de compras a proveedores;
 - conciliación o importación de estados bancarios;
@@ -332,6 +379,9 @@ PostgreSQL.
 - adjuntos de comprobantes;
 - contabilidad general y asientos contables completos;
 - traslado de créditos entre clientes.
+
+Cuando se retome cualquiera de estos puntos, se crea su spec concreta en
+`.specs/modules/payments/` antes de implementarlo.
 
 ## 16. Deuda y decisiones para la implementación
 

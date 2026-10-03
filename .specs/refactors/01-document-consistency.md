@@ -94,8 +94,18 @@ Todas completadas salvo T13.
 - [x] T9. `flutter analyze` sin incidencias y `flutter test` 83/83 tras el
       cambio de codigo Dart.
 - [x] T10. Volver a leer los documentos corregidos y confirmar que ninguna
-      afirmacion contradice otra. Incluido el matiz de que Pagos tiene
-      lecturas funcionales pero escrituras sin persistir.
+      afirmacion contradice otra.
+- [x] T14. **Correccion de un error propio**: una version intermedia de estos
+      cambios afirmo que las escrituras de Pagos no persistian porque su capa
+      de datos no usaba RPC. Falso. El diagnostico salio de un
+      `grep 'rpc('` que no casa con la invocacion real
+      `_client.rpc<Map<String, dynamic>>(`. Verificadas las 8 llamadas RPC y
+      ejecutadas contra la base (`create_payment_method` y
+      `create_money_account` crean filas). Corregidos `README.md`,
+      `AGENTS.md`, `MODULE_STRUCTURE.md`, `SDD_Modulo_Pagos.md`,
+      `docs/database_schema.md` y
+      `.specs/modules/payments/1.status.spec.md`. Leccion registrada en esa
+      spec: una ausencia en un `grep` no prueba una ausencia en el codigo.
 - [x] T11. Anadida rama `.dart` a `ux-audit.sh` con checks de Flutter; los
       checks de React quedaron intactos por extension. Verificado contra
       `customers_page.dart`, `agent_page.dart`, `product_form_page.dart` y

@@ -250,8 +250,8 @@ Depende de Fase 2 y del contrato Ventas <-> Pagos.
 | # | Decision | Por que bloquea | Alternativas |
 |---|---|---|---|
 | R1 | Respuestas a las 23 preguntas de Clientes | Sin ellas no se puede diseñar el formulario ni las migraciones | Resolver todas; o resolver solo el bloque fiscal y posponer envio y perfil |
-| R2 | Alcance real de `payments` frente al SDD | Determina que es deuda y que es funcionalidad nueva | Alinear el SDD al codigo; o completar el codigo hasta el SDD |
-| R3 | Contrato publico Ventas <-> Pagos | Condiciona facturas persistentes y `PAID` | Definirlo ahora; o posponer integracion y dejar facturas sin cobro |
+| R2 | Alcance real de `payments` frente al SDD | Determina que es deuda y que es funcionalidad nueva | **Resuelto 2026-10-03: alinear el SDD al codigo.** `SDD_Modulo_Pagos.md` §1 declara el alcance vigente y §15 el futuro |
+| R3 | Contrato publico Ventas <-> Pagos | Condiciona facturas persistentes y `PAID` | **Resuelto 2026-10-03: definirlo ahora como spec** |
 | R4 | Retirar o documentar el export de `di/inventory_providers.dart` | Afecta la frontera publica de Inventario | Retirarlo (recomendado); o registrar excepcion con condicion de retiro |
 | R5 | Nombres y campos de los DTO publicos de `product` | Fija el contrato que consumiran Inventario y el catalogo | Definirlos en `03-public-dto-migration.md` T1 antes de codificar |
 

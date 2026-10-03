@@ -62,9 +62,10 @@ Estado actual:
   tienen modelo de datos y RPC, pero sus pantallas son listas de solo lectura.
 - Configuración: funcional y expuesta mediante API pública; administra empresa,
   catálogo, presentaciones de producto y transportes.
-- Pagos y Recibos: implementación base cableada en `main.dart`, con lecturas
-  funcionales y **escrituras todavía sin persistir** (la capa de datos accede a
-  tablas de solo `SELECT` en vez de a sus RPC). El alcance es más estrecho que
+- Pagos y Recibos: funcional en su alcance actual — pagos con componentes,
+  confirmación y anulación, métodos de pago, cuentas monetarias, gastos,
+  traslados entre cuentas y reembolsos. Las escrituras van por las RPC
+  `SECURITY DEFINER` del módulo. El alcance es más estrecho que
   `SDD_Modulo_Pagos.md`; ver `.specs/modules/payments/1.status.spec.md`.
 - Autorización: solo existe el borrador de especificación del PIN de un solo
   uso; no está implementado.

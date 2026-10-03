@@ -25,11 +25,21 @@ La regla **no** se cumple todavía en todos los objetos. Comprobado con
 | `inventory_transactions` | Concede `INSERT` y su politica RLS `inventory_local_insert` tiene `with_check true` | `INSERT 0 1`: se inserta un movimiento sin documento y el trigger `apply_inventory_transaction()` aplica el stock |
 | `audit_logs` | Concede `INSERT,UPDATE,DELETE,TRUNCATE`, pero su unica politica RLS es de `SELECT` | `new row violates row-level security policy` |
 | `inventory_balances` | Concede `TRUNCATE,REFERENCES,TRIGGER` | sin escritura directa de filas |
-| `payments`, `payment_methods`, `money_accounts`, `payment_components`, `payment_applications`, `refunds`, `expenses` | Solo `SELECT` | `permission denied` al escribir; el modulo Pagos aun no usa sus RPC |
 
 El hueco de `inventory_transactions` esta asignado al bloque 1D en
 `docs/block_1a_baseline.md` («Retirar camino directo»). Hasta entonces, insertar
 movimientos sin documento de inventario es posible para cualquier cliente local.
+
+### Patron correcto ya aplicado
+
+Las tablas de Pagos (`payments`, `payment_methods`, `money_accounts`,
+`payment_components`, `payment_applications`, `refunds`, `expenses`) conceden
+solo `SELECT` y su modulo escribe mediante RPC `SECURITY DEFINER`
+(`create_payment`, `confirm_payment`, `cancel_payment`, `create_payment_method`,
+`create_money_account`, `create_expense`, `create_refund`,
+`transfer_between_accounts`). Es exactamente lo que pide
+`MODULE_SECURITY_CONTRACT.md` §6 y sirve de referencia para endurecer
+`inventory_transactions`.
 
 ## Clientes
 

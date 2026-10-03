@@ -233,7 +233,7 @@ representa sólo como PDF.
 | Inventario | Funcional | `SDD_Modulo_Inventario.md` | Aislado mediante API pública |
 | Ventas | Parcial: agentes y clientes funcionales; documentos comerciales con modelo y RPC sin UI de creación | `SDD_Modulo_Ventas.md` | Aislado mediante API pública |
 | Configuración | Funcional | `SDD_Modulo_Configuracion.md` | Aislado mediante API pública |
-| Pagos y Recibos | Base cableada: lecturas funcionales, escrituras sin persistir todavía | `SDD_Modulo_Pagos.md` | Aislado mediante API pública |
+| Pagos y Recibos | Funcional en su alcance actual: pagos, métodos, cuentas, gastos, traslados y reembolsos | `SDD_Modulo_Pagos.md` | Aislado mediante API pública |
 | Autorización | No implementado; solo borrador de spec | `.specs/modules/authorization/` | Módulo futuro |
 
 Los directorios `lib/core/device`, `lib/core/identity`, `lib/core/navigation`,
