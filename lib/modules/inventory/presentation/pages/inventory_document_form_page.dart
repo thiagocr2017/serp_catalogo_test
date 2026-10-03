@@ -53,7 +53,7 @@ class _InventoryDocumentFormPageState
             future: Future.wait([
               ref
                   .read(productApiProvider)
-                  .getProducts(const ProductQuery(isActive: true)),
+                  .listProducts(const ProductListQuery(isActive: true)),
               ref.read(inventoryApiProvider).getLocationBalances(),
             ]),
             builder: (context, snapshot) {
@@ -63,7 +63,7 @@ class _InventoryDocumentFormPageState
               return _content(
                 context,
                 items,
-                snapshot.data![0] as List<Product>,
+                snapshot.data![0] as List<ProductSummaryDto>,
                 snapshot.data![1] as List<InventoryBalance>,
               );
             },
@@ -90,7 +90,7 @@ class _InventoryDocumentFormPageState
   Widget _content(
     BuildContext context,
     List<Warehouse> warehouses,
-    List<Product> products,
+    List<ProductSummaryDto> products,
     List<InventoryBalance> balances,
   ) {
     final isTransfer = _type == InventoryDocumentType.transfer;
@@ -448,7 +448,7 @@ class _InventoryDocumentFormPageState
 
   Widget _lineCard(
     BuildContext context,
-    List<Product> products,
+    List<ProductSummaryDto> products,
     int index, {
     required String? lineError,
     required int? available,
@@ -585,14 +585,14 @@ class _InventoryDocumentFormPageState
     );
   }
 
-  Widget _productField(List<Product> products, _DocumentLineDraft line) =>
-      RawAutocomplete<Product>(
+  Widget _productField(List<ProductSummaryDto> products, _DocumentLineDraft line) =>
+      RawAutocomplete<ProductSummaryDto>(
         textEditingController: line.productSearch,
         focusNode: line.productFocus,
         displayStringForOption: (product) => '${product.sku} · ${product.name}',
         optionsBuilder: (value) {
           final query = value.text.trim().toLowerCase();
-          if (query.isEmpty) return const Iterable<Product>.empty();
+          if (query.isEmpty) return const Iterable<ProductSummaryDto>.empty();
           return products.where(
             (product) =>
                 product.sku.toLowerCase().contains(query) ||

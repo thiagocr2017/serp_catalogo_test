@@ -92,12 +92,59 @@ Alternativa considerada: migrar todo de una vez.
 
 ## Tareas
 
-- [ ] T1. Spec de producto: nombrar `ProductSummaryDto` y `ProductDetailDto`
-      con sus campos exactos segun lo que consumen `inventory` y el catalogo.
-- [ ] T2. `data/mappers/product_mapper.dart` con conversion entidad -> DTO.
+- [x] T1. Spec de producto: **definido aqui abajo** (seccion «Contrato de
+      producto resultante»).
+- [ ] T2. `data/mappers/product_dto_mapper.dart` con conversion entidad -> DTO.
 - [ ] T3. Cambiar `ProductApi` para devolver DTO y retirar los
       `export '../domain/entities/...'`.
 - [ ] T4. Migrar consumidores de `product` y actualizar sus pruebas.
+
+## Contrato de producto resultante
+
+Definido en T1 antes de codificar, segun R5. Se verifico primero el alcance
+real: `ProductApi` tiene **un solo consumidor externo**,
+`lib/modules/inventory/presentation/pages/inventory_document_form_page.dart`,
+que usa `id`, `sku`, `name`, `description` y `currentStock`, y llama con
+`ProductQuery(isActive: true)`. Todo lo demas consume el caso de uso
+`GetProducts` del propio modulo y sigue usando la entidad de dominio.
+
+```text
+// api/product_dtos.dart
+
+ProductSummaryDto {
+  id              // opaco para el consumidor
+  sku
+  name
+  description
+  currentStock
+}
+
+ProductListQuery {
+  searchTerm      // opcional
+  categoryId      // opcional
+  isActive        // opcional
+}
+```
+
+Notas de la decision:
+
+- Se crea `ProductListQuery` en vez de reutilizar `ProductQuery` de dominio,
+  aunque hoy tengan los mismos tipos. `ProductQuery` ademas filtra por
+  `onlyLowStock`, `minimumPriceInCents` y `maximumPriceInCents`, que el
+  consumidor no necesita. Expuesto `ProductQuery`, cualquier cambio interno de
+  esos filtros romperia el contrato. La consecuencia es un mapping de 3 campos;
+  el beneficio es que el contrato publico no se mueve con el filtro interno.
+- Se renombran los metodos publicos a `listProducts` y `getProductSummary`.
+  Motivo: `SupabaseProductRepository` implementa a la vez `ProductRepository`
+  y `ProductApi`, y Dart no admite dos `getProducts` con distinto tipo de
+  retorno en la misma clase. La consecuencia es un cambio de nombre en el
+  contrato publico, que hoy tiene un unico consumidor y por tanto cero coste de
+  migracion real.
+- No se crea `ProductDetailDto`: `ProductApi.getProductById` no tiene ningun
+  consumidor externo, asi que no se expone. Si en el futuro otro modulo
+  necesita la ficha, se define ese DTO entonces, con los campos que necesite.
+- `ProductSummaryDto` lleva igualdad por valor, como exige la regla del DTO
+  publico.
 - [ ] T5. Repetir T1-T4 para las 7 entidades de `inventory`.
 - [ ] T6. Retirar los 6 `export '../domain/repositories/...'` de `sales` y
       sustituirlos por contratos de `api/`.

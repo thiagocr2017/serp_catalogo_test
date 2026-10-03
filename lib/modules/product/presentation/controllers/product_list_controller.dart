@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../di/product_providers.dart';
 import '../../api/product_api.dart';
+import '../../domain/entities/product.dart';
+import '../../domain/entities/product_query.dart';
 
 final productListControllerProvider =
     AsyncNotifierProvider<ProductListController, List<Product>>(

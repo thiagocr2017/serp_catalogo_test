@@ -1,10 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/entities/product.dart';
-import '../domain/entities/product_query.dart';
+import 'product_dtos.dart';
 
-export '../domain/entities/product.dart';
-export '../domain/entities/product_query.dart';
+export 'product_dtos.dart';
 
 final productApiProvider = Provider<ProductApi>(
   (ref) => throw StateError('ProductApi must be overridden.'),
@@ -22,9 +20,12 @@ class ProductDataRevision extends Notifier<int> {
 }
 
 abstract interface class ProductApi {
-  Future<List<Product>> getProducts([
-    ProductQuery query = const ProductQuery(),
+  /// Listado publico de productos. Devuelve el DTO publico, no la entidad de
+  /// dominio: un cambio interno de `Product` no debe romper al consumidor.
+  Future<List<ProductSummaryDto>> listProducts([
+    ProductListQuery query = const ProductListQuery(),
   ]);
 
-  Future<Product?> getProductById(String id);
+  /// Resumen de un producto por su identificador opaco, o `null` si no existe.
+  Future<ProductSummaryDto?> getProductSummary(String id);
 }

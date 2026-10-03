@@ -1,7 +1,10 @@
 import '../../api/product_api.dart';
 import '../../domain/entities/category.dart';
+import '../../domain/entities/product.dart';
+import '../../domain/entities/product_query.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../data_sources/supabase_product_data_source.dart';
+import '../mappers/product_dto_mapper.dart';
 import '../mappers/product_mapper.dart';
 
 class SupabaseProductRepository implements ProductRepository, ProductApi {
@@ -21,6 +24,19 @@ class SupabaseProductRepository implements ProductRepository, ProductApi {
   Future<Product?> getProductById(String id) async {
     return (await _dataSource.getProductById(id))?.toDomain();
   }
+
+  /// Contrato publico: expone el DTO, nunca la entidad de dominio.
+  @override
+  Future<List<ProductSummaryDto>> listProducts([
+    ProductListQuery query = const ProductListQuery(),
+  ]) async =>
+      (await getProducts(query.toDomainQuery()))
+          .map((product) => product.toSummaryDto())
+          .toList();
+
+  @override
+  Future<ProductSummaryDto?> getProductSummary(String id) async =>
+      (await getProductById(id))?.toSummaryDto();
 
   @override
   Future<Product> createProduct(

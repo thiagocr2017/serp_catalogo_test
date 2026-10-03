@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:serp/modules/product/product_module.dart';
+// Prueba de dominio: importa la entidad directamente, no el indice publico.
+import 'package:serp/modules/product/domain/entities/product.dart';
 
 void main() {
   group('Product stock status', () {
