@@ -1,0 +1,227 @@
+# 02 - Plan de deuda tecnica
+
+## Proposito
+
+Convertir la lista abierta de deuda tecnica en un plan ejecutable por fases,
+con dependencias explicitas, criterios de verificacion y decisiones que
+requieren al propietario del negocio antes de escribir codigo.
+
+Este documento es una spec de refactorizacion. Cada fase que cambie
+arquitectura tendra su propia spec concreta antes de implementarse.
+
+## Principio de ordenamiento
+
+Las fases siguen el orden **medir -> decidir -> contratar -> implementar ->
+endurecer**.
+
+- Razon: endurecer permisos o renombrar contratos sin una linea base verificable
+  rompe pantallas sin que las pruebas lo detecten, y decidir despues de
+  implementar obliga a reescribir.
+- Consecuencia frente a la alternativa: la alternativa obvia, atacar primero la
+  deuda mas visible, produce cambios que hay que revertir cuando aparece la
+  dependencia oculta. Este orden tarda mas en mostrar resultados pero evita
+  reescritura.
+
+Regla transversal: ninguna fase de endurecimiento empieza sin que existan
+pruebas negativas que fallen si el endurecimiento no se aplico.
+
+## Estado verificado de cada deuda
+
+### D-1. APIs publicas exponen entidades de dominio
+
+Confirmado. `lib/modules/product/api/product_api.dart` hace
+`export '../domain/entities/product.dart'` y `product_query.dart`.
+`lib/modules/inventory/api/inventory_api.dart` re-exporta 7 entidades de
+`../domain/entities/` ademas de `inventory_commands.dart`.
+
+Efecto: cualquier cambio interno de una entidad es un cambio de contrato
+publico. Los consumidores dependen de campos que no necesitan.
+
+### D-2. `catalog_agents` con nombre historico
+
+**La renombre de tabla ya ocurrio.** `20260929120000` renombro la tabla a
+`sales_agents` y creo `catalog_agents` como vista de compatibilidad
+`security_invoker`. Las escrituras sobre la vista ya fueron revocadas y
+verificadas por `1b3_legacy_write_revocation_test.sql`.
+
+Lo que queda es retirar la vista y corregir la documentacion que la llama tabla
+(ver `01-document-consistency.md` D3). La ventana que el SDD describia como
+«antes de que existan documentos de venta» ya se cerro parcialmente: las FK de
+`sales_quotes` y `sales_orders` apuntan a `sales_agents`. El riesgo residual es
+bajo.
+
+### D-3. RLS provisional
+
+Confirmado. Politicas `using (true)` y permisos amplios persisten en varias
+tablas mientras `anon` y `authenticated` representan al mismo cliente local.
+`docs/block_1a_baseline.md` documenta la matriz y los bloques previstos (1B.3,
+1C, 1D).
+
+### D-4. Storage sin endurecer
+
+Confirmado. `product-images` y `catalog-assets` permiten CRUD a `anon` y
+`authenticated` por politica de bucket. Un cliente local puede operar objetos
+ajenos; solo MIME y tamaño limitan la carga.
+
+### D-5. Pruebas PostgreSQL de atomicidad e idempotencia no automatizadas
+
+Parcialmente confirmado. Existen 7 archivos pgTAP en `supabase/tests/database/`
+y 1 script de concurrencia en `supabase/tests/concurrency/`, pero **todos cubren
+Configuracion y Ventas** (bloques 1B.2, 1B.3, 1B.4). No existe cobertura pgTAP
+de Inventario: atomicidad de documento, idempotencia concurrente,
+inmutabilidad de movimientos y reversión siguen validadas solo por una prueba
+manual con `ROLLBACK`.
+
+### D-6. Falta generar A4 y ticket de 80 mm de documentos de inventario
+
+Confirmado y bloqueado por una ausencia mayor: **`lib/core/documents/` no
+existe**. La capacidad compartida de renderizado A4, ticket y ESC/POS esta
+inteiramente por crear, junto con el perfil Rongta RPP300 y los transportes.
+
+### D-7. Preguntas abiertas de Clientes
+
+Confirmado. `.specs/modules/sales/customer-management/0.open-questions.md`
+contiene 23 preguntas sin resolver sobre fiscalidad, identificacion, credito,
+geografia, categorias, envio y perfil. La propia spec del modulo establece la
+regla: no implementar el rediseño completo de Clientes sin resolverlas primero.
+
+### D-8. Ventas sin conversion cotizacion a pedido, sin liquidacion de
+consignacion, sin integracion Pagos
+
+Confirmado en `SDD_Modulo_Ventas.md` seccion 7. Depende de D-7 y del contrato
+publico Ventas <-> Pagos.
+
+## Fases
+
+### Fase 0 - Linea base
+
+Objetivo: poder demostrar que una fase posterior no cambio comportamiento.
+
+- [ ] Ejecutar `flutter analyze`, `flutter test` y `flutter build macos --debug`
+      y guardar el resultado como referencia.
+- [ ] Ejecutar la suite pgTAP actual y registrar el conteo.
+- [ ] Registrar la matriz real de permisos por tabla, comparada con
+      `docs/block_1a_baseline.md`.
+
+### Fase 1 - Consistencia documental
+
+Ver `01-document-consistency.md`. No bloquea nada pero destraba a todos los
+agentes que lean la documentacion.
+
+### Fase 2 - Decisiones de negocio
+
+Objetivo: cerrar lo que no se puede resolver tecnicamente.
+
+- [ ] Resolver las 23 preguntas de
+      `.specs/modules/sales/customer-management/0.open-questions.md`.
+- [ ] Definir el contrato publico Ventas <-> Pagos antes de crear facturas
+      persistentes con aplicaciones de pago.
+- [ ] Definir el alcance real de `payments` frente al SDD: que partes del
+      diseno estan implementadas y cuales no.
+- [ ] Decidir el alcance de `InventoryApi` (D-7 de consistencia).
+
+Razon: son bloqueos de producto, no de codigo. Resolverlos evita construir
+sobre supuestos falsos.
+Consecuencia: si se implementa antes, hay que reescribir formularios,
+migraciones y contratos cuando cambien las respuestas.
+
+### Fase 3 - Contratos y arquitectura
+
+Objetivo: que un cambio interno deje de ser un cambio de contrato publico.
+
+- [ ] Spec concreta: DTO publicos para `ProductApi`.
+- [ ] Spec concreta: DTO publicos para `InventoryApi`.
+- [ ] Mappers de entidad a DTO y retirada de los
+      `export '../domain/entities/...'` de `api/`.
+- [ ] Retirar la vista `catalog_agents` tras verificar que no quedan
+      consumidores, con prueba pgTAP de ausencia.
+- [ ] Completar o justificar el indice `sales_module.dart`.
+- [ ] Revisar `main.dart` como raiz de composicion y documentar cada override.
+
+Orden sugerido: `product` primero, `inventory` despues.
+- Razon: `product` tiene menos entidades expuestas y sirve para validar el
+  patron de DTO sin arriesgar el modulo mas complejo.
+- Consecuencia: `inventory` queda mas tiempo con entidades expuestas, pero el
+  patron ya estara probado cuando se le aplique.
+
+### Fase 4 - Pruebas PostgreSQL
+
+Objetivo: tener pruebas que fallen si el endurecimiento no se aplica.
+
+- [ ] pgTAP: atomicidad de `create_and_confirm_inventory_document` ante fallo
+      intermedio.
+- [ ] pgTAP: idempotencia ante reintentos y doble envio concurrente real.
+- [ ] pgTAP: inmutabilidad de `inventory_transactions` (UPDATE y DELETE
+      bloqueados).
+- [ ] pgTAP: reversión y su limite de una reversión directa por movimiento.
+- [ ] pgTAP: atomicidad de ventas y facturas contra su documento de inventario.
+
+Razon: es el prerequisito de Fase 5. Sin estas pruebas, revocar permisos puede
+romper flujos sin que la suite lo detecte.
+Consecuencia: retrasa el endurecimiento visible, pero evita regresiones
+silenciosas en inventario, que es el libro inmutable del negocio.
+
+### Fase 5 - Endurecimiento
+
+Objetivo: cerrar los permisos amplios.
+
+- [ ] Revocar escritura directa restante segun `docs/block_1b_contract_cleanup.md`
+      (1B.3), migrando antes todos los consumidores a fachadas y RPC.
+- [ ] Endurecer `product-images` y `catalog-assets` con politica por rol y
+      prefijo, mas pgTAP negativa.
+- [ ] Sustituir identidad de dispositivo por `auth.uid()` cuando exista
+      Autenticacion.
+- [ ] Cumplir `docs/authentication_production_gate.md` antes de permitir
+      `PRODUCTION`.
+
+Depende de Fase 4. No iniciar antes.
+
+### Fase 6 - Documentos
+
+Objetivo: cumplir `DOCUMENT_STANDARDS.md` con las tres salidas.
+
+- [ ] Spec de arquitectura para `lib/core/documents/` (models, pdf, esc_pos con
+      renderer, profiles y transports).
+- [ ] Perfil Rongta RPP300.
+- [ ] Renderizado A4 y ticket 80 mm desde el mismo modelo documental.
+- [ ] ESC/POS directo con adaptadores Bluetooth y USB.
+- [ ] Aplicar al documento de inventario y validar con la lista de
+      `DOCUMENT_STANDARDS.md` seccion 11.
+
+Razon: la capacidad compartida antes que las plantillas por modulo.
+Consecuencia: frente a implementar el A4 de inventario directamente, tarda mas
+en ver el primer PDF, pero evita duplicar renderizado en cada modulo y permite
+cumplir las tres salidas sin reescribir.
+
+### Fase 7 - Funcionalidad de Ventas
+
+Depende de Fase 2 y del contrato Ventas <-> Pagos.
+
+- [ ] Conversion de cotizacion a pedido (estado `CONVERTED`).
+- [ ] Liquidacion de consignacion (estado `SETTLED`).
+- [ ] Integracion con Pagos para marcar facturas como `PAID`.
+- [ ] UI de creacion y edicion de documentos comerciales con pruebas de
+      operacion y validacion.
+
+## Decisiones requeridas
+
+| # | Decision | Por que bloquea | Alternativas |
+|---|---|---|---|
+| R1 | Respuestas a las 23 preguntas de Clientes | Sin ellas no se puede diseñar el formulario ni las migraciones | Resolver todas; o resolver solo el bloque fiscal y posponer envio y perfil |
+| R2 | Alcance real de `payments` frente al SDD | Determina que es deuda y que es funcionalidad nueva | Alinear el SDD al codigo; o completar el codigo hasta el SDD |
+| R3 | Contrato publico Ventas <-> Pagos | Condiciona facturas persistentes y `PAID` | Definirlo ahora; o posponer integracion y dejar facturas sin cobro |
+| R4 | Retirar o documentar el export de `di/inventory_providers.dart` | Afecta la frontera publica de Inventario | Retirarlo (recomendado); o registrar excepcion con condicion de retiro |
+
+## Fuera de alcance
+
+- Nueva funcionalidad comercial.
+- Cambios de interfaz visual.
+- Migracion a otro almacenamiento o framework.
+
+## Criterio de listo
+
+1. Cada fase tiene su propia spec concreta antes de implementarse.
+2. Ninguna fase de endurecimiento se ejecuta sin sus pruebas negativas.
+3. Cada deuda queda cerrada, o rechazada con motivo registrado aqui.
+4. `docs/form_test_coverage.md`, los SDD y `.specs/` reflejan el estado final.
+5. `flutter analyze`, `flutter test` y la suite pgTAP pasan.
