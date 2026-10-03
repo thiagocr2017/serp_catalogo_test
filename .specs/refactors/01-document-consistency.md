@@ -70,32 +70,41 @@ Hechos que sirven de fuente de verdad para las correcciones:
 | D8 | `MODULE_STRUCTURE.md` §5: el indice es «la unica interfaz publica» | `main.dart` importa archivos de `api/` de sales por separado, saltandose el indice | Completar `sales_module.dart` o justificar por escrito cada export omitido |
 | D9 | `.opencode/skills/ux-ui-screen-design/scripts/ux-audit.sh` se documenta como auditoria UX generica | Audita React (`import React`, `useRef`, `useEffect`, `*.test.tsx`); con `.dart` reportaba 2 fallos falsos por pantalla y proponia crear archivos `.test.dart` fuera de `test/` | Anadir rama `.dart` con checks de Flutter y conservar los de React por extension |
 | D10 | `AGENTS.md` y `.specs/README.md`: «Las specs se versionan junto al codigo» | `.specs/`, `.opencode/` y `docs/database_schema.md` no estan en `.gitignore` pero **nunca se hicieron `git add`**: la fuente viva de especificaciones no esta en control de versiones | Anadir `.specs/`, `.opencode/` y `docs/` a git. Sin esto, el workflow SDD entero puede perderse y ningun agente futuro leera estas reglas |
+| D11 | `docs/database_schema.md`: «Las tablas de negocio estan endurecidas para escritura directa... los roles `anon` y `authenticated` no deben hacer `insert`, `update` o `delete` directo sobre las tablas protegidas» | Verificado con `set local role authenticated` dentro de `rollback`: `inventory_transactions` acepta `INSERT 0 1` directo. Su RLS `inventory_local_insert` tiene `with_check true` y hay `GRANT INSERT`. Un cliente puede insertar movimientos sin documento, y el trigger `apply_inventory_transaction()` aplica el stock | Corregir la afirmacion del documento y anotar la excepcion, con el hueco ya asignado al bloque 1D en `docs/block_1a_baseline.md` |
+| D12 | `docs/database_schema.md` lista `product_catalog` en «Tablas actuales» | Es una **vista** (`relkind = v`), igual que `catalog_agents` | Moverla a la seccion de vistas |
 
 ## Tareas
 
-- [ ] T1. Registrar esta spec en `.specs/README.md`.
-- [ ] T2. Corregir D1 en `README.md` y `MODULE_STRUCTURE.md`.
-- [ ] T3. Corregir D2 en `SDD_Modulo_Pagos.md` y crear
-      `.specs/modules/payments/1.status.spec.md` con el alcance real frente al
-      diseno del SDD.
-- [ ] T4. Corregir D3 en `docs/database_schema.md`.
-- [ ] T5. Corregir D4 y D8 en `MODULE_STRUCTURE.md`.
-- [ ] T6. Corregir D5 en `AGENTS.md`.
-- [ ] T7. Resolver D6 dejando una sola fuente normativa por regla.
-- [ ] T8. Resolver D7 tras decidir el alcance de `InventoryApi`.
-- [ ] T9. Ejecutar `flutter analyze` y `flutter test` si alguna correccion
-      toca codigo Dart.
-- [ ] T10. Volver a leer los documentos corregidos y confirmar que ninguna
-      afirmacion contradice otra.
-- [x] T11. **Resuelto**: anadida rama `.dart` a
-      `ux-audit.sh` con checks de Flutter; los checks de React quedaron
-      intactos por extension. Verificado contra `customers_page.dart`,
-      `agent_page.dart`, `product_form_page.dart` y `warehouses_page.dart`
-      (la busqueda de tests ahora encuentra
-      `*_form_validation_test.dart`) y contra un `.tsx` de control.
-- [ ] T12. **Requiere decision del propietario**: versionar `.specs/`,
-      `.opencode/` y `docs/` en git (D10). No ejecutar junto con el trabajo
-      en curso ajeno sin revisarlo primero.
+Todas completadas salvo T13.
+
+- [x] T1. Registrar esta spec en `.specs/README.md`.
+- [x] T2. Corregir D1 en `README.md` y `MODULE_STRUCTURE.md`.
+- [x] T3. Corregir D2 en `SDD_Modulo_Pagos.md` y crear
+      `.specs/modules/payments/1.status.spec.md`.
+- [x] T4. Corregir D3, D11 y D12 en `docs/database_schema.md`.
+- [x] T5. Corregir D4 y D8 en `MODULE_STRUCTURE.md`.
+- [x] T6. Corregir D5 en `AGENTS.md`.
+- [x] T7. Resolver D6: `MODULE_SECURITY_CONTRACT.md` queda como fuente única y
+      `.specs/01-module-contracts.md` pasa a enlazarlo sin repetir reglas.
+- [x] T8. Resolver D7 con la Opcion A: retirado
+      `export 'di/inventory_providers.dart'` de `inventory_module.dart`;
+      `main.dart` lo importa como raiz de composicion y
+      `inventory_documents_page.dart` importa las capas de su propio modulo.
+      Verificado que `product` no usaba ningun read-model de `di/`.
+- [x] T9. `flutter analyze` sin incidencias y `flutter test` 83/83 tras el
+      cambio de codigo Dart.
+- [x] T10. Volver a leer los documentos corregidos y confirmar que ninguna
+      afirmacion contradice otra. Incluido el matiz de que Pagos tiene
+      lecturas funcionales pero escrituras sin persistir.
+- [x] T11. Anadida rama `.dart` a `ux-audit.sh` con checks de Flutter; los
+      checks de React quedaron intactos por extension. Verificado contra
+      `customers_page.dart`, `agent_page.dart`, `product_form_page.dart` y
+      `warehouses_page.dart`, y contra un `.tsx` de control.
+- [x] T12. Versionar `.specs/`, `.opencode/` y `docs/` en git (D10), en un
+      commit separado del trabajo en curso ajeno.
+- [ ] T13. Retirar la vista `catalog_agents` cuando se compruebe que no quedan
+      consumidores, con prueba pgTAP de ausencia. Depende de Fase 3 en
+      `02-tech-debt-plan.md`.
 
 ## Decisiones requeridas
 

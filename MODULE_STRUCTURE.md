@@ -21,24 +21,31 @@ lib/
 │   ├── audit/
 │   ├── configuration/
 │   ├── database/
+│   ├── device/
 │   ├── errors/
+│   ├── identity/
+│   ├── navigation/
+│   ├── offline/
 │   └── utilities/
 ├── shared/                       # Tema y componentes visuales compartidos
+│   ├── navigation/
 │   ├── theme/
 │   └── widgets/
 └── modules/
-    ├── product/
+    ├── configuration/
     ├── inventory/
-    ├── sales/
-    └── configuration/
+    ├── payments/
+    ├── product/
+    └── sales/
 
 test/
 ├── core/
+├── shared/
 └── modules/
-    ├── product/
+    ├── configuration/
     ├── inventory/
-    ├── sales/
-    └── configuration/
+    ├── product/
+    └── sales/
 ```
 
 `core` y `shared` no son módulos de negocio. Solo deben contener elementos genuinamente reutilizables por varios módulos.
@@ -224,21 +231,33 @@ representa sólo como PDF.
 |---|---|---|---|
 | Productos | Funcional | `SDD_Modulo_Productos.md` | Aislado mediante API pública |
 | Inventario | Funcional | `SDD_Modulo_Inventario.md` | Aislado mediante API pública |
-| Ventas | Inicial: gestión de agentes | `SDD_Modulo_Ventas.md` | Estructura base completa |
+| Ventas | Parcial: agentes y clientes funcionales; documentos comerciales con modelo y RPC sin UI de creación | `SDD_Modulo_Ventas.md` | Aislado mediante API pública |
 | Configuración | Funcional | `SDD_Modulo_Configuracion.md` | Aislado mediante API pública |
-| Pagos y Recibos | Diseño aprobado, no implementado | `SDD_Modulo_Pagos.md` | Módulo futuro |
+| Pagos y Recibos | Base cableada: lecturas funcionales, escrituras sin persistir todavía | `SDD_Modulo_Pagos.md` | Aislado mediante API pública |
+| Autorización | No implementado; solo borrador de spec | `.specs/modules/authorization/` | Módulo futuro |
+
+Los directorios `lib/core/device`, `lib/core/identity`, `lib/core/navigation`,
+`lib/core/offline`, `lib/shared/navigation` y `lib/modules/payments` existen en
+el código y forman parte del árbol real.
 
 ### Deuda técnica reconocida
 
 - Las API públicas de Productos e Inventario exponen temporalmente algunas
   entidades de dominio como modelos estables; podrán sustituirse por DTO
-  públicos si ambos dominios divergen.
+  públicos si ambos dominios divergen. Ver `02-tech-debt-plan.md` fase 3.
 - `main.dart`, como raíz de composición autorizada, todavía construye las
   implementaciones Supabase y registra sus overrides de Riverpod.
-- La tabla de agentes conserva el nombre histórico `catalog_agents`; debe
-  decidirse si se renombra antes de que existan documentos de venta.
+- El nombre histórico `catalog_agents` quedó resuelto: la tabla se renombró a
+  `sales_agents` y `catalog_agents` sobrevive solo como vista de
+  compatibilidad sin escritura. Falta retirar esa vista.
+- `sales_module.dart` no exporta todo lo que `api/` contiene, y `main.dart`
+  importa `api/sales_invoice_api.dart` y `api/quote_api.dart` directamente.
+- `inventory_module.dart` exporta `di/inventory_providers.dart`, contra la
+  prohibición de exponer providers internos de Riverpod.
 - La preferencia de tema y la configuración técnica de conexión permanecen en
   `core/configuration`; no son datos comerciales del módulo Configuración.
+- `inventory_transactions` todavía acepta `INSERT` directo de `anon` y
+  `authenticated`; esquivar el flujo documental es posible hasta el bloque 1D.
 
 Estas diferencias se corregirán de manera incremental, conservando pruebas y
 puntos de restauración en Git antes de cada cambio estructural.

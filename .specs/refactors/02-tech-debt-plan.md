@@ -95,12 +95,52 @@ publico Ventas <-> Pagos.
 
 ### Fase 0 - Linea base
 
-Objetivo: poder demostrar que una fase posterior no cambio comportamiento.
+**Estado: completada.** Resultado registrado el 2026-10-03 contra el arbol con
+trabajo en curso sin commitear (Flutter 3.47.0, Supabase CLI 2.118.0):
 
-- [ ] Ejecutar `flutter analyze`, `flutter test` y `flutter build macos --debug`
-      y guardar el resultado como referencia.
-- [ ] Ejecutar la suite pgTAP actual y registrar el conteo.
-- [ ] Registrar la matriz real de permisos por tabla, comparada con
+| Verificacion | Resultado |
+|---|---|
+| `flutter analyze` | `No issues found!` |
+| `flutter test` | 83/83 `All tests passed!` |
+| `flutter build macos --debug` | `✓ Built build/macos/Build/Products/Debug/serp.app` |
+| `supabase test db` | 7 archivos, 71 tests, `Result: PASS` |
+| `supabase/tests/concurrency/1b2_idempotency_concurrency.sh` | `PASS: concurrent retries returned one agent and one presentation with completed receipts` |
+
+Defecto hallado y corregido durante la linea base: `1b2_configuration_sales_transitions_test.sql`
+no era hermetico. Afirmaba `catalog_preferences_version = 1` como valor absoluto,
+pero `select_catalog_agent`, `save_catalog_preferences` y
+`clear_selected_catalog_agent_internal` incrementan esa columna en uso normal de
+la aplicacion. Contra cualquier base ya usada el archivo fallaba en el test 10 y
+abortaba los 3 restantes (`Bad plan. You planned 13 tests but ran 10`). Se
+corrigio comparando deltas capturados dentro de la transaccion que se revierte,
+sin cambiar el contrato verificado. El mismo patron debe aplicarse a toda prueba
+pgTAP nueva: **no afirmar valores absolutos de columnas que la aplicacion muta**.
+
+Matriz real de permisos: 43 objetos con privilegio para `anon`/`authenticated`.
+La mayoria son de solo `SELECT`. Excepciones comprobadas ejecutando el intento
+dentro de `rollback` con `set local role authenticated`:
+
+| Objeto | Privilegio concedido | RLS | Resultado real | Veredicto |
+|---|---|---|---|---|
+| `inventory_transactions` | INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER | solo `SELECT` + `INSERT` (`with_check true`) | **`INSERT 0 1`**: se puede insertar un movimiento directo | **Hueco**: permite esquivar el flujo documental |
+| `audit_logs` | INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER | solo `SELECT` | `new row violates row-level security policy` | Bloqueado por RLS, pero el `GRANT` esta por demas |
+| `audit_actions` | ninguno | politica `ALL` | `permission denied for table audit_actions` | Protegido por `GRANT` |
+| `inventory_balances` | TRUNCATE, REFERENCES, TRIGGER | solo `SELECT` | sin escritura directa | `TRUNCATE` sobrante |
+| `product_catalog` | INSERT, UPDATE, DELETE, TRUNCATE | — | es una **vista**, no una tabla | Documentada como tabla |
+| Resto (37 objetos) | `SELECT` | `SELECT` | solo lectura | Conforme |
+
+El hueco de `inventory_transactions` ya estaba previsto en
+`docs/block_1a_baseline.md` como bloque 1D («Retirar camino directo»), pero
+`docs/database_schema.md` afirma que «las tablas de negocio estan endurecidas
+para escritura directa», lo cual hoy no es cierto para esa tabla. Ver D11 en
+`01-document-consistency.md`.
+
+Tareas ejecutadas:
+
+- [x] Ejecutar `flutter analyze`, `flutter test` y `flutter build macos --debug`.
+- [x] Ejecutar la suite pgTAP actual y registrar el conteo (71 tests).
+- [x] Ejecutar la prueba de concurrencia de idempotencia.
+- [x] Registrar la matriz real de permisos por tabla, comparada con
       `docs/block_1a_baseline.md`.
 
 ### Fase 1 - Consistencia documental

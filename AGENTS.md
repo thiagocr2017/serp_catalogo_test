@@ -62,7 +62,7 @@ Each module lives in `lib/modules/<name>/` with strict layer separation:
 | `inventory` | Functional, public API |
 | `configuration` | Functional, public API |
 | `sales` | Partial — agents and full customer CRUD functional; commercial documents (quotes, orders, invoices, returns, consignations) have data model + RPC but read-only UI |
-| `payments` | Partial — functional base implementation wired in `main.dart`; scope is narrower than `SDD_Modulo_Pagos.md` |
+| `payments` | Partial — base implementation wired in `main.dart`; reads work, writes do not persist yet (data layer hits `SELECT`-only tables instead of its RPCs). Narrower scope than `SDD_Modulo_Pagos.md` |
 | `authorization` | Spec draft only (`one-time-pin-approval`), not implemented |
 
 Before trusting a module's status, verify it against `lib/modules/<name>/` and

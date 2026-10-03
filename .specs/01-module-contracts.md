@@ -38,6 +38,16 @@ Cada API publica debe cubrir:
 
 ## Referencia
 
-Este archivo resume las reglas vigentes de `MODULE_SECURITY_CONTRACT.md`. Si
-hay conflicto, se debe actualizar ambos documentos en la misma tarea o migrar la
-regla definitivamente a esta spec.
+Este archivo **no** vuelve a enunciar las reglas: solo las enlaza. La unica
+fuente normativa del contrato de seguridad es
+[`MODULE_SECURITY_CONTRACT.md`](../../MODULE_SECURITY_CONTRACT.md), que se
+mantiene ahi hasta completar su migracion a `.specs/`.
+
+Regla de resolucion: ante cualquier duda o conflicto se aplica
+`MODULE_SECURITY_CONTRACT.md`. **No** se duplica una regla en este archivo; se
+enlaza. Enunciar la misma regla en dos sitios es lo que produjo la deriva
+documental corregida en `.specs/refactors/01-document-consistency.md`.
+
+Tarea abierta: migrar el contenido de `MODULE_SECURITY_CONTRACT.md` a
+`.specs/` y convertir ese archivo en un puntero. Hasta entonces sigue siendo
+obligatorio tal como exigen `AGENTS.md` y `MODULE_STRUCTURE.md`.

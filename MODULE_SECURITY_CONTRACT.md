@@ -7,6 +7,12 @@ de SERP. Complementa `MODULE_STRUCTURE.md` y es obligatorio para módulos
 actuales y futuros. Los SDD describen reglas funcionales; este contrato define
 cómo pueden colaborar sin exponer su implementación ni saltarse controles.
 
+> **Fuente única.** Este archivo es la única redacción normativa del contrato
+> de seguridad. `.specs/01-module-contracts.md` lo enlaza y no lo repite. Ante
+> un conflicto, se aplica este documento. Cuando su contenido se migre a
+> `.specs/`, este archivo quedará como puntero y la migración se registrará
+> aquí.
+
 ## 2. Propiedad y frontera
 
 - Cada dato, operación y documento tiene un único módulo propietario.

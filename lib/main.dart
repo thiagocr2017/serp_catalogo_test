@@ -23,6 +23,8 @@ import 'modules/product/data/repositories/supabase_promotion_repository.dart';
 import 'modules/product/di/promotion_providers.dart';
 import 'modules/inventory/data/data_sources/supabase_inventory_data_source.dart';
 import 'modules/inventory/data/repositories/supabase_inventory_repository.dart';
+// Raíz de composición: puede ver implementaciones y registros de di/ de cada
+// módulo. El resto de módulos no puede.
 import 'modules/inventory/di/inventory_providers.dart';
 import 'modules/inventory/inventory_module.dart';
 import 'modules/sales/data/data_sources/supabase_sales_data_source.dart';

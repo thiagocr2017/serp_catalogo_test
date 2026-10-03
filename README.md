@@ -57,10 +57,17 @@ Estado actual:
 - Productos: funcional y comunicado con otros módulos mediante API pública.
 - Inventario y auditoría: funcionales y comunicados mediante API pública, con
   bodegas, ubicaciones, saldos por ubicación y comandos idempotentes.
-- Ventas: estructura modular inicial completa; administra agentes del catálogo.
+- Ventas: parcial. Agentes y clientes funcionales (CRUD completo de clientes con
+  contactos). Cotizaciones, pedidos, facturas, devoluciones y consignaciones
+  tienen modelo de datos y RPC, pero sus pantallas son listas de solo lectura.
 - Configuración: funcional y expuesta mediante API pública; administra empresa,
-  catálogo y presentaciones de producto.
-- Pagos y Recibos: diseño funcional aprobado; todavía no implementado.
+  catálogo, presentaciones de producto y transportes.
+- Pagos y Recibos: implementación base cableada en `main.dart`, con lecturas
+  funcionales y **escrituras todavía sin persistir** (la capa de datos accede a
+  tablas de solo `SELECT` en vez de a sus RPC). El alcance es más estrecho que
+  `SDD_Modulo_Pagos.md`; ver `.specs/modules/payments/1.status.spec.md`.
+- Autorización: solo existe el borrador de especificación del PIN de un solo
+  uso; no está implementado.
 
 Documentación:
 

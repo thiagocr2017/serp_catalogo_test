@@ -2,9 +2,20 @@
 
 ## 1. Estado del documento
 
-Este documento define el diseño aprobado del módulo de Pagos y Recibos. El
-módulo todavía no está implementado. Ninguna capacidad descrita como objetivo
-debe interpretarse como funcionalidad disponible actualmente.
+Este documento sigue siendo el **diseño funcional aprobado** del módulo de
+Pagos y Recibos. La afirmación anterior de que «el módulo todavía no está
+implementado» era incorrecta: existe una implementación funcional base en
+`lib/modules/payments/`, cableada en `main.dart`, con tablas, RPC y migraciones
+propias.
+
+Sin embargo, esa implementación es **más estrecha que este diseño** y hoy sus
+operaciones de escritura **no llegan a persistir**, porque la capa de datos
+accede directamente a tablas que solo conceden `SELECT`. El detalle verificado,
+incluidas las RPC disponibles y el alcance real frente a cada sección de este
+documento, está en `.specs/modules/payments/1.status.spec.md`.
+
+Ninguna capacidad descrita aquí como objetivo debe leerse como disponible
+actualmente sin comprobar esa spec de estado.
 
 ## 2. Propósito y límites
 

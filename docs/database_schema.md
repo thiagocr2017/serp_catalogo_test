@@ -5,16 +5,31 @@ PostgreSQL/Supabase.
 
 ## Regla de permisos
 
-Las tablas de negocio estan endurecidas para escritura directa. En general, la
-app debe escribir mediante RPCs `security definer`; los roles `anon` y
-`authenticated` no deben hacer `insert`, `update` o `delete` directo sobre las
-tablas protegidas.
+La regla es que la app escriba mediante RPCs `security definer` y que los roles
+`anon` y `authenticated` no hagan `insert`, `update` ni `delete` directo sobre
+las tablas protegidas.
 
 Ejemplo confirmado:
 
 - `customer_contacts` concede `SELECT` a `anon` y `authenticated`.
 - Un `POST /rest/v1/customer_contacts` falla con `permission denied for table customer_contacts`.
 - `POST /rest/v1/rpc/create_customer_contact` funciona y genera UUID real.
+
+### Excepciones verificadas (2026-10-03)
+
+La regla **no** se cumple todavía en todos los objetos. Comprobado con
+`set local role authenticated` dentro de `rollback`:
+
+| Objeto | Situacion | Prueba |
+|---|---|---|
+| `inventory_transactions` | Concede `INSERT` y su politica RLS `inventory_local_insert` tiene `with_check true` | `INSERT 0 1`: se inserta un movimiento sin documento y el trigger `apply_inventory_transaction()` aplica el stock |
+| `audit_logs` | Concede `INSERT,UPDATE,DELETE,TRUNCATE`, pero su unica politica RLS es de `SELECT` | `new row violates row-level security policy` |
+| `inventory_balances` | Concede `TRUNCATE,REFERENCES,TRIGGER` | sin escritura directa de filas |
+| `payments`, `payment_methods`, `money_accounts`, `payment_components`, `payment_applications`, `refunds`, `expenses` | Solo `SELECT` | `permission denied` al escribir; el modulo Pagos aun no usa sus RPC |
+
+El hueco de `inventory_transactions` esta asignado al bloque 1D en
+`docs/block_1a_baseline.md` («Retirar camino directo»). Hasta entonces, insertar
+movimientos sin documento de inventario es posible para cualquier cliente local.
 
 ## Clientes
 
@@ -155,22 +170,33 @@ contacto completo es opcional; una fila de contacto incompleta no debe guardarse
 - `sales_agent_create_commands.entity_id -> sales_agents.id`
 - `sales_invoice_commands.entity_id -> sales_invoices.id`
 
-## Tablas actuales
+## Objetos actuales
 
-La base local contiene 49 tablas publicas:
+La base local contiene 49 tablas publicas y 2 vistas.
+
+### Vistas
+
+No son tablas y no admiten escritura propia:
+
+- `catalog_agents`: vista `security_invoker` de compatibilidad sobre
+  `sales_agents`. La tabla original fue renombrada en
+  `20260929120000_add_configuration_sales_versioned_rpc_foundations.sql`.
+- `product_catalog`: vista de catalogo.
+
+### Tablas
 
 `app_settings`, `audit_actions`, `audit_logs`, `bulk_promotion_categories`,
-`bulk_promotion_products`, `bulk_promotions`, `catalog_agents`,
-`catalog_logo_operations`, `categories`, `customer_contacts`,
+`bulk_promotion_products`, `bulk_promotions`, `carrier_create_commands`,
+`carriers`, `catalog_logo_operations`, `categories`, `customer_contacts`,
 `customer_credit_entries`, `customers`, `expenses`, `inventory_balances`,
 `inventory_count_lines`, `inventory_counts`, `inventory_document_lines`,
 `inventory_documents`, `inventory_locations`, `inventory_reservations`,
 `inventory_transactions`, `money_account_transactions`, `money_accounts`,
 `packaging_presentation_create_commands`, `packaging_presentations`,
 `payment_applications`, `payment_commands`, `payment_components`,
-`payment_methods`, `payments`, `product_catalog`, `products`,
-`refund_commands`, `refunds`, `sales_agent_create_commands`, `sales_agents`,
-`sales_consignment_lines`, `sales_consignments`, `sales_invoice_commands`,
-`sales_invoice_lines`, `sales_invoices`, `sales_order_lines`, `sales_orders`,
-`sales_quote_lines`, `sales_quotes`, `sales_return_lines`, `sales_returns`,
-`unidentified_deposits`, `warehouses`.
+`payment_methods`, `payments`, `products`, `refund_commands`, `refunds`,
+`sales_agent_create_commands`, `sales_agents`, `sales_consignment_lines`,
+`sales_consignments`, `sales_invoice_commands`, `sales_invoice_lines`,
+`sales_invoices`, `sales_order_lines`, `sales_orders`, `sales_quote_lines`,
+`sales_quotes`, `sales_return_lines`, `sales_returns`, `unidentified_deposits`,
+`warehouses`.
