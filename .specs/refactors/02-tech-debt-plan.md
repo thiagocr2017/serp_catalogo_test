@@ -145,8 +145,9 @@ Tareas ejecutadas:
 
 ### Fase 1 - Consistencia documental
 
-Ver `01-document-consistency.md`. No bloquea nada pero destraba a todos los
-agentes que lean la documentacion.
+**Estado: completada.** Ver `01-document-consistency.md` (D1-D12 resueltas) y
+`03-public-dto-migration.md` para el resto. No bloquea nada pero destraba a
+todos los agentes que lean la documentacion.
 
 ### Fase 2 - Decisiones de negocio
 
@@ -168,6 +169,7 @@ migraciones y contratos cuando cambien las respuestas.
 ### Fase 3 - Contratos y arquitectura
 
 Objetivo: que un cambio interno deje de ser un cambio de contrato publico.
+Plan detallado y orden de migracion en `03-public-dto-migration.md`.
 
 - [ ] Spec concreta: DTO publicos para `ProductApi`.
 - [ ] Spec concreta: DTO publicos para `InventoryApi`.
@@ -251,6 +253,10 @@ Depende de Fase 2 y del contrato Ventas <-> Pagos.
 | R2 | Alcance real de `payments` frente al SDD | Determina que es deuda y que es funcionalidad nueva | Alinear el SDD al codigo; o completar el codigo hasta el SDD |
 | R3 | Contrato publico Ventas <-> Pagos | Condiciona facturas persistentes y `PAID` | Definirlo ahora; o posponer integracion y dejar facturas sin cobro |
 | R4 | Retirar o documentar el export de `di/inventory_providers.dart` | Afecta la frontera publica de Inventario | Retirarlo (recomendado); o registrar excepcion con condicion de retiro |
+| R5 | Nombres y campos de los DTO publicos de `product` | Fija el contrato que consumiran Inventario y el catalogo | Definirlos en `03-public-dto-migration.md` T1 antes de codificar |
+
+R4 quedo resuelta sin necesitar decision: se retiro el export y se verifico que
+ningun consumidor lo necesitaba. Ver `01-document-consistency.md` T8.
 
 ## Fuera de alcance
 

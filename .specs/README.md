@@ -38,6 +38,8 @@ refactorizaciones complejas y pantallas/formularios.
   la documentacion de referencia y el estado real del codigo.
 - `refactors/02-tech-debt-plan.md`: plan por fases de la deuda tecnica, con
   dependencias y decisiones pendientes.
+- `refactors/03-public-dto-migration.md`: migracion de entidades y repositorios
+  expuestos a DTO publicos estables.
 
 Los SDD historicos de la raiz siguen siendo referencia mientras se migra su
 contenido de forma organica a estas specs.
