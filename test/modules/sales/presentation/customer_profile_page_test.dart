@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:serp/modules/configuration/configuration_module.dart';
 import 'package:serp/modules/sales/api/customer_api.dart';
 import 'package:serp/modules/sales/api/sales_routes.dart';
 import 'package:serp/modules/sales/presentation/pages/customer_profile_page.dart';
@@ -50,6 +51,39 @@ void main() {
     expect(find.textContaining('Compras'), findsWidgets);
     expect(find.text('Sin resumen de compras todavia'), findsOneWidget);
     expect(find.text('Pedidos'), findsOneWidget);
+    expect(find.text('Tipo de identificacion'), findsOneWidget);
+    expect(find.text('Sin tipo'), findsOneWidget);
+    expect(find.text('Actividad economica'), findsOneWidget);
+    expect(find.text('Sin actividad'), findsOneWidget);
+    expect(find.text('Factura electronica'), findsOneWidget);
+    expect(find.text('No'), findsOneWidget);
+  });
+
+  testWidgets('perfil muestra los datos fiscales de factura electronica', (
+    tester,
+  ) async {
+    final api = _FakeCustomerApi(
+      customers: const [
+        Customer(
+          id: 'customer-1',
+          name: 'Cliente FE Completo',
+          requiresEInvoice: true,
+          taxId: '3-101-123456',
+          identificationTypeId: 'type-1',
+          email: 'fe@example.com',
+          address: 'Av. Central 1',
+          economicActivity: 'Servicios',
+        ),
+      ],
+      contacts: const [],
+    );
+
+    await tester.pumpWidget(_profileApp(api, 'customer-1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cedula juridica'), findsOneWidget);
+    expect(find.text('Servicios'), findsOneWidget);
+    expect(find.text('Si'), findsOneWidget);
   });
 
   testWidgets('perfil muestra alerta de cliente inactivo', (tester) async {
@@ -94,7 +128,19 @@ void main() {
 }
 
 Widget _profileApp(_FakeCustomerApi api, String customerId) => ProviderScope(
-  overrides: [customerApiProvider.overrideWithValue(api)],
+  overrides: [
+    customerApiProvider.overrideWithValue(api),
+    identificationTypeDtosProvider.overrideWith(
+      (ref) async => const [
+        IdentificationTypeDto(
+          id: 'type-1',
+          code: 'JURIDICAL_ID',
+          name: 'Cedula juridica',
+          isActive: true,
+        ),
+      ],
+    ),
+  ],
   child: MaterialApp(home: CustomerProfilePage(customerId: customerId)),
 );
 
@@ -142,6 +188,7 @@ class _FakeCustomerApi implements CustomerApi {
     String customerType = 'CASH',
     int? creditDays,
     String documentPreference = 'E_INVOICE',
+    bool requiresEInvoice = false,
   }) async => throw UnimplementedError();
 
   @override
@@ -162,6 +209,7 @@ class _FakeCustomerApi implements CustomerApi {
     String customerType = 'CASH',
     int? creditDays,
     String documentPreference = 'E_INVOICE',
+    bool requiresEInvoice = false,
   }) async => throw UnimplementedError();
 
   @override

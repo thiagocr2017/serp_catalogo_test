@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utilities/phone_number.dart';
 import '../../../../shared/widgets/status_chip.dart';
+import '../../../configuration/configuration_module.dart';
 import '../../api/customer_api.dart';
 
 class CustomerProfilePage extends ConsumerWidget {
@@ -219,14 +220,14 @@ class _Alerts extends StatelessWidget {
   }
 }
 
-class _InfoColumn extends StatelessWidget {
+class _InfoColumn extends ConsumerWidget {
   const _InfoColumn({required this.customer, required this.contacts});
 
   final Customer customer;
   final AsyncValue<List<CustomerContact>> contacts;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context, WidgetRef ref) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       _ProfileSection(
@@ -253,6 +254,30 @@ class _InfoColumn extends StatelessWidget {
             'Identificacion',
             customer.taxId,
             empty: 'Sin identificacion',
+          ),
+          ref
+              .watch(identificationTypeDtosProvider)
+              .when(
+                loading: () =>
+                    const _InfoLine('Tipo de identificacion', 'Cargando...'),
+                error: (_, _) => const _InfoLine(
+                  'Tipo de identificacion',
+                  'No disponible',
+                ),
+                data: (types) => _InfoLine(
+                  'Tipo de identificacion',
+                  _identificationLabel(types, customer.identificationTypeId),
+                  empty: 'Sin tipo',
+                ),
+              ),
+          _InfoLine(
+            'Actividad economica',
+            customer.economicActivity,
+            empty: 'Sin actividad',
+          ),
+          _InfoLine(
+            'Factura electronica',
+            customer.requiresEInvoice ? 'Si' : 'No',
           ),
           _InfoLine(
             'Documento habitual',
@@ -548,6 +573,16 @@ String _documentPreferenceLabel(String value) => switch (value) {
   'ASK_EACH_TIME' => 'Preguntar al facturar',
   _ => value,
 };
+
+/// Resuelve el tipo de identificacion guardado. Si el catalogo ya no lo tiene
+/// (por ejemplo, se desactivo), se informa en lugar de fingir que no hay tipo.
+String? _identificationLabel(List<IdentificationTypeDto> types, String? id) {
+  if (id == null || id.isEmpty) return null;
+  for (final type in types) {
+    if (type.id == id) return type.name;
+  }
+  return 'No disponible';
+}
 
 String _money(double value) => value == 0 ? '0.00' : value.toStringAsFixed(2);
 

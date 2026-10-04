@@ -384,23 +384,11 @@ void main() {
   });
 
   testWidgets(
-    'cliente con factura electronica requiere tipo de identificacion',
+    'cliente con factura electronica exige todos los datos fiscales',
     (tester) async {
       final api = _RecordingCustomerApi();
 
-      await tester.pumpWidget(
-        _app(
-          api,
-          identificationTypes: const [
-            IdentificationTypeDto(
-              id: 'type-1',
-              code: 'JURIDICAL_ID',
-              name: 'Cédula jurídica',
-              isActive: true,
-            ),
-          ],
-        ),
-      );
+      await tester.pumpWidget(_app(api, identificationTypes: _identificationTypes));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Nuevo cliente'));
@@ -409,12 +397,17 @@ void main() {
         find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
         'Cliente FE',
       );
-      await _selectDocumentPreference(tester, 'Factura electrónica');
+      await _enableRequiresEInvoice(tester);
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar'));
       await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
       await tester.pumpAndSettle();
 
+      // Identificación, tipo, dirección y actividad comparten el mensaje.
+      expect(find.text('Requerido para factura electrónica.'), findsNWidgets(4));
       expect(
-        find.text('La factura electrónica requiere tipo de identificación.'),
+        find.text(
+          'Correo de documentación obligatorio para factura electrónica.',
+        ),
         findsOneWidget,
       );
       expect(api.createdCustomers, 0);
@@ -422,23 +415,11 @@ void main() {
   );
 
   testWidgets(
-    'cliente con factura electronica requiere actividad economica',
+    'cliente con factura electronica solo exige el tipo de identificacion',
     (tester) async {
       final api = _RecordingCustomerApi();
 
-      await tester.pumpWidget(
-        _app(
-          api,
-          identificationTypes: const [
-            IdentificationTypeDto(
-              id: 'type-1',
-              code: 'JURIDICAL_ID',
-              name: 'Cédula jurídica',
-              isActive: true,
-            ),
-          ],
-        ),
-      );
+      await tester.pumpWidget(_app(api, identificationTypes: _identificationTypes));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Nuevo cliente'));
@@ -447,26 +428,102 @@ void main() {
         find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
         'Cliente FE',
       );
-      await _selectDocumentPreference(tester, 'Factura electrónica');
-      await tester.ensureVisible(
-        find.widgetWithText(DropdownButtonFormField<String?>, 'Tipo de identificación'),
+      await _enableRequiresEInvoice(tester);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Cédula jurídica / Tax ID'),
+        '123456789',
       );
-      await tester.tap(
-        find.widgetWithText(DropdownButtonFormField<String?>, 'Tipo de identificación'),
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Correo principal'),
+        'fe@example.com',
       );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Cédula jurídica').last);
-      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Dirección'),
+        'Av. Central 1',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Actividad económica'),
+        'Servicios',
+      );
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar'));
       await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('La factura electrónica requiere actividad económica.'),
-        findsOneWidget,
-      );
+      expect(find.text('Requerido para factura electrónica.'), findsOneWidget);
       expect(api.createdCustomers, 0);
     },
   );
+
+  testWidgets('cliente con factura electronica guarda los datos completos', (
+    tester,
+  ) async {
+    final api = _RecordingCustomerApi();
+
+    await tester.pumpWidget(_app(api, identificationTypes: _identificationTypes));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nuevo cliente'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
+      'Cliente FE',
+    );
+    await _enableRequiresEInvoice(tester);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Cédula jurídica / Tax ID'),
+      '123456789',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Correo principal'),
+      'fe@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Dirección'),
+      'Av. Central 1',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Actividad económica'),
+      'Servicios',
+    );
+    await _selectIdentificationType(tester, 'Cédula jurídica');
+    await _selectDocumentPreference(tester, 'Factura electrónica');
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.createdCustomers, 1);
+    expect(api.createdRequiresEInvoice, isTrue);
+    expect(api.createdTaxId, '123456789');
+    expect(api.createdEmail, 'fe@example.com');
+    expect(api.createdAddress, 'Av. Central 1');
+    expect(api.createdIdentificationTypeId, 'type-1');
+    expect(api.createdEconomicActivity, 'Servicios');
+    expect(api.createdDocumentPreference, 'E_INVOICE');
+  });
+
+  testWidgets('cliente sin factura electronica no exige datos fiscales', (
+    tester,
+  ) async {
+    final api = _RecordingCustomerApi();
+
+    await tester.pumpWidget(_app(api, identificationTypes: _identificationTypes));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nuevo cliente'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
+      'Cliente Simple',
+    );
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.createdCustomers, 1);
+    expect(api.createdRequiresEInvoice, isFalse);
+    expect(api.createdTaxId, isNull);
+    expect(api.createdIdentificationTypeId, isNull);
+  });
 
   testWidgets('cliente credito exige dias de credito', (tester) async {
     final api = _RecordingCustomerApi();
@@ -851,6 +908,36 @@ Future<void> _selectCustomerType(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
 }
 
+const _identificationTypes = [
+  IdentificationTypeDto(
+    id: 'type-1',
+    code: 'JURIDICAL_ID',
+    name: 'Cédula jurídica',
+    isActive: true,
+  ),
+];
+
+Future<void> _enableRequiresEInvoice(WidgetTester tester) async {
+  await tester.ensureVisible(find.byType(Switch));
+  await tester.tap(find.byType(Switch));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _selectIdentificationType(
+  WidgetTester tester,
+  String label,
+) async {
+  final dropdown = find.widgetWithText(
+    DropdownButtonFormField<String?>,
+    'Tipo de identificación',
+  );
+  await tester.ensureVisible(dropdown);
+  await tester.tap(dropdown);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label).last);
+  await tester.pumpAndSettle();
+}
+
 Future<void> _selectDocumentPreference(WidgetTester tester, String label) async {
   await tester.ensureVisible(
     find.widgetWithText(DropdownButtonFormField<String>, 'Documento habitual'),
@@ -894,12 +981,14 @@ class _RecordingCustomerApi implements CustomerApi {
   String? createdCustomerType;
   int? createdCreditDays;
   String? createdDocumentPreference;
+  bool createdRequiresEInvoice = false;
   String? updatedCustomerId;
   String? updatedCustomerName;
   double? updatedCreditLimit;
   String? updatedPreferredCarrierId;
   String? updatedIdentificationTypeId;
   String? updatedEconomicActivity;
+  bool updatedRequiresEInvoice = false;
   String? deactivatedCustomerId;
   String? deactivationReason;
   final savedContactIds = <String?>[];
@@ -939,6 +1028,7 @@ class _RecordingCustomerApi implements CustomerApi {
     String customerType = 'CASH',
     int? creditDays,
     String documentPreference = 'E_INVOICE',
+    bool requiresEInvoice = false,
   }) async {
     createdCustomers++;
     createdCustomerName = name;
@@ -956,6 +1046,7 @@ class _RecordingCustomerApi implements CustomerApi {
     createdCustomerType = customerType;
     createdCreditDays = creditDays;
     createdDocumentPreference = documentPreference;
+    createdRequiresEInvoice = requiresEInvoice;
     return Customer(
       id: 'customer-new',
       name: name,
@@ -972,6 +1063,7 @@ class _RecordingCustomerApi implements CustomerApi {
       customerType: customerType,
       creditDays: creditDays,
       documentPreference: documentPreference,
+      requiresEInvoice: requiresEInvoice,
       creditLimit: creditLimit ?? 0,
     );
   }
@@ -994,6 +1086,7 @@ class _RecordingCustomerApi implements CustomerApi {
     String customerType = 'CASH',
     int? creditDays,
     String documentPreference = 'E_INVOICE',
+    bool requiresEInvoice = false,
   }) async {
     updatedCustomerId = id;
     updatedCustomerName = name;
@@ -1001,6 +1094,7 @@ class _RecordingCustomerApi implements CustomerApi {
     updatedPreferredCarrierId = preferredCarrierId;
     updatedIdentificationTypeId = identificationTypeId;
     updatedEconomicActivity = economicActivity;
+    updatedRequiresEInvoice = requiresEInvoice;
     return Customer(
       id: id,
       name: name,
@@ -1017,6 +1111,7 @@ class _RecordingCustomerApi implements CustomerApi {
       customerType: customerType,
       creditDays: creditDays,
       documentPreference: documentPreference,
+      requiresEInvoice: requiresEInvoice,
       creditLimit: creditLimit ?? 0,
     );
   }

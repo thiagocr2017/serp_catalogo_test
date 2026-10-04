@@ -48,7 +48,7 @@ select is(
   (public.create_customer(
     'pgTAP Customer', null, null, null, null, null, null,
     null, null, null::uuid, 'CASH', null, 'E_INVOICE',
-    null::uuid, null,
+    false::boolean, null::uuid, null,
     'actor','device','device'
   )).name,
   'pgTAP Customer',

@@ -15,6 +15,7 @@ class Customer {
     this.customerType = 'CASH',
     this.creditDays,
     this.documentPreference = 'E_INVOICE',
+    this.requiresEInvoice = false,
     this.deactivationReason,
     this.isActive = true,
     this.creditLimit = 0,
@@ -38,6 +39,7 @@ class Customer {
   final String customerType;
   final int? creditDays;
   final String documentPreference;
+  final bool requiresEInvoice;
   final String? deactivationReason;
   final bool isActive;
   final double creditLimit;

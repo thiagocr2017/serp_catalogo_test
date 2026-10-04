@@ -41,6 +41,7 @@ class SupabaseCustomerDataSource {
     String customerType = 'CASH',
     int? creditDays,
     String documentPreference = 'E_INVOICE',
+    bool requiresEInvoice = false,
   }) async {
     final row = await _client.rpc<Map<String, dynamic>>(
       'create_customer',
@@ -60,6 +61,7 @@ class SupabaseCustomerDataSource {
         'p_customer_type': customerType,
         'p_credit_days': creditDays,
         'p_document_preference': documentPreference,
+        'p_requires_e_invoice': requiresEInvoice,
         'p_actor_name': _device.actorName,
         'p_device_name': _device.name,
         'p_device_identifier': _device.identifier,
@@ -85,6 +87,7 @@ class SupabaseCustomerDataSource {
     String customerType = 'CASH',
     int? creditDays,
     String documentPreference = 'E_INVOICE',
+    bool requiresEInvoice = false,
   }) async {
     final row = await _client.rpc<Map<String, dynamic>>(
       'update_customer',
@@ -105,6 +108,7 @@ class SupabaseCustomerDataSource {
         'p_customer_type': customerType,
         'p_credit_days': creditDays,
         'p_document_preference': documentPreference,
+        'p_requires_e_invoice': requiresEInvoice,
         'p_actor_name': _device.actorName,
         'p_device_name': _device.name,
         'p_device_identifier': _device.identifier,
@@ -322,6 +326,7 @@ class SupabaseCustomerDataSource {
     customerType: row['customer_type'] as String? ?? 'CASH',
     creditDays: (row['credit_days'] as num?)?.toInt(),
     documentPreference: row['document_preference'] as String? ?? 'E_INVOICE',
+    requiresEInvoice: row['requires_e_invoice'] as bool? ?? false,
     deactivationReason: row['deactivation_reason'] as String?,
     isActive: row['is_active'] as bool? ?? true,
     creditLimit: (row['credit_limit'] as num?)?.toDouble() ?? 0,

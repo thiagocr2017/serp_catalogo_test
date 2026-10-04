@@ -30,6 +30,7 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
     String customerType = 'CASH',
     int? creditDays,
     String documentPreference = 'E_INVOICE',
+    bool requiresEInvoice = false,
   }) => _source.createCustomer(
     name: name,
     displayName: displayName,
@@ -46,6 +47,7 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
     customerType: customerType,
     creditDays: creditDays,
     documentPreference: documentPreference,
+    requiresEInvoice: requiresEInvoice,
   );
 
   @override
@@ -66,6 +68,7 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
     String customerType = 'CASH',
     int? creditDays,
     String documentPreference = 'E_INVOICE',
+    bool requiresEInvoice = false,
   }) => _source.updateCustomer(
     id: id,
     name: name,
@@ -83,6 +86,7 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
     customerType: customerType,
     creditDays: creditDays,
     documentPreference: documentPreference,
+    requiresEInvoice: requiresEInvoice,
   );
 
   @override

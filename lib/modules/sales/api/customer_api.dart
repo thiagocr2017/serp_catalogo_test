@@ -27,6 +27,7 @@ abstract interface class CustomerApi {
     String customerType,
     int? creditDays,
     String documentPreference,
+    bool requiresEInvoice,
   });
   Future<Customer> updateCustomer({
     required String id,
@@ -45,6 +46,7 @@ abstract interface class CustomerApi {
     String customerType,
     int? creditDays,
     String documentPreference,
+    bool requiresEInvoice,
   });
   Future<void> deactivateCustomer(String id, {String? reason});
 

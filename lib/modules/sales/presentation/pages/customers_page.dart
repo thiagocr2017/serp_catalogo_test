@@ -279,6 +279,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   late final TextEditingController _economicActivity;
   late String _customerType;
   late String _documentPreference;
+  late bool _requiresEInvoice;
   final _contacts = <_ContactDraft>[];
   final _removedContactIds = <String>[];
   final _copyEmails = <_EmailDraft>[];
@@ -306,6 +307,10 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   String? _creditLimitError;
   String? _creditDaysError;
   String? _contactsError;
+  String? _taxIdError;
+  String? _identificationTypeError;
+  String? _addressError;
+  String? _economicActivityError;
 
   @override
   void initState() {
@@ -335,7 +340,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       text: existing?.economicActivity ?? '',
     );
     _customerType = existing?.customerType ?? 'CASH';
-    _documentPreference = existing?.documentPreference ?? 'ASK_EACH_TIME';
+    _documentPreference = existing?.documentPreference ?? 'E_INVOICE';
+    _requiresEInvoice = existing?.requiresEInvoice ?? false;
     for (final controller in [
       _name,
       _displayName,
@@ -391,6 +397,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
         _economicActivity.text = customer.economicActivity ?? '';
         _customerType = customer.customerType;
         _documentPreference = customer.documentPreference;
+        _requiresEInvoice = customer.requiresEInvoice;
       });
       await _loadContacts(customer.id);
       await _loadEmails(customer.id);
@@ -547,8 +554,13 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       _economicActivity.text,
       _customerType,
       _documentPreference,
+      _requiresEInvoice.toString(),
       _contactsError ?? '',
       _creditDaysError ?? '',
+      _taxIdError ?? '',
+      _identificationTypeError ?? '',
+      _addressError ?? '',
+      _economicActivityError ?? '',
       contacts,
       copyEmails,
     ].join('§');
@@ -715,10 +727,16 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                             const SizedBox(height: 12),
                             TextField(
                               controller: _taxId,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Cédula jurídica / Tax ID',
-                                border: OutlineInputBorder(),
+                                errorText: _taxIdError,
+                                border: const OutlineInputBorder(),
                               ),
+                              onChanged: (_) {
+                                if (_taxIdError != null) {
+                                  setState(() => _taxIdError = null);
+                                }
+                              },
                             ),
                             const SizedBox(height: 12),
                             ref
@@ -733,9 +751,10 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                       DropdownButtonFormField<String?>(
                                         initialValue: _identificationTypeId,
                                         isExpanded: true,
-                                        decoration: const InputDecoration(
+                                        decoration: InputDecoration(
                                           labelText: 'Tipo de identificación',
-                                          border: OutlineInputBorder(),
+                                          errorText: _identificationTypeError,
+                                          border: const OutlineInputBorder(),
                                         ),
                                         items: [
                                           const DropdownMenuItem<String?>(
@@ -750,6 +769,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                         ],
                                         onChanged: (value) => setState(() {
                                           _identificationTypeId = value;
+                                          _identificationTypeError = null;
                                           _markDirty();
                                         }),
                                       ),
@@ -757,10 +777,16 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                             const SizedBox(height: 12),
                             TextField(
                               controller: _economicActivity,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Actividad económica',
-                                border: OutlineInputBorder(),
+                                errorText: _economicActivityError,
+                                border: const OutlineInputBorder(),
                               ),
+                              onChanged: (_) {
+                                if (_economicActivityError != null) {
+                                  setState(() => _economicActivityError = null);
+                                }
+                              },
                             ),
                             const SizedBox(height: 12),
                             _buildCopyEmailsSection(),
@@ -869,6 +895,19 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                 _markDirty();
                               }),
                             ),
+                            const SizedBox(height: 12),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Requiere factura electrónica'),
+                              subtitle: const Text(
+                                'Exige identificación, dirección, correo de documentación y actividad económica.',
+                              ),
+                              value: _requiresEInvoice,
+                              onChanged: (value) => setState(() {
+                                _requiresEInvoice = value;
+                                _markDirty();
+                              }),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -878,10 +917,16 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                           children: [
                             TextField(
                               controller: _address,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Dirección',
-                                border: OutlineInputBorder(),
+                                errorText: _addressError,
+                                border: const OutlineInputBorder(),
                               ),
+                              onChanged: (_) {
+                                if (_addressError != null) {
+                                  setState(() => _addressError = null);
+                                }
+                              },
                             ),
                             const SizedBox(height: 12),
                             TextField(
@@ -1327,25 +1372,36 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       setState(() => _creditDaysError = 'Ingrese días de crédito.');
       return;
     }
-    if (_documentPreference == 'E_INVOICE') {
-      if (_identificationTypeId == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('La factura electrónica requiere tipo de identificación.'),
-            ),
-          );
-        }
-        return;
-      }
-      if (_economicActivity.text.trim().isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('La factura electrónica requiere actividad económica.'),
-            ),
-          );
-        }
+    if (_requiresEInvoice) {
+      // Decisión 20: alcance completo. Se marcan todas las faltantes a la vez
+      // para que el usuario las resuelva en una sola pasada.
+      final missingTaxId = _taxId.text.trim().isEmpty;
+      final missingType = _identificationTypeId == null;
+      final missingEmail = email.isEmpty;
+      final missingAddress = _address.text.trim().isEmpty;
+      final missingActivity = _economicActivity.text.trim().isEmpty;
+      if (missingTaxId ||
+          missingType ||
+          missingEmail ||
+          missingAddress ||
+          missingActivity) {
+        setState(() {
+          _taxIdError = missingTaxId
+              ? 'Requerido para factura electrónica.'
+              : null;
+          _identificationTypeError = missingType
+              ? 'Requerido para factura electrónica.'
+              : null;
+          _emailError = missingEmail
+              ? 'Correo de documentación obligatorio para factura electrónica.'
+              : null;
+          _addressError = missingAddress
+              ? 'Requerido para factura electrónica.'
+              : null;
+          _economicActivityError = missingActivity
+              ? 'Requerido para factura electrónica.'
+              : null;
+        });
         return;
       }
     }
@@ -1383,6 +1439,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
           customerType: _customerType,
           creditDays: _customerType == 'CREDIT' ? creditDays : null,
           documentPreference: _documentPreference,
+          requiresEInvoice: _requiresEInvoice,
         );
         customerId = created.id;
       } else {
@@ -1407,6 +1464,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
           customerType: _customerType,
           creditDays: _customerType == 'CREDIT' ? creditDays : null,
           documentPreference: _documentPreference,
+          requiresEInvoice: _requiresEInvoice,
         );
         customerId = existing.id;
       }
