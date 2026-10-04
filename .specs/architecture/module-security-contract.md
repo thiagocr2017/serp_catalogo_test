@@ -3,7 +3,7 @@
 ## 1. Propósito y obligatoriedad
 
 Este documento define la frontera técnica y de seguridad de todos los módulos
-de SERP. Complementa `MODULE_STRUCTURE.md` y es obligatorio para módulos
+de SERP. Complementa `.specs/architecture/module-structure.md` y es obligatorio para módulos
 actuales y futuros. Los SDD describen reglas funcionales; este contrato define
 cómo pueden colaborar sin exponer su implementación ni saltarse controles.
 

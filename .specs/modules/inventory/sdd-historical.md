@@ -32,7 +32,7 @@ Se encuentran implementados:
 ## 3. Arquitectura
 
 El módulo vive en `lib/modules/inventory/` y sigue la estructura definida en
-`MODULE_STRUCTURE.md`. PostgreSQL es la fuente de verdad. Riverpod conecta la
+`.specs/architecture/module-structure.md`. PostgreSQL es la fuente de verdad. Riverpod conecta la
 interfaz `InventoryRepository` con `SupabaseInventoryRepository`.
 
 Inventario obtiene productos mediante `product_module.dart` y su API pública.
@@ -127,7 +127,7 @@ consolidado.
 - Los movimientos anteriores fueron asociados a documentos migrados para
   conservar navegación y trazabilidad.
 - Todo documento confirmado ofrecerá PDF A4 y ticket térmico de 80 mm conforme
-  a `DOCUMENT_STANDARDS.md`. La generación todavía está pendiente.
+  a `.specs/architecture/document-standards.md`. La generación todavía está pendiente.
 
 ### Bodegas y ubicaciones
 

@@ -18,6 +18,14 @@ Ejemplos:
 - documentos de inventario;
 - pedidos, facturas, guias o despachos.
 
+Reglas:
+
+- Debe advertir si el usuario intenta salir con cambios sin guardar.
+- La advertencia aplica al boton de cancelar, al retroceso de navegacion y al
+  menu lateral de la app.
+- Al guardar, cancelar descartando o salir aceptando la advertencia, el estado
+  de cambios pendientes debe limpiarse.
+
 ## Formulario rapido
 
 Usar modal cuando el usuario esta en otro flujo y solo necesita crear o editar

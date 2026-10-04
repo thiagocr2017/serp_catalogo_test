@@ -1,6 +1,6 @@
 # Cobertura de pruebas de formularios
 
-Este registro complementa `DOCUMENT_STANDARDS.md` y `MODULE_STRUCTURE.md`.
+Este registro complementa `.specs/architecture/document-standards.md` y `.specs/architecture/module-structure.md`.
 Un formulario sólo puede marcarse como listo cuando tiene pruebas acordes con
 su operación real:
 

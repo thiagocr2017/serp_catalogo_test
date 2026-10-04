@@ -1,7 +1,6 @@
 -- Endurecer la auditoria y las operaciones de logo.
 --
--- `MODULE_SECURITY_CONTRACT.md` §8 (hoy
--- `.specs/architecture/module-security-contract.md` §8) dice que la auditoria
+-- `.specs/architecture/module-security-contract.md` §8 dice que la auditoria
 -- es `append-only` para roles ordinarios. No lo era.
 --
 -- Antes de esta migracion:

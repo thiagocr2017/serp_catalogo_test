@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 // Este archivo importa SOLO el indice publico del modulo. Si deja de compilar,
 // la superficie publica quedo incompleta y el DTO se dejo fuera de `api/`.
 //
-// Prueba de frontera exigida por `MODULE_SECURITY_CONTRACT.md` §10 y por
+// Prueba de frontera exigida por `.specs/architecture/module-security-contract.md` §10 y por
 // `.specs/refactors/03-public-dto-migration.md`: un consumidor debe poder
 // trabajar importando unicamente `product_module.dart`.
 import 'package:serp/modules/product/product_module.dart';

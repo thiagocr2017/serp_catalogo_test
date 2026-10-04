@@ -54,7 +54,7 @@ bajo.
 
 Confirmado. Politicas `using (true)` y permisos amplios persisten en varias
 tablas mientras `anon` y `authenticated` representan al mismo cliente local.
-`docs/block_1a_baseline.md` documenta la matriz y los bloques previstos (1B.3,
+`.specs/archive/verification/block-1a-baseline.md` documenta la matriz y los bloques previstos (1B.3,
 1C, 1D).
 
 ### D-4. Storage sin endurecer
@@ -95,7 +95,7 @@ el rediseño de Clientes.
 ### D-8. Ventas sin conversion cotizacion a pedido, sin liquidacion de
 consignacion, sin integracion Pagos
 
-Confirmado en `SDD_Modulo_Ventas.md` seccion 7. Depende de D-7 y del contrato
+Confirmado en `.specs/modules/sales/sdd-historical.md` seccion 7. Depende de D-7 y del contrato
 publico Ventas <-> Pagos.
 
 ## Fases
@@ -137,8 +137,8 @@ dentro de `rollback` con `set local role authenticated`:
 | Resto (37 objetos) | `SELECT` | `SELECT` | solo lectura | Conforme |
 
 El hueco de `inventory_transactions` ya estaba previsto en
-`docs/block_1a_baseline.md` como bloque 1D («Retirar camino directo»), pero
-`docs/database_schema.md` afirma que «las tablas de negocio estan endurecidas
+`.specs/archive/verification/block-1a-baseline.md` como bloque 1D («Retirar camino directo»), pero
+`.specs/database/schema-current.md` afirma que «las tablas de negocio estan endurecidas
 para escritura directa», lo cual hoy no es cierto para esa tabla. Ver D11 en
 `01-document-consistency.md`.
 
@@ -148,7 +148,7 @@ Tareas ejecutadas:
 - [x] Ejecutar la suite pgTAP actual y registrar el conteo (71 tests).
 - [x] Ejecutar la prueba de concurrencia de idempotencia.
 - [x] Registrar la matriz real de permisos por tabla, comparada con
-      `docs/block_1a_baseline.md`.
+      `.specs/archive/verification/block-1a-baseline.md`.
 
 ### Fase 1 - Consistencia documental
 
@@ -230,20 +230,24 @@ Objetivo: cerrar los permisos amplios.
       `20261003100000_harden_inventory_ledger.sql`, pruebas en
       `inventory_ledger_hardening_test.sql`. Verificado que las RPC
       `SECURITY DEFINER` siguen escribiendo.
-- [ ] Revocar escritura directa restante segun `docs/block_1b_contract_cleanup.md`
+- [x] **Cerrado 2026-10-03**: endurecer `audit_logs` (append-only de verdad),
+      `audit_actions` y `catalog_logo_operations`. Migracion
+      `20261003110000_harden_audit_trail.sql`, pruebas en
+      `audit_trail_immutability_test.sql` (25, 12 fallaban antes).
+- [ ] Revocar escritura directa restante segun `.specs/refactors/04-block-1b-contract-cleanup.md`
       (1B.3), migrando antes todos los consumidores a fachadas y RPC.
 - [ ] Endurecer `product-images` y `catalog-assets` con politica por rol y
       prefijo, mas pgTAP negativa.
 - [ ] Sustituir identidad de dispositivo por `auth.uid()` cuando exista
       Autenticacion.
-- [ ] Cumplir `docs/authentication_production_gate.md` antes de permitir
+- [ ] Cumplir `.specs/modules/authorization/production-gate.md` antes de permitir
       `PRODUCTION`.
 
 Depende de Fase 4. No iniciar antes.
 
 ### Fase 6 - Documentos
 
-Objetivo: cumplir `DOCUMENT_STANDARDS.md` con las tres salidas.
+Objetivo: cumplir `.specs/architecture/document-standards.md` con las tres salidas.
 
 - [ ] Spec de arquitectura para `lib/core/documents/` (models, pdf, esc_pos con
       renderer, profiles y transports).
@@ -251,7 +255,7 @@ Objetivo: cumplir `DOCUMENT_STANDARDS.md` con las tres salidas.
 - [ ] Renderizado A4 y ticket 80 mm desde el mismo modelo documental.
 - [ ] ESC/POS directo con adaptadores Bluetooth y USB.
 - [ ] Aplicar al documento de inventario y validar con la lista de
-      `DOCUMENT_STANDARDS.md` seccion 11.
+      `.specs/architecture/document-standards.md` seccion 11.
 
 Razon: la capacidad compartida antes que las plantillas por modulo.
 Consecuencia: frente a implementar el A4 de inventario directamente, tarda mas
@@ -273,7 +277,7 @@ Depende de Fase 2 y del contrato Ventas <-> Pagos.
 | # | Decision | Por que bloquea | Alternativas |
 |---|---|---|---|
 | R1 | Respuestas a las 23 preguntas de Clientes | Sin ellas no se puede diseñar el formulario ni las migraciones | **Resuelto 2026-10-03: resolver todas.** Registro completo en `modules/sales/customer-management/0.open-questions.md` (44 decisiones) |
-| R2 | Alcance real de `payments` frente al SDD | Determina que es deuda y que es funcionalidad nueva | **Resuelto 2026-10-03: alinear el SDD al codigo.** `SDD_Modulo_Pagos.md` §1 declara el alcance vigente y §15 el futuro |
+| R2 | Alcance real de `payments` frente al SDD | Determina que es deuda y que es funcionalidad nueva | **Resuelto 2026-10-03: alinear el SDD al codigo.** `.specs/modules/payments/sdd-historical.md` §1 declara el alcance vigente y §15 el futuro |
 | R3 | Contrato publico Ventas <-> Pagos | Condiciona facturas persistentes y `PAID` | **Resuelto 2026-10-03: definirlo ahora como spec** |
 | R4 | Retirar o documentar el export de `di/inventory_providers.dart` | Afecta la frontera publica de Inventario | Retirarlo (recomendado); o registrar excepcion con condicion de retiro |
 | R5 | Nombres y campos de los DTO publicos de `product` | Fija el contrato que consumiran Inventario y el catalogo | Definirlos en `03-public-dto-migration.md` T1 antes de codificar |
@@ -292,5 +296,5 @@ ningun consumidor lo necesitaba. Ver `01-document-consistency.md` T8.
 1. Cada fase tiene su propia spec concreta antes de implementarse.
 2. Ninguna fase de endurecimiento se ejecuta sin sus pruebas negativas.
 3. Cada deuda queda cerrada, o rechazada con motivo registrado aqui.
-4. `docs/form_test_coverage.md`, los SDD y `.specs/` reflejan el estado final.
+4. `.specs/testing/form-coverage.md`, los SDD y `.specs/` reflejan el estado final.
 5. `flutter analyze`, `flutter test` y la suite pgTAP pasan.

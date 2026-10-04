@@ -47,6 +47,6 @@ repositorios antiguos.
 ## Condición para iniciar 1B.3
 
 1B.3 debe seguir la lista de
-`docs/block_1b_contract_cleanup.md`, migrar todos los consumidores y sólo
+`.specs/refactors/04-block-1b-contract-cleanup.md`, migrar todos los consumidores y sólo
 entonces revocar escritura directa sobre las tablas heredadas. El módulo de
 Autenticación permanece planificado como el último módulo antes de producción.

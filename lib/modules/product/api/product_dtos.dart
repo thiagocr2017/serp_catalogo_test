@@ -34,7 +34,7 @@ class ProductListQuery {
 ///
 /// DTO publico inmutable y estable: solo los campos que el consumidor necesita.
 /// Quitar o reinterpretar un campo exige migrar consumidores y registrar el
-/// cambio (`MODULE_SECURITY_CONTRACT.md` §3).
+/// cambio (`.specs/architecture/module-security-contract.md` §3).
 ///
 /// Los identificadores son opacos: el consumidor los devuelve tal cual y no
 /// debe derivar nada de su estructura.

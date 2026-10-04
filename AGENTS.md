@@ -62,7 +62,7 @@ Each module lives in `lib/modules/<name>/` with strict layer separation:
 | `inventory` | Functional, public API |
 | `configuration` | Functional, public API |
 | `sales` | Partial — agents and full customer CRUD functional; commercial documents (quotes, orders, invoices, returns, consignations) have data model + RPC but read-only UI |
-| `payments` | Partial — base implementation wired in `main.dart`; reads and writes both work (writes go through the module's `SECURITY DEFINER` RPCs). Narrower scope than `SDD_Modulo_Pagos.md` |
+| `payments` | Partial — base implementation wired in `main.dart`; reads and writes both work (writes go through the module's `SECURITY DEFINER` RPCs). Narrower scope than `.specs/modules/payments/sdd-historical.md` |
 | `authorization` | Spec draft only (`one-time-pin-approval`), not implemented |
 
 Before trusting a module's status, verify it against `lib/modules/<name>/` and
@@ -123,9 +123,9 @@ Feature/screen specs:
 └── 4.tests.spec.md         # TEST CONTRACT: required coverage for the screen
 ```
 
-Module-level business rules live under `.specs/modules/<module>/`. Existing
-`SDD_Modulo_*.md` files are historical references while their content is
-migrated organically into `.specs/`.
+Module-level business rules live under `.specs/modules/<module>/`. Historical
+module SDDs now live as `sdd-historical.md` inside each module's `.specs`
+directory while their content is migrated organically into focused specs.
 
 Rules:
 - Before changing a screen, form, feature, or complex refactor, read the
@@ -157,7 +157,8 @@ Screen/form test specs:
 
 ## Document Output Standard
 
-Every confirmed document must support three outputs (defined in `DOCUMENT_STANDARDS.md`):
+Every confirmed document must support three outputs (defined in
+`.specs/architecture/document-standards.md`):
 1. **A4 PDF** — formal, email, conventional printing
 2. **80mm thermal ticket** — fast delivery
 3. **ESC/POS direct** — Bluetooth/USB thermal printer (no PDF intermediate)
@@ -217,11 +218,12 @@ Recommended workflow for a new screen: `references/screen-anatomy.md` +
 **Rules:**
 - A screen spec produced with this skill must still satisfy the four-file spec
   set in `.specs/screens/<screen>/` and the "form ready" contract in
-  `DOCUMENT_STANDARDS.md` §12. The skill improves UX quality; it does not
+  `.specs/architecture/document-standards.md` §12. The skill improves UX quality; it does not
   replace the test contract in `4.tests.spec.md`.
 - UX recommendations must respect module boundaries: a screen may only consume
   its own module's internals plus other modules' `<name>_module.dart` exports.
-- When the skill's guidance conflicts with `.specs/` or `DOCUMENT_STANDARDS.md`,
+- When the skill's guidance conflicts with `.specs/` or
+  `.specs/architecture/document-standards.md`,
   the project spec wins. Record the conflict in the screen's spec instead of
   silently picking one.
 - Dark mode is the default; use `ColorScheme` unless a semantic color needs
@@ -232,7 +234,7 @@ Recommended workflow for a new screen: `references/screen-anatomy.md` +
 - [`.specs/`](.specs/README.md) — Living SDD/spec-driven workflow
 - [`.specs/refactors/`](.specs/refactors/01-document-consistency.md) — Active refactor specs: document consistency and tech-debt plan
 - [`.opencode/skills/`](.opencode/skills/ux-ui-screen-design/SKILL.md) — Project skills (see the Skills section above)
-- [`MODULE_STRUCTURE.md`](MODULE_STRUCTURE.md) — Module conventions and technical debt
-- [`MODULE_SECURITY_CONTRACT.md`](MODULE_SECURITY_CONTRACT.md) — Mandatory inter-module communication, security, and audit rules
-- [`DOCUMENT_STANDARDS.md`](DOCUMENT_STANDARDS.md) — Cross-cutting document output rules
-- [`SDD_Modulo_*.md`](SDD_Modulo_Productos.md) — Per-module design docs (Productos, Inventario, Ventas, Configuracion, Pagos)
+- [`.specs/architecture/module-structure.md`](.specs/architecture/module-structure.md) — Module conventions and technical debt
+- [`.specs/architecture/module-security-contract.md`](.specs/architecture/module-security-contract.md) — Mandatory inter-module communication, security, and audit rules
+- [`.specs/architecture/document-standards.md`](.specs/architecture/document-standards.md) — Cross-cutting document output rules
+- [`.specs/modules/*/sdd-historical.md`](.specs/modules/product/sdd-historical.md) — Historical per-module design docs

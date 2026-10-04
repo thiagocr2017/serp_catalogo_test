@@ -5,7 +5,7 @@
 -- invoca este RPC, pero la fundación del módulo solo había creado la
 -- tabla `refunds`. Completa el contrato faltante.
 --
--- Reglas (SDD_Modulo_Pagos.md §7): el reembolso puede ser total o
+-- Reglas (.specs/modules/payments/sdd-historical.md §7): el reembolso puede ser total o
 -- parcial y nace en PENDING; la autorización del gerente y el cambio de
 -- estado del pago (REFUNDED) corresponden al flujo de confirmación, que
 -- se implementará con el módulo de pagos completo.

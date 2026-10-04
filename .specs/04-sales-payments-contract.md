@@ -7,9 +7,9 @@ persistentes con aplicaciones de pago, para que el estado `PAID`, las notas de
 credito y el saldo del cliente no se disenen dos veces.
 
 Decision del propietario (2026-10-03): definirlo ahora como spec, aun cuando
-su implementacion este aplazada por R2 (`SDD_Modulo_Pagos.md` §15).
+su implementacion este aplazada por R2 (`.specs/modules/payments/sdd-historical.md` §15).
 
-Este contrato complementa `MODULE_SECURITY_CONTRACT.md` y no lo debilita. Si
+Este contrato complementa `.specs/architecture/module-security-contract.md` y no lo debilita. Si
 hay conflicto, gana ese documento.
 
 ## Estado de partida verificado
@@ -99,7 +99,7 @@ SalesApiForPayments {
 ```
 
 Ventas valida y escribe. El consumidor nunca repite esa escritura por su cuenta
-(`MODULE_SECURITY_CONTRACT.md` §4, comando sincrono).
+(`.specs/architecture/module-security-contract.md` §4, comando sincrono).
 
 ### Pagos expone a Ventas
 
@@ -134,7 +134,7 @@ PostgreSQL**, todo o nada:
 
 Si algo falla, no queda ni el cobro ni la aplicacion. No se mantiene la
 transaccion abierta esperando usuario, impresora, red ni servicio externo
-(`MODULE_SECURITY_CONTRACT.md` §5).
+(`.specs/architecture/module-security-contract.md` §5).
 
 La forma prevista es una funcion orquestadora propietaria de **Pagos** que,
 dentro de la misma transaccion, invoca el comando publico de Ventas. Asi cada
@@ -151,7 +151,7 @@ Alternativa descartada: que Ventas orqueste.
 - Todo comando que cruza la frontera recibe `commandId` obligatorio.
 - Un reintento con la misma `commandId` devuelve el resultado previo y no
   repite efectos de negocio ni duplica aplicaciones
-  (`MODULE_SECURITY_CONTRACT.md` §5 y §9).
+  (`.specs/architecture/module-security-contract.md` §5 y §9).
 - Hoy solo `create_payment` recibe `p_command_id`. Las demas RPC del alcance
   vigente necesitaran clave si van a soportar reintentos o cola offline.
 
@@ -170,7 +170,7 @@ Alternativa descartada: que Ventas orqueste.
 ## Estado de implementacion
 
 Este contrato esta **definido y no implementado**. Su alcance cae dentro de lo
-aplazado en `SDD_Modulo_Pagos.md` §15 (aplicaciones de pago, creditos a favor,
+aplazado en `.specs/modules/payments/sdd-historical.md` §15 (aplicaciones de pago, creditos a favor,
 notas de credito) y de la Fase 7 de `.specs/refactors/02-tech-debt-plan.md`.
 
 Lo que si existe hoy y no contradice este contrato:
@@ -205,5 +205,5 @@ Lo que si existe hoy y no contradice este contrato:
    del otro.
 3. Las pruebas de atomicidad, idempotencia y concurrencia existen antes de
    habilitar la escritura cruzada.
-4. `SDD_Modulo_Pagos.md` §4.3 y `SDD_Modulo_Ventas.md` §6 apuntan a este
+4. `.specs/modules/payments/sdd-historical.md` §4.3 y `.specs/modules/sales/sdd-historical.md` §6 apuntan a este
    contrato en vez de repetir sus reglas.

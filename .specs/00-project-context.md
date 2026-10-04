@@ -50,10 +50,21 @@ salidas, errores, estados y criterios de prueba observables.
 No se debe cambiar arquitectura global dentro de una spec de feature. Si el
 cambio funcional exige refactorizacion previa, se crea una spec independiente.
 
-## Referencias historicas
+## Referencias
 
-- `MODULE_STRUCTURE.md`
-- `MODULE_SECURITY_CONTRACT.md`
-- `DOCUMENT_STANDARDS.md`
-- `SDD_Modulo_*.md`
-- `docs/form_test_coverage.md`
+Normativas, en `.specs/architecture/`:
+
+- `architecture/module-structure.md` — convenciones de estructura modular.
+- `architecture/module-security-contract.md` — contrato de comunicacion y
+  seguridad entre modulos. **Fuente unica** de esas reglas.
+- `architecture/document-standards.md` — salidas A4, ticket 80 mm y ESC/POS,
+  y la definicion de formulario listo.
+
+Historicas, mientras su contenido se migra a specs enfocadas:
+
+- `modules/*/sdd-historical.md`
+
+De registro:
+
+- `testing/form-coverage.md` — cobertura de pruebas de formularios.
+- `database/schema-current.md` — estado real del esquema.

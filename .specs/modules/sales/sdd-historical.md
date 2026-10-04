@@ -237,7 +237,7 @@ lib/modules/sales/
 - **Pagos**: Las facturas pueden recibir pagos a través de `payment_applications`.
   La frontera completa —DTO de saldo de factura, comando de aplicación,
   atomicidad, idempotencia y reglas de borde— está definida en
-  [`.specs/04-sales-payments-contract.md`](.specs/04-sales-payments-contract.md)
+  [`../../04-sales-payments-contract.md`](../../04-sales-payments-contract.md)
   y no se repite aquí. Ventas conserva el total original y el estado comercial;
   Pagos no los modifica, y Ventas no inserta movimientos monetarios.
 - **Configuración**: Las cotizaciones y pedidos usan la moneda y configuración de la empresa.

@@ -18,14 +18,28 @@ Ejemplo confirmado:
 ### Excepciones verificadas (2026-10-03)
 
 La regla **no** se cumplia en todos los objetos. Comprobado con
-`set local role authenticated` dentro de `rollback`:
+`set local role authenticated` dentro de `rollback`. **Las cuatro excepciones
+quedaron cerradas el 2026-10-03.**
 
-| Objeto | Situacion | Prueba |
+| Objeto | Situacion | Estado |
 |---|---|---|
-| ~~`inventory_transactions`~~ | **Cerrado el 2026-10-03** por `20261003100000_harden_inventory_ledger.sql`. Aceptaba `INSERT` directo y `TRUNCATE` | Ver abajo |
-| `audit_logs` | Concede `INSERT,UPDATE,DELETE,TRUNCATE`, pero su unica politica RLS es de `SELECT` | `new row violates row-level security policy` |
-| `inventory_balances` | **Cerrado el 2026-10-03**: concedia `TRUNCATE,REFERENCES,TRIGGER` | `permission denied` tras el endurecimiento |
-| `catalog_logo_operations` | Revisar privilegios | pendiente |
+| `inventory_transactions` | Aceptaba `INSERT` directo y `TRUNCATE` | **Cerrado** por `20261003100000_harden_inventory_ledger.sql` |
+| `inventory_balances` | Concedia `TRUNCATE,REFERENCES,TRIGGER` | **Cerrado** por la misma migracion |
+| `audit_logs` | Concedia `INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER` y `TRUNCATE` **borraba el historial completo** | **Cerrado** por `20261003110000_harden_audit_trail.sql` |
+| `catalog_logo_operations` | Politica RLS `ALL` y `TRUNCATE` sin freno | **Cerrado** por la misma migracion |
+
+`audit_actions` tenia politica `ALL` sin conceder privilegio; se selló tambien
+por defensa en profundidad.
+
+#### Leccion comun de los dos huecos
+
+En ambos casos la capa que falto fue la misma: **`TRUNCATE` no lo cubre RLS**
+(no es una operacion por fila) **ni los triggers `BEFORE DELETE`**. Las tablas
+inmutables deben blindarlo con un trigger `BEFORE TRUNCATE` aparte, no confiar
+en el privilegio ni en el trigger de borrado.
+
+Descartado tras verificarlo: `write_audit_log` **no** permite falsificar
+auditoria. Es funcion de `trigger`, invocable solo desde un trigger.
 
 #### Hueco de `inventory_transactions`, cerrado
 
@@ -61,7 +75,7 @@ solo `SELECT` y su modulo escribe mediante RPC `SECURITY DEFINER`
 (`create_payment`, `confirm_payment`, `cancel_payment`, `create_payment_method`,
 `create_money_account`, `create_expense`, `create_refund`,
 `transfer_between_accounts`). Es exactamente lo que pide
-`MODULE_SECURITY_CONTRACT.md` §6 y sirve de referencia para endurecer
+`.specs/architecture/module-security-contract.md` §6 y sirve de referencia para endurecer
 `inventory_transactions`.
 
 ## Clientes

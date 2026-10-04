@@ -9,7 +9,7 @@
 - Cada módulo expone una única interfaz pública mediante `api/` y su archivo índice `<module_name>_module.dart`.
 - Los demás módulos no deben importar implementaciones internas desde `data/`, `presentation/` o `di/`.
 - Toda comunicación y exposición entre módulos debe cumplir
-  `MODULE_SECURITY_CONTRACT.md`.
+  `.specs/architecture/module-security-contract.md`.
 - Las tablas, columnas, variables y nombres técnicos se escriben en inglés. La interfaz y la documentación funcional se mantienen en español.
 - Cualquier excepción debe documentarse y justificarse en la sección «Notas de cambio».
 
@@ -150,7 +150,7 @@ consumidores.
 
 ### Contrato obligatorio entre módulos
 
-`MODULE_SECURITY_CONTRACT.md` define de forma normativa qué puede importar,
+`.specs/architecture/module-security-contract.md` define de forma normativa qué puede importar,
 consultar, ordenar y publicar un módulo; cómo se protegen las escrituras, las
 transacciones cruzadas, las credenciales, RLS, auditoría e información sensible.
 Las reglas de ese contrato tienen la misma obligatoriedad que esta estructura.
@@ -219,7 +219,7 @@ visible, que los errores aparecen junto al campo afectado cuando aplique y que
 cada campo acepta sólo el tipo de dato esperado.
 
 Todos los documentos operativos generados por cualquier módulo deben cumplir
-`DOCUMENT_STANDARDS.md`, incluyendo las salidas PDF A4 y ticket térmico de
+`.specs/architecture/document-standards.md`, incluyendo las salidas PDF A4 y ticket térmico de
 80 mm y la impresión ESC/POS directa por Bluetooth o USB. Los módulos conservan
 sus reglas; el renderizado común no contiene lógica de negocio. El catálogo
 comercial de Productos queda explícitamente fuera de esa obligación y se
@@ -229,11 +229,11 @@ representa sólo como PDF.
 
 | Módulo o área | Estado funcional | Documento | Conformidad estructural |
 |---|---|---|---|
-| Productos | Funcional | `SDD_Modulo_Productos.md` | Aislado mediante API pública |
-| Inventario | Funcional | `SDD_Modulo_Inventario.md` | Aislado mediante API pública |
-| Ventas | Parcial: agentes y clientes funcionales; documentos comerciales con modelo y RPC sin UI de creación | `SDD_Modulo_Ventas.md` | Aislado mediante API pública |
-| Configuración | Funcional | `SDD_Modulo_Configuracion.md` | Aislado mediante API pública |
-| Pagos y Recibos | Funcional en su alcance actual: pagos, métodos, cuentas, gastos, traslados y reembolsos | `SDD_Modulo_Pagos.md` | Aislado mediante API pública |
+| Productos | Funcional | `.specs/modules/product/sdd-historical.md` | Aislado mediante API pública |
+| Inventario | Funcional | `.specs/modules/inventory/sdd-historical.md` | Aislado mediante API pública |
+| Ventas | Parcial: agentes y clientes funcionales; documentos comerciales con modelo y RPC sin UI de creación | `.specs/modules/sales/sdd-historical.md` | Aislado mediante API pública |
+| Configuración | Funcional | `.specs/modules/configuration/sdd-historical.md` | Aislado mediante API pública |
+| Pagos y Recibos | Funcional en su alcance actual: pagos, métodos, cuentas, gastos, traslados y reembolsos | `.specs/modules/payments/sdd-historical.md` | Aislado mediante API pública |
 | Autorización | No implementado; solo borrador de spec | `.specs/modules/authorization/` | Módulo futuro |
 
 Los directorios `lib/core/device`, `lib/core/identity`, `lib/core/navigation`,

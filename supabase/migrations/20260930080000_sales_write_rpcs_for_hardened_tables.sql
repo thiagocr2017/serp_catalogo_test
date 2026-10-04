@@ -9,7 +9,7 @@
 --
 -- Nota: el retorno de consignaciones solo registra cantidades y recalcula
 -- returned_amount; los flujos de liquidación/estado quedan para el
--- trabajo pendiente de ventas (SDD_Modulo_Ventas.md).
+-- trabajo pendiente de ventas (.specs/modules/sales/sdd-historical.md).
 
 -- 1. update_customer
 create or replace function public.update_customer(

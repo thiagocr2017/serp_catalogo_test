@@ -2,14 +2,20 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Prueba de frontera exigida por `MODULE_SECURITY_CONTRACT.md` §2 y §10 y por
+/// Prueba de frontera exigida por `.specs/architecture/module-security-contract.md` §2 y §10 y por
 /// `.specs/refactors/03-public-dto-migration.md` T8.
 ///
 /// Ningun modulo de negocio puede importar ni exportar `data/`, `domain/`,
 /// `di/`, `presentation/` ni `services/` de **otro** modulo. La unica
 /// superficie es `<name>_module.dart`, que solo expone `api/`. `main.dart` esta
 /// autorizado como raiz de composicion.
-const _internalLayers = ['data/', 'domain/', 'di/', 'presentation/', 'services/'];
+const _internalLayers = [
+  'data/',
+  'domain/',
+  'di/',
+  'presentation/',
+  'services/',
+];
 
 void main() {
   test('ningun modulo importa capas internas de otro modulo', () {
@@ -44,34 +50,39 @@ void main() {
     );
   });
 
-  test('api/ e <module>_module.dart solo exponen contrato, no implementacion', () {
-    final violations = <String>[];
+  test(
+    'api/ e <module>_module.dart solo exponen contrato, no implementacion',
+    () {
+      final violations = <String>[];
 
-    for (final file in _dartFilesUnder('lib')) {
-      final isModuleIndex = file.path.endsWith('_module.dart');
-      final isApiSurface = RegExp(r'^lib/modules/[a-z_]+/api/').hasMatch(file.path);
-      if (!isModuleIndex && !isApiSurface) continue;
+      for (final file in _dartFilesUnder('lib')) {
+        final isModuleIndex = file.path.endsWith('_module.dart');
+        final isApiSurface = RegExp(r'^lib/modules/[a-z_]+/api/')
+            .hasMatch(file.path);
+        if (!isModuleIndex && !isApiSurface) continue;
 
-      final lines = file.readAsLinesSync();
-      for (var i = 0; i < lines.length; i++) {
-        final uri = _exportUriOf(lines[i]);
-        if (uri == null) continue;
+        final lines = file.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          final uri = _exportUriOf(lines[i]);
+          if (uri == null) continue;
 
-        final target = _resolve(file.path, uri);
-        if (target == null) continue;
-        if (!_isForbiddenFromPublicSurface(target)) continue;
+          final target = _resolve(file.path, uri);
+          if (target == null) continue;
+          if (!_isForbiddenFromPublicSurface(target)) continue;
 
-        violations.add('${file.path}:${i + 1} -> $target');
+          violations.add('${file.path}:${i + 1} -> $target');
+        }
       }
-    }
 
-    expect(
-      violations,
-      isEmpty,
-      reason: 'Superficie publica que expone implementacion interna '
-          '(MODULE_SECURITY_CONTRACT.md §3):\n${violations.join('\n')}',
-    );
-  });
+      expect(
+        violations,
+        isEmpty,
+        reason:
+            'Superficie publica que expone implementacion interna '
+            '(.specs/architecture/module-security-contract.md §3):\n${violations.join('\n')}',
+      );
+    },
+  );
 }
 
 Iterable<File> _dartFilesUnder(String dir) sync* {
@@ -95,7 +106,7 @@ bool _isInternalLayer(String path) {
 /// exportar.
 ///
 /// `domain/entities/` **tambien** deberia estar prohibido por
-/// `MODULE_SECURITY_CONTRACT.md` §3 («entidades internas con campos que el
+/// `.specs/architecture/module-security-contract.md` §3 («entidades internas con campos que el
 /// consumidor no necesita»), pero todavia se expone en `product`, `inventory`
 /// y `sales`. Quitarlo es T5 y T7 de
 /// `.specs/refactors/03-public-dto-migration.md`; cuando se completen, hay que

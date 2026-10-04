@@ -21,7 +21,7 @@
 -- corren como propietario y no necesitan estos privilegios. Verificado antes de
 -- aplicar el cambio.
 --
--- Regla de `MODULE_SECURITY_CONTRACT.md` §8: los movimientos contables o de
+-- Regla de `.specs/architecture/module-security-contract.md` §8: los movimientos contables o de
 -- inventario no se editan ni se eliminan fisicamente.
 
 -- 1. Revocar todo privilegio de escritura sobre el libro inmutable.

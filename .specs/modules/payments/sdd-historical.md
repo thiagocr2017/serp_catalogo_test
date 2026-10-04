@@ -30,7 +30,7 @@ Las escrituras se ejecutan mediante las RPC `SECURITY DEFINER` del módulo
 `create_money_account`, `create_expense`, `create_refund`,
 `transfer_between_accounts`), que son el camino correcto: las tablas solo
 conceden `SELECT` a `anon` y `authenticated`. Es el patrón que exige
-`MODULE_SECURITY_CONTRACT.md` §6.
+`.specs/architecture/module-security-contract.md` §6.
 
 ### Fuera de alcance por ahora
 
@@ -118,7 +118,7 @@ se reasigna automáticamente.
 
 > La frontera exacta con Ventas, sus DTO, sus comandos, la atomicidad, la
 > idempotencia y las reglas de borde están definidas en
-> [`.specs/04-sales-payments-contract.md`](.specs/04-sales-payments-contract.md).
+> [`../../04-sales-payments-contract.md`](../../04-sales-payments-contract.md).
 > Este documento no las repite. Toda esa sección queda **aplazada** conforme a
 > la sección 15.
 
@@ -242,7 +242,7 @@ exportarse a PDF y compartirse. Debe incluir:
 
 No se adjuntarán fotografías ni PDF de comprobantes bancarios inicialmente.
 Las plantillas A4 y ticket térmico de 80 mm deben cumplir
-`DOCUMENT_STANDARDS.md`.
+`.specs/architecture/document-standards.md`.
 
 ## 9. Gastos y movimientos entre cuentas
 

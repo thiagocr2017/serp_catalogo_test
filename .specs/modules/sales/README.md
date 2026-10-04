@@ -3,7 +3,7 @@
 Referencia viva para reglas de ventas, clientes, agentes, cotizaciones, pedidos,
 facturas, devoluciones y consignaciones.
 
-El SDD historico sigue en `SDD_Modulo_Ventas.md`.
+El SDD historico vive en `sdd-historical.md`.
 
 ## Specs nuevas
 

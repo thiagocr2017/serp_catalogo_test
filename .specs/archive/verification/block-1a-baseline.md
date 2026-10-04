@@ -9,7 +9,7 @@ permisos, migraciones, RPC, repositorios ni contratos productivos.
 
 - Etiqueta: `restore/pre-inventory-foundations`.
 - Commit apuntado: `4ee008b docs: require direct ESC POS printing and secure module contracts`.
-- Cambios ajenos preservados: `SDD_Modulo_Ventas.md`, `assets/`,
+- Cambios ajenos preservados: `.specs/modules/sales/sdd-historical.md`, `assets/`,
   `supabase/snippets/` e `indicaciones para modulo inventario.rtf`.
 
 ## Comportamiento caracterizado

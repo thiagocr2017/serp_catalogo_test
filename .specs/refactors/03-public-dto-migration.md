@@ -26,7 +26,7 @@ Comprobado el 2026-10-03 sobre `lib/modules/*/api/`:
 | `sales/api/return_api.dart` | `../domain/entities/sales_return.dart`, **`../domain/repositories/return_repository.dart`** | entidad + repositorio |
 | `sales/api/consignment_api.dart` | `../domain/entities/sales_consignment.dart`, **`../domain/repositories/consignment_repository.dart`** | entidad + repositorio |
 
-`MODULE_SECURITY_CONTRACT.md` §3 prohibe expresamente «repositorios o fuentes
+`.specs/architecture/module-security-contract.md` §3 prohibe expresamente «repositorios o fuentes
 de datos concretas» y «entidades internas con campos que el consumidor no
 necesita». Los seis exports de repositorios de `sales` violan la primera.
 
@@ -66,7 +66,7 @@ Reglas del DTO publico:
 - sin tipos de Supabase, sin `DateTime` mutable expuesto como referencia
   compartida, sin listas que crezcan sin control;
 - quitar o reinterpretar un campo exige migrar consumidores y registrar el
-  cambio (`MODULE_SECURITY_CONTRACT.md` §3).
+  cambio (`.specs/architecture/module-security-contract.md` §3).
 
 ## Orden de migracion y su razon
 
@@ -179,5 +179,5 @@ Adicionar por DTO nuevo:
 1. Ningun archivo de `api/` contiene `export '../domain/...'`.
 2. Ningun archivo de `api/` exporta una interfaz de repositorio.
 3. La prueba de frontera pasa.
-4. `MODULE_STRUCTURE.md` seccion «Deuda tecnica reconocida» deja de mencionar
+4. `.specs/architecture/module-structure.md` seccion «Deuda tecnica reconocida» deja de mencionar
    la exposicion de entidades.

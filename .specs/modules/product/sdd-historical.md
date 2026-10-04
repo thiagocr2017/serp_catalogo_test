@@ -21,8 +21,8 @@ Todas las tablas, columnas y variables del código se escriben en inglés. La in
 - PostgreSQL es la fuente de verdad de productos, movimientos, promociones y auditoría.
 - `audit_logs` registra cambios en productos, categorías y promociones. Los
   movimientos de inventario forman un libro inmutable propio, según
-  `SDD_Modulo_Inventario.md`.
-- Los módulos siguen la estructura definida en `MODULE_STRUCTURE.md` y se comunican exclusivamente mediante sus API públicas.
+  `.specs/modules/inventory/sdd-historical.md`.
+- Los módulos siguen la estructura definida en `.specs/architecture/module-structure.md` y se comunican exclusivamente mediante sus API públicas.
 
 Productos e Inventario se comunican mediante sus índices y API públicas. Los
 providers de revisión pública notifican cambios de stock o historial sin
@@ -130,7 +130,7 @@ La inserción de la transacción y la actualización del stock deben ejecutarse 
 ### 4.3 Referencia a `inventory_transactions`
 
 Esta tabla es el libro contable inmutable del módulo de Inventario. Su esquema,
-reglas y flujos se definen en `SDD_Modulo_Inventario.md`; se conserva aquí solo
+reglas y flujos se definen en `.specs/modules/inventory/sdd-historical.md`; se conserva aquí solo
 la referencia necesaria para explicar `products.current_stock`.
 
 Productos solo necesita conocer que cada movimiento válido actualiza el stock de
@@ -302,7 +302,7 @@ Esto no reemplaza las validaciones de la aplicación. La aplicación valida para
 - Identificación provisional: la aplicación obtiene el nombre del equipo y la primera dirección MAC disponible; si el sistema no permite leerla, usa el nombre del equipo como identificador de respaldo.
 - Stock negativo y operación sin conexión: permitidos conforme a las reglas de
   alerta, idempotencia y resolución de conflictos de
-  `SDD_Modulo_Inventario.md`.
+  `.specs/modules/inventory/sdd-historical.md`.
 
 ## 8. Estado y deuda técnica
 

@@ -96,5 +96,5 @@ pueden ejecutar los comandos públicos. Esta autorización fue aceptada sólo pa
 desarrollo y debe revertirse al implementar Autenticación.
 
 La lista vinculante de revocaciones, migración de identidad y pruebas está en
-`docs/authentication_production_gate.md`. La aplicación no se considerará lista
+`.specs/modules/authorization/production-gate.md`. La aplicación no se considerará lista
 para producción mientras esa puerta permanezca abierta.
