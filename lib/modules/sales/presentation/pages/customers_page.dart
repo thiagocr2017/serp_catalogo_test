@@ -282,6 +282,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   late String _customerType;
   late String _documentPreference;
   late bool _requiresEInvoice;
+  late String _shippingPaymentPolicy;
+  final _selectedCategoryIds = <String>{};
   final _contacts = <_ContactDraft>[];
   final _removedContactIds = <String>[];
   final _copyEmails = <_EmailDraft>[];
@@ -346,6 +348,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     _customerType = existing?.customerType ?? 'CASH';
     _documentPreference = existing?.documentPreference ?? 'TICKET';
     _requiresEInvoice = _documentPreference == 'E_INVOICE' || (existing?.requiresEInvoice ?? false);
+    _shippingPaymentPolicy = existing?.shippingPaymentPolicy ?? 'INCLUDED';
+    if (existing != null) _selectedCategoryIds.addAll(existing.categoryIds);
     for (final controller in [
       _name,
       _displayName,
@@ -407,6 +411,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
         _requiresEInvoice =
             customer.documentPreference == 'E_INVOICE' ||
             customer.requiresEInvoice;
+        _shippingPaymentPolicy = customer.shippingPaymentPolicy;
+        _selectedCategoryIds.clear();
+        _selectedCategoryIds.addAll(customer.categoryIds);
       });
       await _loadContacts(customer.id);
       await _loadEmails(customer.id);
@@ -574,6 +581,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       _economicActivityError ?? '',
       contacts,
       copyEmails,
+      _shippingPaymentPolicy,
+      (_selectedCategoryIds.toList()..sort()).join(','),
     ].join('§');
   }
 
@@ -1234,6 +1243,86 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                         }),
                                       ),
                                 ),
+                            const SizedBox(height: 12),
+                            DropdownButtonFormField<String>(
+                              key: ValueKey(
+                                'customerShippingPaymentPolicyDropdown_$_shippingPaymentPolicy',
+                              ),
+                              initialValue: _shippingPaymentPolicy,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Política de pago de envío',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'INCLUDED',
+                                  child: Text('Incluido en el precio'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'PREPAID',
+                                  child: Text('Pagado antes del envío'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'CASH_ON_DELIVERY',
+                                  child: Text('Cobro contra entrega'),
+                                ),
+                              ],
+                              onChanged: (value) => setState(() {
+                                if (value != null) {
+                                  _shippingPaymentPolicy = value;
+                                  _markDirty();
+                                }
+                              }),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        _section(
+                          title: 'Categorías comerciales',
+                          icon: Icons.label_outline,
+                          children: [
+                            ref.watch(customerCategoriesProvider).when(
+                                  loading: () =>
+                                      const LinearProgressIndicator(),
+                                  error: (err, _) => Text(
+                                    'No fue posible cargar categorías: $err',
+                                  ),
+                                  data: (categories) {
+                                    if (categories.isEmpty) {
+                                      return const Text(
+                                        'No hay categorías comerciales registradas.',
+                                      );
+                                    }
+                                    return Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        for (final cat in categories)
+                                          FilterChip(
+                                            key: ValueKey(
+                                              'customerCategoryChip_${cat.name}',
+                                            ),
+                                            label: Text(cat.name),
+                                            selected: _selectedCategoryIds
+                                                .contains(cat.id),
+                                            onSelected: (selected) {
+                                              setState(() {
+                                                if (selected) {
+                                                  _selectedCategoryIds
+                                                      .add(cat.id);
+                                                } else {
+                                                  _selectedCategoryIds
+                                                      .remove(cat.id);
+                                                }
+                                              });
+                                              _markDirty();
+                                            },
+                                          ),
+                                      ],
+                                    );
+                                  },
+                                ),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -1671,6 +1760,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
           creditDays: _customerType == 'CREDIT' ? creditDays : null,
           documentPreference: _documentPreference,
           requiresEInvoice: _requiresEInvoice,
+          shippingPaymentPolicy: _shippingPaymentPolicy,
+          categoryIds: _selectedCategoryIds.toList(),
         );
         customerId = created.id;
       } else {
@@ -1698,6 +1789,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
           creditDays: _customerType == 'CREDIT' ? creditDays : null,
           documentPreference: _documentPreference,
           requiresEInvoice: _requiresEInvoice,
+          shippingPaymentPolicy: _shippingPaymentPolicy,
+          categoryIds: _selectedCategoryIds.toList(),
         );
         customerId = existing.id;
       }

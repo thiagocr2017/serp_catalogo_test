@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/device/device_identity.dart';
+import '../../api/customer_category_dtos.dart';
 import '../../api/customer_summary_dtos.dart';
 import '../../domain/entities/customer.dart';
 import '../../domain/entities/customer_commercial.dart';
@@ -23,7 +24,22 @@ class SupabaseCustomerDataSource {
         .select()
         .eq('id', id)
         .maybeSingle();
-    return row == null ? null : _customer(row);
+    if (row == null) return null;
+
+    final assignments = await _client
+        .from('customer_category_assignments')
+        .select('category_id, customer_categories(name)')
+        .eq('customer_id', id);
+    final catIds =
+        assignments.map((a) => a['category_id'] as String).toList();
+    final catNames = assignments
+        .map((a) =>
+            (a['customer_categories'] as Map<String, dynamic>?)?['name']
+                as String?)
+        .whereType<String>()
+        .toList();
+
+    return _customer(row, categoryIds: catIds, categoryNames: catNames);
   }
 
   Future<Customer> createCustomer({
@@ -45,6 +61,8 @@ class SupabaseCustomerDataSource {
     int? creditDays,
     String documentPreference = 'E_INVOICE',
     bool requiresEInvoice = false,
+    String shippingPaymentPolicy = 'INCLUDED',
+    List<String> categoryIds = const [],
   }) async {
     final row = await _client.rpc<Map<String, dynamic>>(
       'create_customer',
@@ -67,12 +85,14 @@ class SupabaseCustomerDataSource {
         'p_credit_days': creditDays,
         'p_document_preference': documentPreference,
         'p_requires_e_invoice': requiresEInvoice,
+        'p_shipping_payment_policy': shippingPaymentPolicy,
+        'p_category_ids': categoryIds,
         'p_actor_name': _device.actorName,
         'p_device_name': _device.name,
         'p_device_identifier': _device.identifier,
       },
     );
-    return _customer(row);
+    return _customer(row, categoryIds: categoryIds);
   }
 
   Future<Customer> updateCustomer({
@@ -95,35 +115,42 @@ class SupabaseCustomerDataSource {
     int? creditDays,
     String documentPreference = 'E_INVOICE',
     bool requiresEInvoice = false,
+    String shippingPaymentPolicy = 'INCLUDED',
+    List<String>? categoryIds,
   }) async {
+    final params = <String, dynamic>{
+      'p_customer_id': id,
+      'p_name': name,
+      'p_display_name': displayName,
+      'p_phone': phone,
+      'p_email': email,
+      'p_address': address,
+      'p_tax_id': taxId,
+      'p_credit_limit': creditLimit ?? 0,
+      'p_country_code': countryCode,
+      'p_province': province,
+      'p_city': city,
+      'p_gira': gira,
+      'p_preferred_carrier_id': preferredCarrierId,
+      'p_identification_type_id': identificationTypeId,
+      'p_economic_activity': economicActivity,
+      'p_customer_type': customerType,
+      'p_credit_days': creditDays,
+      'p_document_preference': documentPreference,
+      'p_requires_e_invoice': requiresEInvoice,
+      'p_shipping_payment_policy': shippingPaymentPolicy,
+      'p_actor_name': _device.actorName,
+      'p_device_name': _device.name,
+      'p_device_identifier': _device.identifier,
+    };
+    if (categoryIds != null) {
+      params['p_category_ids'] = categoryIds;
+    }
     final row = await _client.rpc<Map<String, dynamic>>(
       'update_customer',
-      params: {
-        'p_customer_id': id,
-        'p_name': name,
-        'p_display_name': displayName,
-        'p_phone': phone,
-        'p_email': email,
-        'p_address': address,
-        'p_tax_id': taxId,
-        'p_credit_limit': creditLimit ?? 0,
-        'p_country_code': countryCode,
-        'p_province': province,
-        'p_city': city,
-        'p_gira': gira,
-        'p_preferred_carrier_id': preferredCarrierId,
-        'p_identification_type_id': identificationTypeId,
-        'p_economic_activity': economicActivity,
-        'p_customer_type': customerType,
-        'p_credit_days': creditDays,
-        'p_document_preference': documentPreference,
-        'p_requires_e_invoice': requiresEInvoice,
-        'p_actor_name': _device.actorName,
-        'p_device_name': _device.name,
-        'p_device_identifier': _device.identifier,
-      },
+      params: params,
     );
-    return _customer(row);
+    return _customer(row, categoryIds: categoryIds ?? const []);
   }
 
   Future<void> deactivateCustomer(String id, {String? reason}) async {
@@ -329,7 +356,20 @@ class SupabaseCustomerDataSource {
         const [],
   );
 
-  Customer _customer(Map<String, dynamic> row) => Customer(
+  Future<List<CustomerCategoryDto>> getCustomerCategories() async {
+    final rows = await _client
+        .from('customer_categories')
+        .select()
+        .eq('is_active', true)
+        .order('name');
+    return rows.map((r) => CustomerCategoryDto.fromJson(r)).toList();
+  }
+
+  Customer _customer(
+    Map<String, dynamic> row, {
+    List<String> categoryIds = const [],
+    List<String> categoryNames = const [],
+  }) => Customer(
     id: row['id'] as String,
     name: row['name'] as String,
     displayName: row['display_name'] as String?,
@@ -348,6 +388,10 @@ class SupabaseCustomerDataSource {
     creditDays: (row['credit_days'] as num?)?.toInt(),
     documentPreference: row['document_preference'] as String? ?? 'E_INVOICE',
     requiresEInvoice: row['requires_e_invoice'] as bool? ?? false,
+    shippingPaymentPolicy:
+        row['shipping_payment_policy'] as String? ?? 'INCLUDED',
+    categoryIds: categoryIds,
+    categoryNames: categoryNames,
     deactivationReason: row['deactivation_reason'] as String?,
     isActive: row['is_active'] as bool? ?? true,
     creditLimit: (row['credit_limit'] as num?)?.toDouble() ?? 0,

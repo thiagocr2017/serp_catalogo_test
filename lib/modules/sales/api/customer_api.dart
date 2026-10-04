@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/entities/customer.dart';
 import '../domain/entities/customer_commercial.dart';
 import '../domain/entities/customer_email.dart';
+import 'customer_category_dtos.dart';
 import 'customer_summary_dtos.dart';
 
 export '../domain/entities/customer.dart';
 export '../domain/entities/customer_commercial.dart';
 export '../domain/entities/customer_email.dart';
+export 'customer_category_dtos.dart';
 export 'customer_summary_dtos.dart';
 
 abstract interface class CustomerApi {
@@ -32,6 +34,8 @@ abstract interface class CustomerApi {
     int? creditDays,
     String documentPreference,
     bool requiresEInvoice,
+    String shippingPaymentPolicy,
+    List<String> categoryIds,
   });
   Future<Customer> updateCustomer({
     required String id,
@@ -53,6 +57,8 @@ abstract interface class CustomerApi {
     int? creditDays,
     String documentPreference,
     bool requiresEInvoice,
+    String shippingPaymentPolicy,
+    List<String>? categoryIds,
   });
   Future<void> deactivateCustomer(String id, {String? reason});
 
@@ -80,6 +86,7 @@ abstract interface class CustomerApi {
 
   Future<List<ProductBuyer>> getProductBuyers(String productId);
   Future<CustomerCommercialSummaryDto> getCustomerCommercialSummary(String customerId);
+  Future<List<CustomerCategoryDto>> getCustomerCategories();
 }
 
 final customerApiProvider = Provider<CustomerApi>(

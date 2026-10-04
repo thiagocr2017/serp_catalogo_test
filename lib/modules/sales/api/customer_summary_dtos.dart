@@ -43,6 +43,8 @@ class CustomerCommercialSummaryDto {
     this.overdueInvoicesCount = 0,
     this.overdueInvoicesAmount = 0.0,
     this.frequentProducts = const [],
+    this.categories = const [],
+    this.commercialRankings = const [],
   });
 
   factory CustomerCommercialSummaryDto.empty(String customerId) =>
@@ -74,6 +76,15 @@ class CustomerCommercialSummaryDto {
                     FrequentProductDto.fromJson(item as Map<String, dynamic>))
                 .toList() ??
             const [],
+        categories: (json['categories'] as List<dynamic>?)
+                ?.map((item) => CustomerCategorySummaryDto.fromJson(
+                    item as Map<String, dynamic>))
+                .toList() ??
+            const [],
+        commercialRankings: (json['commercial_rankings'] as List<dynamic>?)
+                ?.map((item) => item.toString())
+                .toList() ??
+            const [],
       );
 
   final String customerId;
@@ -88,6 +99,27 @@ class CustomerCommercialSummaryDto {
   final int overdueInvoicesCount;
   final double overdueInvoicesAmount;
   final List<FrequentProductDto> frequentProducts;
+  final List<CustomerCategorySummaryDto> categories;
+  final List<String> commercialRankings;
+}
+
+class CustomerCategorySummaryDto {
+  const CustomerCategorySummaryDto({
+    required this.id,
+    required this.name,
+    this.color,
+  });
+
+  factory CustomerCategorySummaryDto.fromJson(Map<String, dynamic> json) =>
+      CustomerCategorySummaryDto(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        color: json['color'] as String?,
+      );
+
+  final String id;
+  final String name;
+  final String? color;
 }
 
 /// Provider para obtener el resumen comercial y financiero de un cliente.

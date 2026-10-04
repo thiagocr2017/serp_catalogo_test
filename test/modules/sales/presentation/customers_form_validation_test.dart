@@ -1001,6 +1001,47 @@ void main() {
     expect(api.createdProvince, 'Cartago');
     expect(api.createdCity, 'Paraíso');
   });
+
+  testWidgets('cliente guarda politica de envio y categorias seleccionadas', (
+    tester,
+  ) async {
+    final api = _RecordingCustomerApi();
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nuevo cliente'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
+      'Cliente Comercial Test',
+    );
+
+    final policyDropdown = find.widgetWithText(
+      DropdownButtonFormField<String>,
+      'Política de pago de envío',
+    );
+    await tester.ensureVisible(policyDropdown);
+    await tester.tap(policyDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cobro contra entrega').last);
+    await tester.pumpAndSettle();
+
+    final categoryChip = find.byKey(
+      const ValueKey('customerCategoryChip_Mayorista'),
+    );
+    await tester.ensureVisible(categoryChip);
+    await tester.tap(categoryChip);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.createdCustomers, 1);
+    expect(api.createdCustomerName, 'Cliente Comercial Test');
+    expect(api.createdShippingPaymentPolicy, 'CASH_ON_DELIVERY');
+    expect(api.createdCategoryIds, contains('cat-1'));
+  });
 }
 
 Widget _app(
@@ -1127,6 +1168,8 @@ class _RecordingCustomerApi implements CustomerApi {
   bool createdRequiresEInvoice = false;
   String createdCountryCode = 'CR';
   String? createdCity;
+  String createdShippingPaymentPolicy = 'INCLUDED';
+  List<String> createdCategoryIds = const [];
   String? updatedCustomerId;
   String? updatedCustomerName;
   double? updatedCreditLimit;
@@ -1136,6 +1179,8 @@ class _RecordingCustomerApi implements CustomerApi {
   bool updatedRequiresEInvoice = false;
   String updatedCountryCode = 'CR';
   String? updatedCity;
+  String updatedShippingPaymentPolicy = 'INCLUDED';
+  List<String>? updatedCategoryIds;
   String? deactivatedCustomerId;
   String? deactivationReason;
   final savedContactIds = <String?>[];
@@ -1176,6 +1221,8 @@ class _RecordingCustomerApi implements CustomerApi {
     int? creditDays,
     String documentPreference = 'E_INVOICE',
     bool requiresEInvoice = false,
+    String shippingPaymentPolicy = 'INCLUDED',
+    List<String> categoryIds = const [],
   }) async {
     createdCustomers++;
     createdCustomerName = name;
@@ -1196,6 +1243,8 @@ class _RecordingCustomerApi implements CustomerApi {
     createdCreditDays = creditDays;
     createdDocumentPreference = documentPreference;
     createdRequiresEInvoice = requiresEInvoice;
+    createdShippingPaymentPolicy = shippingPaymentPolicy;
+    createdCategoryIds = categoryIds;
     return Customer(
       id: 'customer-new',
       name: name,
@@ -1216,6 +1265,8 @@ class _RecordingCustomerApi implements CustomerApi {
       documentPreference: documentPreference,
       requiresEInvoice: requiresEInvoice,
       creditLimit: creditLimit ?? 0,
+      shippingPaymentPolicy: shippingPaymentPolicy,
+      categoryIds: categoryIds,
     );
   }
 
@@ -1240,6 +1291,8 @@ class _RecordingCustomerApi implements CustomerApi {
     int? creditDays,
     String documentPreference = 'E_INVOICE',
     bool requiresEInvoice = false,
+    String shippingPaymentPolicy = 'INCLUDED',
+    List<String>? categoryIds,
   }) async {
     updatedCustomerId = id;
     updatedCustomerName = name;
@@ -1250,6 +1303,8 @@ class _RecordingCustomerApi implements CustomerApi {
     updatedRequiresEInvoice = requiresEInvoice;
     updatedCountryCode = countryCode;
     updatedCity = city;
+    updatedShippingPaymentPolicy = shippingPaymentPolicy;
+    updatedCategoryIds = categoryIds;
     return Customer(
       id: id,
       name: name,
@@ -1270,6 +1325,8 @@ class _RecordingCustomerApi implements CustomerApi {
       documentPreference: documentPreference,
       requiresEInvoice: requiresEInvoice,
       creditLimit: creditLimit ?? 0,
+      shippingPaymentPolicy: shippingPaymentPolicy,
+      categoryIds: categoryIds ?? const [],
     );
   }
 
@@ -1367,6 +1424,12 @@ class _RecordingCustomerApi implements CustomerApi {
     String customerId,
   ) async =>
       CustomerCommercialSummaryDto.empty(customerId);
+
+  @override
+  Future<List<CustomerCategoryDto>> getCustomerCategories() async => [
+    const CustomerCategoryDto(id: 'cat-1', name: 'Mayorista'),
+    const CustomerCategoryDto(id: 'cat-2', name: 'Detallista'),
+  ];
 }
 
 class _SavedContact {

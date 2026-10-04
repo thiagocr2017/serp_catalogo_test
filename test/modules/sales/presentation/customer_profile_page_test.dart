@@ -205,6 +205,35 @@ void main() {
     expect(find.byType(CustomerProfilePage), findsOneWidget);
     expect(find.text('Perfil de cliente'), findsOneWidget);
   });
+
+  testWidgets(
+    'perfil muestra politica de envio, categorias y rankings comerciales',
+    (tester) async {
+      const customer = Customer(
+        id: 'cust-comercial',
+        name: 'Distribuidora Mayorista S.A.',
+        shippingPaymentPolicy: 'PREPAID',
+        categoryNames: ['Mayorista', 'Corporativo'],
+      );
+      final summary = CustomerCommercialSummaryDto(
+        customerId: 'cust-comercial',
+        commercialRankings: const ['Mayor Facturación', 'Compra Recurrente'],
+      );
+      final api = _FakeCustomerApi(
+        customers: const [customer],
+        summary: summary,
+      );
+
+      await tester.pumpWidget(_profileApp(api, 'cust-comercial'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pagado antes del envío'), findsOneWidget);
+      expect(find.text('Mayorista'), findsOneWidget);
+      expect(find.text('Corporativo'), findsOneWidget);
+      expect(find.text('Mayor Facturación'), findsOneWidget);
+      expect(find.text('Compra Recurrente'), findsOneWidget);
+    },
+  );
 }
 
 Widget _profileApp(_FakeCustomerApi api, String customerId) => ProviderScope(
@@ -276,6 +305,8 @@ class _FakeCustomerApi implements CustomerApi {
     int? creditDays,
     String documentPreference = 'E_INVOICE',
     bool requiresEInvoice = false,
+    String shippingPaymentPolicy = 'INCLUDED',
+    List<String> categoryIds = const [],
   }) async => throw UnimplementedError();
 
   @override
@@ -299,6 +330,8 @@ class _FakeCustomerApi implements CustomerApi {
     int? creditDays,
     String documentPreference = 'E_INVOICE',
     bool requiresEInvoice = false,
+    String shippingPaymentPolicy = 'INCLUDED',
+    List<String>? categoryIds,
   }) async => throw UnimplementedError();
 
   @override
@@ -343,6 +376,9 @@ class _FakeCustomerApi implements CustomerApi {
     String customerId,
   ) async =>
       summary ?? CustomerCommercialSummaryDto.empty(customerId);
+
+  @override
+  Future<List<CustomerCategoryDto>> getCustomerCategories() async => const [];
 
   final CustomerCommercialSummaryDto? summary;
 }

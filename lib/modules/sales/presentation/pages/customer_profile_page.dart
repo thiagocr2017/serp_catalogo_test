@@ -91,7 +91,7 @@ class _CustomerProfileView extends ConsumerWidget {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   const _Header({
     required this.customer,
     required this.title,
@@ -103,65 +103,87 @@ class _Header extends StatelessWidget {
   final String? subtitle;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 30,
-            child: Text(title.characters.first.toUpperCase()),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary =
+        ref.watch(customerCommercialSummaryProvider(customer.id)).value;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.headlineMedium),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Text(subtitle!, style: Theme.of(context).textTheme.bodyLarge),
-                ],
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    StatusChip(
-                      label: customer.isActive ? 'Activo' : 'Inactivo',
-                      tone: customer.isActive
-                          ? StatusTone.success
-                          : StatusTone.danger,
-                    ),
-                    StatusChip(
-                      label: customer.customerType == 'CREDIT'
-                          ? 'Cliente credito'
-                          : 'Cliente contado',
-                      tone: customer.customerType == 'CREDIT'
-                          ? StatusTone.warning
-                          : StatusTone.neutral,
-                    ),
-                    StatusChip(
-                      label: _documentPreferenceLabel(
-                        customer.documentPreference,
-                      ),
-                      tone: StatusTone.neutral,
-                    ),
-                  ],
-                ),
-              ],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 30,
+              child: Text(title.characters.first.toUpperCase()),
             ),
-          ),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.headlineMedium),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 4),
+                    Text(subtitle!, style: Theme.of(context).textTheme.bodyLarge),
+                  ],
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      StatusChip(
+                        label: customer.isActive ? 'Activo' : 'Inactivo',
+                        tone: customer.isActive
+                            ? StatusTone.success
+                            : StatusTone.danger,
+                      ),
+                      StatusChip(
+                        label: customer.customerType == 'CREDIT'
+                            ? 'Cliente credito'
+                            : 'Cliente contado',
+                        tone: customer.customerType == 'CREDIT'
+                            ? StatusTone.warning
+                            : StatusTone.neutral,
+                      ),
+                      StatusChip(
+                        label: _documentPreferenceLabel(
+                          customer.documentPreference,
+                        ),
+                        tone: StatusTone.neutral,
+                      ),
+                      for (final name in {
+                        ...customer.categoryNames,
+                        if (summary != null)
+                          ...summary.categories.map((c) => c.name),
+                      })
+                        StatusChip(
+                          label: name,
+                          tone: StatusTone.info,
+                        ),
+                      if (summary != null)
+                        for (final ranking in summary.commercialRankings)
+                          StatusChip(
+                            label: ranking,
+                            tone: StatusTone.success,
+                          ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _Alerts extends ConsumerWidget {
@@ -267,6 +289,10 @@ class _InfoColumn extends ConsumerWidget {
           _InfoLine('Ciudad / Distrito', customer.city, empty: 'Sin ciudad'),
           _InfoLine('Gira', customer.gira, empty: 'Sin gira'),
           _InfoLine('Direccion', customer.address, empty: 'Sin direccion'),
+          _InfoLine(
+            'Politica de envio',
+            _shippingPolicyLabel(customer.shippingPaymentPolicy),
+          ),
         ],
       ),
       const SizedBox(height: 16),
@@ -639,6 +665,12 @@ String _documentPreferenceLabel(String value) => switch (value) {
   'TICKET' => 'Tiquete',
   'ASK_EACH_TIME' => 'Preguntar al facturar',
   _ => value,
+};
+
+String _shippingPolicyLabel(String value) => switch (value) {
+  'PREPAID' => 'Pagado antes del envío',
+  'CASH_ON_DELIVERY' => 'Cobro contra entrega',
+  _ => 'Incluido en el precio',
 };
 
 /// Resuelve el tipo de identificacion guardado. Si el catalogo ya no lo tiene

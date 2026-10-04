@@ -22,6 +22,8 @@ abstract interface class CustomerRepository {
     int? creditDays,
     String documentPreference,
     bool requiresEInvoice,
+    String shippingPaymentPolicy,
+    List<String> categoryIds,
   });
   Future<Customer> updateCustomer({
     required String id,
@@ -43,6 +45,8 @@ abstract interface class CustomerRepository {
     int? creditDays,
     String documentPreference,
     bool requiresEInvoice,
+    String shippingPaymentPolicy,
+    List<String>? categoryIds,
   });
   Future<void> deactivateCustomer(String id, {String? reason});
 }

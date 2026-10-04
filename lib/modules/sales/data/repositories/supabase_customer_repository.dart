@@ -33,6 +33,8 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
     int? creditDays,
     String documentPreference = 'E_INVOICE',
     bool requiresEInvoice = false,
+    String shippingPaymentPolicy = 'INCLUDED',
+    List<String> categoryIds = const [],
   }) => _source.createCustomer(
     name: name,
     displayName: displayName,
@@ -52,6 +54,8 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
     creditDays: creditDays,
     documentPreference: documentPreference,
     requiresEInvoice: requiresEInvoice,
+    shippingPaymentPolicy: shippingPaymentPolicy,
+    categoryIds: categoryIds,
   );
 
   @override
@@ -75,6 +79,8 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
     int? creditDays,
     String documentPreference = 'E_INVOICE',
     bool requiresEInvoice = false,
+    String shippingPaymentPolicy = 'INCLUDED',
+    List<String>? categoryIds,
   }) => _source.updateCustomer(
     id: id,
     name: name,
@@ -95,6 +101,8 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
     creditDays: creditDays,
     documentPreference: documentPreference,
     requiresEInvoice: requiresEInvoice,
+    shippingPaymentPolicy: shippingPaymentPolicy,
+    categoryIds: categoryIds,
   );
 
   @override
@@ -159,4 +167,8 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
   Future<CustomerCommercialSummaryDto> getCustomerCommercialSummary(
     String customerId,
   ) => _source.getCustomerCommercialSummary(customerId);
+
+  @override
+  Future<List<CustomerCategoryDto>> getCustomerCategories() =>
+      _source.getCustomerCategories();
 }

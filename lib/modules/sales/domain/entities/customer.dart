@@ -22,6 +22,9 @@ class Customer {
     this.isActive = true,
     this.creditLimit = 0,
     this.currentBalance = 0,
+    this.shippingPaymentPolicy = 'INCLUDED',
+    this.categoryIds = const [],
+    this.categoryNames = const [],
     this.createdAt,
     this.updatedAt,
   });
@@ -48,6 +51,9 @@ class Customer {
   final bool isActive;
   final double creditLimit;
   final double currentBalance;
+  final String shippingPaymentPolicy;
+  final List<String> categoryIds;
+  final List<String> categoryNames;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 }
