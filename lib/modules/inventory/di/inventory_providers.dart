@@ -31,17 +31,16 @@ final inventoryProductTransactionsProvider =
       productId,
     ) {
       ref.watch(inventoryDataRevisionProvider);
-      return ref.watch(inventoryApiProvider).getTransactions(
-        productId: productId,
-      );
+      return ref
+          .watch(inventoryApiProvider)
+          .getTransactions(productId: productId);
     });
 final inventoryProductAuditProvider =
     FutureProvider.family<List<AuditEntryDto>, String>((ref, productId) {
       ref.watch(inventoryDataRevisionProvider);
-      return ref.watch(inventoryApiProvider).getAuditEntries(
-        tableName: 'products',
-        recordId: productId,
-      );
+      return ref
+          .watch(inventoryApiProvider)
+          .getAuditEntries(tableName: 'products', recordId: productId);
     });
 
 final inventoryDocumentsProvider = FutureProvider<List<InventoryDocumentDto>>(

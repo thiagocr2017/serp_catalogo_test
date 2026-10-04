@@ -57,8 +57,14 @@ extension InventoryLocationMapper on InventoryLocation {
 }
 
 extension WarehouseMapper on Warehouse {
-  WarehouseDto toDto() =>
-      WarehouseDto(id: id, code: code, name: name, isDefault: isDefault, isActive: isActive, locations: [for (final l in locations) l.toDto()]);
+  WarehouseDto toDto() => WarehouseDto(
+    id: id,
+    code: code,
+    name: name,
+    isDefault: isDefault,
+    isActive: isActive,
+    locations: [for (final l in locations) l.toDto()],
+  );
 }
 
 extension InventoryDocumentLineMapper on InventoryDocumentLine {

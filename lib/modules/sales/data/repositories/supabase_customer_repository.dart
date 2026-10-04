@@ -22,7 +22,9 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
     String? address,
     String? taxId,
     double? creditLimit,
+    String countryCode = 'CR',
     String? province,
+    String? city,
     String? gira,
     String? preferredCarrierId,
     String? identificationTypeId,
@@ -39,7 +41,9 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
     address: address,
     taxId: taxId,
     creditLimit: creditLimit,
+    countryCode: countryCode,
     province: province,
+    city: city,
     gira: gira,
     preferredCarrierId: preferredCarrierId,
     identificationTypeId: identificationTypeId,
@@ -60,7 +64,9 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
     String? address,
     String? taxId,
     double? creditLimit,
+    String countryCode = 'CR',
     String? province,
+    String? city,
     String? gira,
     String? preferredCarrierId,
     String? identificationTypeId,
@@ -78,7 +84,9 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
     address: address,
     taxId: taxId,
     creditLimit: creditLimit,
+    countryCode: countryCode,
     province: province,
+    city: city,
     gira: gira,
     preferredCarrierId: preferredCarrierId,
     identificationTypeId: identificationTypeId,
@@ -140,7 +148,8 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
   );
 
   @override
-  Future<void> deleteCustomerEmail(String id) => _source.deleteCustomerEmail(id);
+  Future<void> deleteCustomerEmail(String id) =>
+      _source.deleteCustomerEmail(id);
 
   @override
   Future<List<ProductBuyer>> getProductBuyers(String productId) =>

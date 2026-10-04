@@ -131,3 +131,47 @@ class IdentificationTypeDto {
   final bool isActive;
   final int version;
 }
+
+class CountryDto {
+  const CountryDto({
+    required this.code,
+    required this.name,
+    this.isActive = true,
+  });
+
+  final String code;
+  final String name;
+  final bool isActive;
+}
+
+class AdministrativeAreaDto {
+  const AdministrativeAreaDto({
+    required this.id,
+    required this.countryCode,
+    required this.code,
+    required this.name,
+    this.isActive = true,
+  });
+
+  final String id;
+  final String countryCode;
+  final String code;
+  final String name;
+  final bool isActive;
+}
+
+class CityDto {
+  const CityDto({
+    required this.id,
+    required this.countryCode,
+    required this.provinceName,
+    required this.name,
+    this.isActive = true,
+  });
+
+  final String id;
+  final String countryCode;
+  final String provinceName;
+  final String name;
+  final bool isActive;
+}

@@ -371,9 +371,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
                     for (final item in items)
                       ActionChip(
                         avatar: Icon(
-                          item.isActive
-                              ? Icons.badge_outlined
-                              : Icons.block,
+                          item.isActive ? Icons.badge_outlined : Icons.block,
                           size: 18,
                         ),
                         label: Text(
@@ -960,9 +958,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
           Future<void> submit() async {
             var invalid = false;
             if (existing == null && code.text.trim().isEmpty) {
-              setDialogState(
-                () => codeError = 'Escriba el código del tipo.',
-              );
+              setDialogState(() => codeError = 'Escriba el código del tipo.');
               invalid = true;
             }
             if (name.text.trim().isEmpty) {

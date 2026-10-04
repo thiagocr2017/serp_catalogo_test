@@ -201,39 +201,40 @@ void main() {
     expect(api.lastCarrierCommand?.phone, '+506 2222-1111');
   });
 
-  testWidgets('tipo de identificacion vacio exige correccion antes de guardar', (
-    tester,
-  ) async {
-    final api = _RecordingConfigurationApi();
+  testWidgets(
+    'tipo de identificacion vacio exige correccion antes de guardar',
+    (tester) async {
+      final api = _RecordingConfigurationApi();
 
-    await tester.pumpWidget(_app(api));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(_app(api));
+      await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.text('Nuevo tipo'),
-      500,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.text('Nuevo tipo'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
-    await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Nuevo tipo'),
+        500,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Nuevo tipo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Escriba el código del tipo.'), findsOneWidget);
-    expect(find.text('Escriba el nombre del tipo.'), findsOneWidget);
-    expect(find.byType(AlertDialog), findsOneWidget);
-    expect(api.createdIdentificationTypes, 0);
+      expect(find.text('Escriba el código del tipo.'), findsOneWidget);
+      expect(find.text('Escriba el nombre del tipo.'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(api.createdIdentificationTypes, 0);
 
-    await tester.enterText(find.widgetWithText(TextField, 'Código'), 'NIT');
-    await tester.enterText(find.widgetWithText(TextField, 'Nombre'), 'NIT');
-    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
-    await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Código'), 'NIT');
+      await tester.enterText(find.widgetWithText(TextField, 'Nombre'), 'NIT');
+      await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.pumpAndSettle();
 
-    expect(api.createdIdentificationTypes, 1);
-    expect(api.lastCreateIdentificationType?.code, 'NIT');
-    expect(api.lastCreateIdentificationType?.name, 'NIT');
-    expect(find.byType(AlertDialog), findsNothing);
-  });
+      expect(api.createdIdentificationTypes, 1);
+      expect(api.lastCreateIdentificationType?.code, 'NIT');
+      expect(api.lastCreateIdentificationType?.name, 'NIT');
+      expect(find.byType(AlertDialog), findsNothing);
+    },
+  );
 
   testWidgets('tipo de identificacion existente se renombra y desactiva', (
     tester,
@@ -266,7 +267,10 @@ void main() {
       'Cédula jurídica (CR)',
     );
     await tester.tap(
-      find.descendant(of: find.byType(AlertDialog), matching: find.byType(Switch)),
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(Switch),
+      ),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
@@ -499,6 +503,20 @@ class _RecordingConfigurationApi implements ConfigurationApi {
 
   @override
   Future<Uint8List?> downloadCatalogLogo() async => null;
+
+  @override
+  Future<List<CountryDto>> getCountries() async => const [];
+
+  @override
+  Future<List<AdministrativeAreaDto>> getAdministrativeAreas({
+    String countryCode = 'CR',
+  }) async => const [];
+
+  @override
+  Future<List<CityDto>> getCities({
+    String countryCode = 'CR',
+    String? provinceName,
+  }) async => const [];
 }
 
 class _LegacySettingsRepository implements ConfigurationRepository {

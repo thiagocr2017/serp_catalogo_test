@@ -16,35 +16,29 @@ class SupabaseInventoryApi implements InventoryApi {
   @override
   Future<List<InventoryTransactionDto>> getTransactions({
     String? productId,
-  }) async =>
-      [
-        for (final t in await _repository.getTransactions(productId: productId))
-          t.toDto(),
-      ];
+  }) async => [
+    for (final t in await _repository.getTransactions(productId: productId))
+      t.toDto(),
+  ];
 
   @override
-  Future<List<WarehouseDto>> getWarehouses({bool activeOnly = true}) async =>
-      [
-        for (final w in await _repository.getWarehouses(
-          activeOnly: activeOnly,
-        ))
-          w.toDto(),
-      ];
+  Future<List<WarehouseDto>> getWarehouses({bool activeOnly = true}) async => [
+    for (final w in await _repository.getWarehouses(activeOnly: activeOnly))
+      w.toDto(),
+  ];
 
   @override
   Future<List<InventoryBalanceDto>> getLocationBalances({
     String? productId,
-  }) async =>
-      [
-        for (final b in await _repository.getLocationBalances(
-          productId: productId,
-        ))
-          b.toDto(),
-      ];
+  }) async => [
+    for (final b in await _repository.getLocationBalances(productId: productId))
+      b.toDto(),
+  ];
 
   @override
-  Future<List<InventoryDocumentDto>> getDocuments() async =>
-      [for (final d in await _repository.getDocuments()) d.toDto()];
+  Future<List<InventoryDocumentDto>> getDocuments() async => [
+    for (final d in await _repository.getDocuments()) d.toDto(),
+  ];
 
   @override
   Future<InventoryDocumentDto?> getDocument(String id) async =>
@@ -59,14 +53,13 @@ class SupabaseInventoryApi implements InventoryApi {
   Future<List<AuditEntryDto>> getAuditEntries({
     String? tableName,
     String? recordId,
-  }) async =>
-      [
-        for (final a in await _repository.getAuditEntries(
-          tableName: tableName,
-          recordId: recordId,
-        ))
-          a.toDto(),
-      ];
+  }) async => [
+    for (final a in await _repository.getAuditEntries(
+      tableName: tableName,
+      recordId: recordId,
+    ))
+      a.toDto(),
+  ];
 
   @override
   Future<InventoryReservationDto> reserveStock({
@@ -74,13 +67,12 @@ class SupabaseInventoryApi implements InventoryApi {
     required String locationId,
     required String orderId,
     required int quantity,
-  }) async =>
-      (await _repository.reserveStock(
-        productId: productId,
-        locationId: locationId,
-        orderId: orderId,
-        quantity: quantity,
-      )).toDto();
+  }) async => (await _repository.reserveStock(
+    productId: productId,
+    locationId: locationId,
+    orderId: orderId,
+    quantity: quantity,
+  )).toDto();
 
   @override
   Future<void> releaseReservation(String reservationId) =>

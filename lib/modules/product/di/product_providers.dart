@@ -65,7 +65,10 @@ class SelectedProductIds extends Notifier<Set<String>> {
 }
 
 final productTransactionsProvider =
-    FutureProvider.family<List<InventoryTransactionDto>, String>((ref, productId) {
+    FutureProvider.family<List<InventoryTransactionDto>, String>((
+      ref,
+      productId,
+    ) {
       ref.watch(inventoryDataRevisionProvider);
       return ref
           .watch(inventoryApiProvider)
@@ -80,15 +83,14 @@ final productLocationBalancesProvider =
           .getLocationBalances(productId: productId);
     });
 
-final productAuditProvider = FutureProvider.family<List<AuditEntryDto>, String>((
-  ref,
-  productId,
-) {
-  ref.watch(inventoryDataRevisionProvider);
-  return ref
-      .watch(inventoryApiProvider)
-      .getAuditEntries(tableName: 'products', recordId: productId);
-});
+final productAuditProvider = FutureProvider.family<List<AuditEntryDto>, String>(
+  (ref, productId) {
+    ref.watch(inventoryDataRevisionProvider);
+    return ref
+        .watch(inventoryApiProvider)
+        .getAuditEntries(tableName: 'products', recordId: productId);
+  },
+);
 
 final productImageServiceProvider = Provider<ProductImageService>(
   (ref) => throw StateError('ProductImageService must be overridden.'),

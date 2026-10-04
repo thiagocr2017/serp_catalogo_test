@@ -17,10 +17,7 @@ void main() {
     });
 
     test('valor desconocido cae en COPY', () {
-      expect(
-        CustomerEmailPurpose.fromJson('OTRO'),
-        CustomerEmailPurpose.copy,
-      );
+      expect(CustomerEmailPurpose.fromJson('OTRO'), CustomerEmailPurpose.copy);
     });
   });
 

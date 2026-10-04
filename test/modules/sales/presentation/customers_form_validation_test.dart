@@ -58,10 +58,7 @@ void main() {
       find.widgetWithText(TextField, 'Límite de crédito'),
       '300.75',
     );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Provincia'),
-      'San José',
-    );
+    await _selectProvince(tester, 'San José');
     await tester.enterText(
       find.widgetWithText(TextField, 'Gira (agrupación comercial)'),
       'Gira Central',
@@ -288,18 +285,20 @@ void main() {
     expect(api.createdEmail, 'principal@example.com');
     expect(api.savedEmails.length, 3);
     expect(
-      api.savedEmails.where((e) => e.purpose == CustomerEmailPurpose.copy).length,
+      api.savedEmails
+          .where((e) => e.purpose == CustomerEmailPurpose.copy)
+          .length,
       2,
     );
     expect(
-      api.savedEmails.where((e) => e.purpose == CustomerEmailPurpose.primary).length,
+      api.savedEmails
+          .where((e) => e.purpose == CustomerEmailPurpose.primary)
+          .length,
       1,
     );
   });
 
-  testWidgets('cliente existente actualiza correo en copia', (
-    tester,
-  ) async {
+  testWidgets('cliente existente actualiza correo en copia', (tester) async {
     const customerId = 'customer-1';
     final api = _RecordingCustomerApi(
       initialCustomers: const [
@@ -388,7 +387,9 @@ void main() {
     (tester) async {
       final api = _RecordingCustomerApi();
 
-      await tester.pumpWidget(_app(api, identificationTypes: _identificationTypes));
+      await tester.pumpWidget(
+        _app(api, identificationTypes: _identificationTypes),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Nuevo cliente'));
@@ -403,7 +404,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // Identificación, tipo, dirección y actividad comparten el mensaje.
-      expect(find.text('Requerido para factura electrónica.'), findsNWidgets(4));
+      expect(
+        find.text('Requerido para factura electrónica.'),
+        findsNWidgets(4),
+      );
       expect(
         find.text(
           'Correo de documentación obligatorio para factura electrónica.',
@@ -419,7 +423,9 @@ void main() {
     (tester) async {
       final api = _RecordingCustomerApi();
 
-      await tester.pumpWidget(_app(api, identificationTypes: _identificationTypes));
+      await tester.pumpWidget(
+        _app(api, identificationTypes: _identificationTypes),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Nuevo cliente'));
@@ -459,7 +465,9 @@ void main() {
   ) async {
     final api = _RecordingCustomerApi();
 
-    await tester.pumpWidget(_app(api, identificationTypes: _identificationTypes));
+    await tester.pumpWidget(
+      _app(api, identificationTypes: _identificationTypes),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Nuevo cliente'));
@@ -506,7 +514,9 @@ void main() {
   ) async {
     final api = _RecordingCustomerApi();
 
-    await tester.pumpWidget(_app(api, identificationTypes: _identificationTypes));
+    await tester.pumpWidget(
+      _app(api, identificationTypes: _identificationTypes),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Nuevo cliente'));
@@ -723,7 +733,7 @@ void main() {
             phone: '+506 1111-2222',
             email: 'actual@example.com',
             documentPreference: 'TICKET',
-          isActive: true,
+            isActive: true,
           ),
         ],
       );
@@ -814,7 +824,7 @@ void main() {
             email: 'actual@example.com',
             creditLimit: 250,
             documentPreference: 'TICKET',
-          isActive: true,
+            isActive: true,
           ),
         ],
         initialContacts: const [
@@ -872,6 +882,34 @@ void main() {
       ]);
     },
   );
+
+  testWidgets('cliente guarda pais CR, provincia y ciudad', (tester) async {
+    final api = _RecordingCustomerApi();
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nuevo cliente'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
+      'Cliente Geografía CR',
+    );
+    await _selectProvince(tester, 'Cartago');
+    final cityField = find.widgetWithText(TextField, 'Ciudad / Distrito');
+    await tester.ensureVisible(cityField);
+    await tester.enterText(cityField, 'Paraíso');
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.createdCustomers, 1);
+    expect(api.createdCustomerName, 'Cliente Geografía CR');
+    expect(api.createdCountryCode, 'CR');
+    expect(api.createdProvince, 'Cartago');
+    expect(api.createdCity, 'Paraíso');
+  });
 }
 
 Widget _app(
@@ -908,6 +946,18 @@ Future<void> _selectCustomerType(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _selectProvince(WidgetTester tester, String provinceName) async {
+  final dropdown = find.widgetWithText(
+    DropdownButtonFormField<String>,
+    'Provincia',
+  );
+  await tester.ensureVisible(dropdown);
+  await tester.tap(dropdown);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(provinceName).last);
+  await tester.pumpAndSettle();
+}
+
 const _identificationTypes = [
   IdentificationTypeDto(
     id: 'type-1',
@@ -939,7 +989,10 @@ Future<void> _selectIdentificationType(
   await tester.pumpAndSettle();
 }
 
-Future<void> _selectDocumentPreference(WidgetTester tester, String label) async {
+Future<void> _selectDocumentPreference(
+  WidgetTester tester,
+  String label,
+) async {
   await tester.ensureVisible(
     find.widgetWithText(DropdownButtonFormField<String>, 'Documento habitual'),
   );
@@ -983,6 +1036,8 @@ class _RecordingCustomerApi implements CustomerApi {
   int? createdCreditDays;
   String? createdDocumentPreference;
   bool createdRequiresEInvoice = false;
+  String createdCountryCode = 'CR';
+  String? createdCity;
   String? updatedCustomerId;
   String? updatedCustomerName;
   double? updatedCreditLimit;
@@ -990,6 +1045,8 @@ class _RecordingCustomerApi implements CustomerApi {
   String? updatedIdentificationTypeId;
   String? updatedEconomicActivity;
   bool updatedRequiresEInvoice = false;
+  String updatedCountryCode = 'CR';
+  String? updatedCity;
   String? deactivatedCustomerId;
   String? deactivationReason;
   final savedContactIds = <String?>[];
@@ -1007,9 +1064,7 @@ class _RecordingCustomerApi implements CustomerApi {
     if (hydrateDelay > Duration.zero) {
       await Future<void>.delayed(hydrateDelay);
     }
-    return initialCustomers
-        .where((customer) => customer.id == id)
-        .firstOrNull;
+    return initialCustomers.where((customer) => customer.id == id).firstOrNull;
   }
 
   @override
@@ -1021,7 +1076,9 @@ class _RecordingCustomerApi implements CustomerApi {
     String? address,
     String? taxId,
     double? creditLimit,
+    String countryCode = 'CR',
     String? province,
+    String? city,
     String? gira,
     String? preferredCarrierId,
     String? identificationTypeId,
@@ -1039,7 +1096,9 @@ class _RecordingCustomerApi implements CustomerApi {
     createdAddress = address;
     createdTaxId = taxId;
     createdCreditLimit = creditLimit;
+    createdCountryCode = countryCode;
     createdProvince = province;
+    createdCity = city;
     createdGira = gira;
     createdPreferredCarrierId = preferredCarrierId;
     createdIdentificationTypeId = identificationTypeId;
@@ -1056,7 +1115,9 @@ class _RecordingCustomerApi implements CustomerApi {
       email: email,
       address: address,
       taxId: taxId,
+      countryCode: countryCode,
       province: province,
+      city: city,
       gira: gira,
       preferredCarrierId: preferredCarrierId,
       identificationTypeId: identificationTypeId,
@@ -1079,7 +1140,9 @@ class _RecordingCustomerApi implements CustomerApi {
     String? address,
     String? taxId,
     double? creditLimit,
+    String countryCode = 'CR',
     String? province,
+    String? city,
     String? gira,
     String? preferredCarrierId,
     String? identificationTypeId,
@@ -1096,6 +1159,8 @@ class _RecordingCustomerApi implements CustomerApi {
     updatedIdentificationTypeId = identificationTypeId;
     updatedEconomicActivity = economicActivity;
     updatedRequiresEInvoice = requiresEInvoice;
+    updatedCountryCode = countryCode;
+    updatedCity = city;
     return Customer(
       id: id,
       name: name,
@@ -1104,7 +1169,9 @@ class _RecordingCustomerApi implements CustomerApi {
       email: email,
       address: address,
       taxId: taxId,
+      countryCode: countryCode,
       province: province,
+      city: city,
       gira: gira,
       preferredCarrierId: preferredCarrierId,
       identificationTypeId: identificationTypeId,
@@ -1166,9 +1233,7 @@ class _RecordingCustomerApi implements CustomerApi {
 
   @override
   Future<List<CustomerEmail>> getCustomerEmails(String customerId) async =>
-      initialEmails
-          .where((email) => email.customerId == customerId)
-          .toList();
+      initialEmails.where((email) => email.customerId == customerId).toList();
 
   @override
   Future<CustomerEmail> saveCustomerEmail({
@@ -1383,4 +1448,76 @@ class _RecordingConfigurationApi implements ConfigurationApi {
 
   @override
   Future<Uint8List?> downloadCatalogLogo() async => null;
+
+  @override
+  Future<List<CountryDto>> getCountries() async => const [
+    CountryDto(code: 'CR', name: 'Costa Rica'),
+  ];
+
+  @override
+  Future<List<AdministrativeAreaDto>> getAdministrativeAreas({
+    String countryCode = 'CR',
+  }) async => const [
+    AdministrativeAreaDto(
+      id: 'CR-SJ',
+      code: 'SJ',
+      countryCode: 'CR',
+      name: 'San José',
+    ),
+    AdministrativeAreaDto(
+      id: 'CR-AL',
+      code: 'AL',
+      countryCode: 'CR',
+      name: 'Alajuela',
+    ),
+    AdministrativeAreaDto(
+      id: 'CR-CA',
+      code: 'CA',
+      countryCode: 'CR',
+      name: 'Cartago',
+    ),
+    AdministrativeAreaDto(
+      id: 'CR-HE',
+      code: 'HE',
+      countryCode: 'CR',
+      name: 'Heredia',
+    ),
+    AdministrativeAreaDto(
+      id: 'CR-GU',
+      code: 'GU',
+      countryCode: 'CR',
+      name: 'Guanacaste',
+    ),
+    AdministrativeAreaDto(
+      id: 'CR-PU',
+      code: 'PU',
+      countryCode: 'CR',
+      name: 'Puntarenas',
+    ),
+    AdministrativeAreaDto(
+      id: 'CR-LI',
+      code: 'LI',
+      countryCode: 'CR',
+      name: 'Limón',
+    ),
+  ];
+
+  @override
+  Future<List<CityDto>> getCities({
+    String countryCode = 'CR',
+    String? provinceName,
+  }) async => const [
+    CityDto(
+      id: '1',
+      countryCode: 'CR',
+      provinceName: 'San José',
+      name: 'San José Central',
+    ),
+    CityDto(
+      id: '2',
+      countryCode: 'CR',
+      provinceName: 'San José',
+      name: 'Escazú',
+    ),
+  ];
 }

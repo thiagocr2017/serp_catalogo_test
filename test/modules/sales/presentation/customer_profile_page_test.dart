@@ -181,7 +181,9 @@ class _FakeCustomerApi implements CustomerApi {
     String? address,
     String? taxId,
     double? creditLimit,
+    String countryCode = 'CR',
     String? province,
+    String? city,
     String? gira,
     String? preferredCarrierId,
     String? identificationTypeId,
@@ -202,7 +204,9 @@ class _FakeCustomerApi implements CustomerApi {
     String? address,
     String? taxId,
     double? creditLimit,
+    String countryCode = 'CR',
     String? province,
+    String? city,
     String? gira,
     String? preferredCarrierId,
     String? identificationTypeId,
@@ -230,7 +234,8 @@ class _FakeCustomerApi implements CustomerApi {
   Future<void> deleteCustomerContact(String id) async {}
 
   @override
-  Future<List<CustomerEmail>> getCustomerEmails(String customerId) async => const [];
+  Future<List<CustomerEmail>> getCustomerEmails(String customerId) async =>
+      const [];
 
   @override
   Future<CustomerEmail> saveCustomerEmail({

@@ -113,7 +113,8 @@ class InventoryTransactionDto {
   );
 
   @override
-  String toString() => 'InventoryTransactionDto(id: $id, sku: $productSku, '
+  String toString() =>
+      'InventoryTransactionDto(id: $id, sku: $productSku, '
       'quantity: $quantity, reason: ${reason.name})';
 }
 
@@ -161,7 +162,8 @@ class InventoryBalanceDto {
   );
 
   @override
-  String toString() => 'InventoryBalanceDto($productSku @ $locationName: '
+  String toString() =>
+      'InventoryBalanceDto($productSku @ $locationName: '
       '$quantity)';
 }
 
@@ -232,8 +234,14 @@ class WarehouseDto {
       listEquals(other.locations, locations);
 
   @override
-  int get hashCode =>
-      Object.hash(id, code, name, isDefault, isActive, Object.hashAll(locations));
+  int get hashCode => Object.hash(
+    id,
+    code,
+    name,
+    isDefault,
+    isActive,
+    Object.hashAll(locations),
+  );
 
   @override
   String toString() => 'WarehouseDto($code · $name)';
@@ -273,8 +281,7 @@ class InventoryDocumentLineDto {
       Object.hash(id, productId, quantity, productSku, productName, notes);
 
   @override
-  String toString() =>
-      'InventoryDocumentLineDto($productSku x $quantity)';
+  String toString() => 'InventoryDocumentLineDto($productSku x $quantity)';
 }
 
 /// Documento de inventario con sus lineas.

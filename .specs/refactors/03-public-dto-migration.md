@@ -94,10 +94,12 @@ Alternativa considerada: migrar todo de una vez.
 
 - [x] T1. Spec de producto: **definido aqui abajo** (seccion «Contrato de
       producto resultante»).
-- [ ] T2. `data/mappers/product_dto_mapper.dart` con conversion entidad -> DTO.
-- [ ] T3. Cambiar `ProductApi` para devolver DTO y retirar los
-      `export '../domain/entities/...'`.
-- [ ] T4. Migrar consumidores de `product` y actualizar sus pruebas.
+- [x] T2. `data/mappers/product_dto_mapper.dart` con conversion entidad -> DTO.
+      Resuelto en `9c8c5c7`.
+- [x] T3. Cambiar `ProductApi` para devolver DTO y retirar los
+      `export '../domain/entities/...'`. Resuelto en `9c8c5c7`.
+- [x] T4. Migrar consumidores de `product` y actualizar sus pruebas.
+      Resuelto en `9c8c5c7`.
 
 ## Contrato de producto resultante
 
@@ -107,7 +109,6 @@ real: `ProductApi` tiene **un solo consumidor externo**,
 que usa `id`, `sku`, `name`, `description` y `currentStock`, y llama con
 `ProductQuery(isActive: true)`. Todo lo demas consume el caso de uso
 `GetProducts` del propio modulo y sigue usando la entidad de dominio.
-
 ```text
 // api/product_dtos.dart
 
@@ -152,8 +153,10 @@ Notas de la decision:
       `data/mappers/inventory_dto_mapper.dart`. Los enums se re-exportan con
       `show` como tipos de valor compartidos; ninguna entidad de dominio se
       exporta desde `inventory/api/`.
-- [ ] T6. Retirar los 6 `export '../domain/repositories/...'` de `sales` y
+- [x] T6. Retirar los 6 `export '../domain/repositories/...'` de `sales` y
       sustituirlos por contratos de `api/`.
+      Resuelto en `85c72cb`: `sales_module.dart` ahora expone estrictamente
+      `sales_api.dart`, `customer_api.dart` y `sales_routes.dart`.
 - [ ] T7. Crear DTO de `sales` para las 6 entidades restantes.
 - [ ] T8. Verificar con la prueba de frontera que ningun modulo importa capas
       internas de otro.

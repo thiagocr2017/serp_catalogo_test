@@ -28,6 +28,16 @@ abstract interface class ConfigurationApi {
     UpdateIdentificationTypeCommand command,
   );
 
+  /// Catálogos de geografía global.
+  Future<List<CountryDto>> getCountries();
+  Future<List<AdministrativeAreaDto>> getAdministrativeAreas({
+    String countryCode = 'CR',
+  });
+  Future<List<CityDto>> getCities({
+    String countryCode = 'CR',
+    String? provinceName,
+  });
+
   Future<BusinessSettingsDto> saveBusinessSettings(
     SaveBusinessSettingsCommand command,
   );
@@ -75,15 +85,39 @@ final carrierDtosProvider = FutureProvider<List<CarrierDto>>(
   (ref) => ref.watch(configurationApiProvider).getCarriers(),
 );
 
-final identificationTypeDtosProvider = FutureProvider<List<IdentificationTypeDto>>(
-  (ref) => ref.watch(configurationApiProvider).getIdentificationTypes(),
-);
+final identificationTypeDtosProvider =
+    FutureProvider<List<IdentificationTypeDto>>(
+      (ref) => ref.watch(configurationApiProvider).getIdentificationTypes(),
+    );
 
 /// Incluye los inactivos: la gestión necesita reactivar tipos desactivados.
 final identificationTypesAdminDtosProvider =
     FutureProvider<List<IdentificationTypeDto>>(
-      (ref) =>
-          ref.watch(configurationApiProvider).getIdentificationTypes(
-            includeInactive: true,
+      (ref) => ref
+          .watch(configurationApiProvider)
+          .getIdentificationTypes(includeInactive: true),
+    );
+
+final countriesDtoProvider = FutureProvider<List<CountryDto>>(
+  (ref) => ref.watch(configurationApiProvider).getCountries(),
+);
+
+final administrativeAreasDtoProvider =
+    FutureProvider.family<List<AdministrativeAreaDto>, String>(
+      (ref, countryCode) => ref
+          .watch(configurationApiProvider)
+          .getAdministrativeAreas(countryCode: countryCode),
+    );
+
+final citiesDtoProvider =
+    FutureProvider.family<
+      List<CityDto>,
+      ({String countryCode, String? provinceName})
+    >(
+      (ref, params) => ref
+          .watch(configurationApiProvider)
+          .getCities(
+            countryCode: params.countryCode,
+            provinceName: params.provinceName,
           ),
     );

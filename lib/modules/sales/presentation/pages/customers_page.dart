@@ -272,7 +272,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   late final TextEditingController _taxId;
   late final TextEditingController _creditLimit;
   late final TextEditingController _creditDays;
+  late String _countryCode;
   late final TextEditingController _province;
+  late final TextEditingController _city;
   late final TextEditingController _gira;
   late String? _preferredCarrierId;
   late String? _identificationTypeId;
@@ -332,7 +334,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     _creditDays = TextEditingController(
       text: existing?.creditDays == null ? '' : existing!.creditDays.toString(),
     );
+    _countryCode = existing?.countryCode ?? 'CR';
     _province = TextEditingController(text: existing?.province ?? '');
+    _city = TextEditingController(text: existing?.city ?? '');
     _gira = TextEditingController(text: existing?.gira ?? '');
     _preferredCarrierId = existing?.preferredCarrierId;
     _identificationTypeId = existing?.identificationTypeId;
@@ -353,6 +357,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       _creditLimit,
       _creditDays,
       _province,
+      _city,
       _gira,
       _economicActivity,
     ]) {
@@ -390,7 +395,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
             ? ''
             : customer.creditLimit.toString();
         _creditDays.text = customer.creditDays?.toString() ?? '';
+        _countryCode = customer.countryCode;
         _province.text = customer.province ?? '';
+        _city.text = customer.city ?? '';
         _gira.text = customer.gira ?? '';
         _preferredCarrierId = customer.preferredCarrierId;
         _identificationTypeId = customer.identificationTypeId;
@@ -547,7 +554,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       _taxId.text,
       _creditLimit.text,
       _creditDays.text,
+      _countryCode,
       _province.text,
+      _city.text,
       _gira.text,
       _preferredCarrierId ?? '',
       _identificationTypeId ?? '',
@@ -588,6 +597,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     _creditLimit.dispose();
     _creditDays.dispose();
     _province.dispose();
+    _city.dispose();
     _gira.dispose();
     _economicActivity.dispose();
     for (final contact in _contacts) {
@@ -929,12 +939,185 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                               },
                             ),
                             const SizedBox(height: 12),
-                            TextField(
-                              controller: _province,
-                              decoration: const InputDecoration(
-                                labelText: 'Provincia',
-                                border: OutlineInputBorder(),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: DropdownButtonFormField<String>(
+                                    key: const ValueKey(
+                                      'customerCountryDropdown',
+                                    ),
+                                    initialValue: _countryCode,
+                                    decoration: const InputDecoration(
+                                      labelText: 'País',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    items: [
+                                      const DropdownMenuItem(
+                                        value: 'CR',
+                                        child: Text('Costa Rica'),
+                                      ),
+                                      ...?ref
+                                          .watch(countriesDtoProvider)
+                                          .value
+                                          ?.where((c) => c.code != 'CR')
+                                          .map(
+                                            (c) => DropdownMenuItem(
+                                              value: c.code,
+                                              child: Text(c.name),
+                                            ),
+                                          ),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null && val != _countryCode) {
+                                        setState(() {
+                                          _countryCode = val;
+                                          _province.text = '';
+                                          _city.text = '';
+                                          _markDirty();
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 3,
+                                  child: _countryCode == 'CR'
+                                      ? DropdownButtonFormField<String>(
+                                          key: ValueKey(
+                                            'customerProvinceDropdown_${_province.text.trim()}',
+                                          ),
+                                          initialValue:
+                                              _province.text
+                                                      .trim()
+                                                      .isNotEmpty &&
+                                                  const [
+                                                    'San José',
+                                                    'Alajuela',
+                                                    'Cartago',
+                                                    'Heredia',
+                                                    'Guanacaste',
+                                                    'Puntarenas',
+                                                    'Limón',
+                                                  ].contains(
+                                                    _province.text.trim(),
+                                                  )
+                                              ? _province.text.trim()
+                                              : null,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Provincia',
+                                            border: OutlineInputBorder(),
+                                          ),
+                                          hint: const Text(
+                                            'Seleccione provincia',
+                                          ),
+                                          items: const [
+                                            DropdownMenuItem(
+                                              value: 'San José',
+                                              child: Text('San José'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'Alajuela',
+                                              child: Text('Alajuela'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'Cartago',
+                                              child: Text('Cartago'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'Heredia',
+                                              child: Text('Heredia'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'Guanacaste',
+                                              child: Text('Guanacaste'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'Puntarenas',
+                                              child: Text('Puntarenas'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'Limón',
+                                              child: Text('Limón'),
+                                            ),
+                                          ],
+                                          onChanged: (val) {
+                                            setState(() {
+                                              _province.text = val ?? '';
+                                              _city.text = '';
+                                              _markDirty();
+                                            });
+                                          },
+                                        )
+                                      : TextField(
+                                          controller: _province,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Provincia / Estado',
+                                            border: OutlineInputBorder(),
+                                          ),
+                                        ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Autocomplete<String>(
+                              key: ValueKey(
+                                'customerCityAutocomplete_${_province.text}',
                               ),
+                              initialValue: TextEditingValue(text: _city.text),
+                              optionsBuilder: (value) {
+                                final query = value.text.trim().toLowerCase();
+                                final citiesAsync = ref.watch(
+                                  citiesDtoProvider((
+                                    countryCode: _countryCode,
+                                    provinceName: _province.text.trim().isEmpty
+                                        ? null
+                                        : _province.text.trim(),
+                                  )),
+                                );
+                                final cityNames =
+                                    (citiesAsync.value ?? <CityDto>[])
+                                        .map((c) => c.name)
+                                        .toList();
+                                if (query.isEmpty) return cityNames;
+                                return cityNames.where(
+                                  (c) => c.toLowerCase().contains(query),
+                                );
+                              },
+                              onSelected: (value) {
+                                _city.text = value;
+                                _markDirty();
+                              },
+                              fieldViewBuilder:
+                                  (
+                                    context,
+                                    textEditingController,
+                                    focusNode,
+                                    onFieldSubmitted,
+                                  ) {
+                                    if (_city.text.isNotEmpty &&
+                                        textEditingController.text !=
+                                            _city.text) {
+                                      textEditingController.text = _city.text;
+                                    }
+                                    return TextField(
+                                      controller: textEditingController,
+                                      focusNode: focusNode,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Ciudad / Distrito',
+                                        hintText:
+                                            'P. ej. Pavas o Ciudad Quesada',
+                                        helperText: 'Si ingresa una ciudad nueva, se aprenderá automáticamente.',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      onChanged: (value) {
+                                        _city.text = value;
+                                        _markDirty();
+                                      },
+                                    );
+                                  },
                             ),
                             const SizedBox(height: 12),
                             Autocomplete<String>(
@@ -1148,48 +1331,47 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
             style: TextStyle(fontStyle: FontStyle.italic),
           ),
         )
-      else
-        ...[
-          for (var i = 0; i < _copyEmails.length; i++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                key: ValueKey(_copyEmails[i].id ?? i),
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _copyEmails[i].email,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        labelText: 'Correo ${i + 1}',
-                        hintText: 'copia@example.com',
-                        border: const OutlineInputBorder(),
-                      ),
+      else ...[
+        for (var i = 0; i < _copyEmails.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              key: ValueKey(_copyEmails[i].id ?? i),
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _copyEmails[i].email,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Correo ${i + 1}',
+                      hintText: 'copia@example.com',
+                      border: const OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: 'Quitar correo',
-                    onPressed: () => setState(() {
-                      final draft = _copyEmails.removeAt(i);
-                      if (draft.id != null) {
-                        _removedEmailIds.add(draft.id!);
-                      }
-                      draft.dispose();
-                      _markDirty();
-                    }),
-                    icon: const Icon(Icons.delete_outline),
-                    constraints: const BoxConstraints(),
-                    padding: EdgeInsets.zero,
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Quitar correo',
+                  onPressed: () => setState(() {
+                    final draft = _copyEmails.removeAt(i);
+                    if (draft.id != null) {
+                      _removedEmailIds.add(draft.id!);
+                    }
+                    draft.dispose();
+                    _markDirty();
+                  }),
+                  icon: const Icon(Icons.delete_outline),
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
+                ),
+              ],
             ),
-          const Text(
-            'Reciben copia de facturas y documentos.',
-            style: TextStyle(fontSize: 12),
           ),
-        ],
+        const Text(
+          'Reciben copia de facturas y documentos.',
+          style: TextStyle(fontSize: 12),
+        ),
+      ],
     ],
   );
 
@@ -1412,6 +1594,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       final province = _province.text.trim().isEmpty
           ? null
           : _province.text.trim();
+      final city = _city.text.trim().isEmpty ? null : _city.text.trim();
       final gira = _gira.text.trim().isEmpty ? null : _gira.text.trim();
       final phone = nullableFormattedPhone(
         countryCode: _phoneCountryCode.text,
@@ -1429,7 +1612,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
           address: _address.text.trim().isEmpty ? null : _address.text.trim(),
           taxId: _taxId.text.trim().isEmpty ? null : _taxId.text.trim(),
           creditLimit: creditLimit,
+          countryCode: _countryCode,
           province: province,
+          city: city,
           gira: gira,
           preferredCarrierId: _preferredCarrierId,
           identificationTypeId: _identificationTypeId,
@@ -1454,7 +1639,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
           address: _address.text.trim().isEmpty ? null : _address.text.trim(),
           taxId: _taxId.text.trim().isEmpty ? null : _taxId.text.trim(),
           creditLimit: creditLimit,
+          countryCode: _countryCode,
           province: province,
+          city: city,
           gira: gira,
           preferredCarrierId: _preferredCarrierId,
           identificationTypeId: _identificationTypeId,

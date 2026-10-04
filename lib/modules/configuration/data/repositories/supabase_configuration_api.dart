@@ -63,6 +63,55 @@ class SupabaseConfigurationApi implements ConfigurationApi {
   }
 
   @override
+  Future<List<CountryDto>> getCountries() async {
+    final response = await _client
+        .from('countries')
+        .select()
+        .eq('is_active', true)
+        .order('name');
+    final rows = (response as List).map(
+      (r) => Map<String, dynamic>.from(r as Map),
+    );
+    return rows.map(_country).toList();
+  }
+
+  @override
+  Future<List<AdministrativeAreaDto>> getAdministrativeAreas({
+    String countryCode = 'CR',
+  }) async {
+    final response = await _client
+        .from('administrative_areas')
+        .select()
+        .eq('country_code', countryCode)
+        .eq('is_active', true)
+        .order('name');
+    final rows = (response as List).map(
+      (r) => Map<String, dynamic>.from(r as Map),
+    );
+    return rows.map(_administrativeArea).toList();
+  }
+
+  @override
+  Future<List<CityDto>> getCities({
+    String countryCode = 'CR',
+    String? provinceName,
+  }) async {
+    var query = _client
+        .from('cities')
+        .select()
+        .eq('country_code', countryCode)
+        .eq('is_active', true);
+    if (provinceName != null && provinceName.trim().isNotEmpty) {
+      query = query.ilike('province_name', provinceName.trim());
+    }
+    final response = await query.order('name');
+    final rows = (response as List).map(
+      (r) => Map<String, dynamic>.from(r as Map),
+    );
+    return rows.map(_city).toList();
+  }
+
+  @override
   Future<IdentificationTypeDto> createIdentificationType(
     CreateIdentificationTypeCommand command,
   ) async {
@@ -397,4 +446,27 @@ class SupabaseConfigurationApi implements ConfigurationApi {
         isActive: row['is_active'] as bool? ?? true,
         version: row['version'] as int? ?? 1,
       );
+
+  CountryDto _country(Map<String, dynamic> row) => CountryDto(
+    code: row['code'] as String,
+    name: row['name'] as String,
+    isActive: row['is_active'] as bool? ?? true,
+  );
+
+  AdministrativeAreaDto _administrativeArea(Map<String, dynamic> row) =>
+      AdministrativeAreaDto(
+        id: row['id'] as String,
+        countryCode: row['country_code'] as String,
+        code: row['code'] as String,
+        name: row['name'] as String,
+        isActive: row['is_active'] as bool? ?? true,
+      );
+
+  CityDto _city(Map<String, dynamic> row) => CityDto(
+    id: row['id'] as String,
+    countryCode: row['country_code'] as String,
+    provinceName: row['province_name'] as String,
+    name: row['name'] as String,
+    isActive: row['is_active'] as bool? ?? true,
+  );
 }

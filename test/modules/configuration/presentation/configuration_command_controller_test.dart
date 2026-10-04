@@ -25,6 +25,20 @@ class _FakeConfigurationApi implements ConfigurationApi {
   Future<List<CarrierDto>> getCarriers() async => const [];
 
   @override
+  Future<List<CountryDto>> getCountries() async => const [];
+
+  @override
+  Future<List<AdministrativeAreaDto>> getAdministrativeAreas({
+    String countryCode = 'CR',
+  }) async => const [];
+
+  @override
+  Future<List<CityDto>> getCities({
+    String countryCode = 'CR',
+    String? provinceName,
+  }) async => const [];
+
+  @override
   Future<List<IdentificationTypeDto>> getIdentificationTypes({
     bool includeInactive = false,
   }) async => const [];

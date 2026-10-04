@@ -7,7 +7,9 @@ class Customer {
     this.email,
     this.address,
     this.taxId,
+    this.countryCode = 'CR',
     this.province,
+    this.city,
     this.gira,
     this.preferredCarrierId,
     this.identificationTypeId,
@@ -31,7 +33,9 @@ class Customer {
   final String? email;
   final String? address;
   final String? taxId;
+  final String countryCode;
   final String? province;
+  final String? city;
   final String? gira;
   final String? preferredCarrierId;
   final String? identificationTypeId;

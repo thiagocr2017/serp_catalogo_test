@@ -80,7 +80,10 @@ String describeInventoryTransaction(
 
 /// Orden del historial: lo más reciente primero; dentro del mismo
 /// documento la salida va antes que la entrada.
-int compareInventoryHistory(InventoryTransactionDto a, InventoryTransactionDto b) {
+int compareInventoryHistory(
+  InventoryTransactionDto a,
+  InventoryTransactionDto b,
+) {
   final byDate = b.createdAt.compareTo(a.createdAt);
   if (byDate != 0) return byDate;
   final byDocument = (a.documentId ?? '').compareTo(b.documentId ?? '');

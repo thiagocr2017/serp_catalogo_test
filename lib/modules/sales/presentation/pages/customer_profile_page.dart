@@ -240,7 +240,12 @@ class _InfoColumn extends ConsumerWidget {
             empty: 'Sin telefono',
           ),
           _InfoLine('Correo', customer.email, empty: 'Sin correo'),
+          _InfoLine(
+            'País',
+            customer.countryCode == 'CR' ? 'Costa Rica' : customer.countryCode,
+          ),
           _InfoLine('Provincia', customer.province, empty: 'Sin provincia'),
+          _InfoLine('Ciudad / Distrito', customer.city, empty: 'Sin ciudad'),
           _InfoLine('Gira', customer.gira, empty: 'Sin gira'),
           _InfoLine('Direccion', customer.address, empty: 'Sin direccion'),
         ],
@@ -260,10 +265,8 @@ class _InfoColumn extends ConsumerWidget {
               .when(
                 loading: () =>
                     const _InfoLine('Tipo de identificacion', 'Cargando...'),
-                error: (_, _) => const _InfoLine(
-                  'Tipo de identificacion',
-                  'No disponible',
-                ),
+                error: (_, _) =>
+                    const _InfoLine('Tipo de identificacion', 'No disponible'),
                 data: (types) => _InfoLine(
                   'Tipo de identificacion',
                   _identificationLabel(types, customer.identificationTypeId),
