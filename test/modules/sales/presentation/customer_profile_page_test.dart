@@ -137,6 +137,7 @@ Widget _profileApp(_FakeCustomerApi api, String customerId) => ProviderScope(
           code: 'JURIDICAL_ID',
           name: 'Cedula juridica',
           isActive: true,
+          version: 1,
         ),
       ],
     ),

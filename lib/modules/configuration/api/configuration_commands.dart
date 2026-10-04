@@ -133,6 +133,36 @@ class SaveCarrierCommand {
   final IdentityContext identity;
 }
 
+class CreateIdentificationTypeCommand {
+  const CreateIdentificationTypeCommand({
+    required this.commandId,
+    required this.code,
+    required this.name,
+    required this.identity,
+  });
+
+  final String commandId;
+  final String code;
+  final String name;
+  final IdentityContext identity;
+}
+
+class UpdateIdentificationTypeCommand {
+  const UpdateIdentificationTypeCommand({
+    required this.id,
+    required this.name,
+    required this.isActive,
+    required this.expectedVersion,
+    required this.identity,
+  });
+
+  final String id;
+  final String name;
+  final bool isActive;
+  final int expectedVersion;
+  final IdentityContext identity;
+}
+
 class ReplaceCatalogLogoCommand {
   const ReplaceCatalogLogoCommand({
     required this.operationId,

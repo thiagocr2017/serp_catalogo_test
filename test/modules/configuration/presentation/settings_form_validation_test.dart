@@ -200,6 +200,84 @@ void main() {
     expect(api.lastCarrierCommand?.name, 'Ruta A');
     expect(api.lastCarrierCommand?.phone, '+506 2222-1111');
   });
+
+  testWidgets('tipo de identificacion vacio exige correccion antes de guardar', (
+    tester,
+  ) async {
+    final api = _RecordingConfigurationApi();
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Nuevo tipo'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Nuevo tipo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Escriba el código del tipo.'), findsOneWidget);
+    expect(find.text('Escriba el nombre del tipo.'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(api.createdIdentificationTypes, 0);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Código'), 'NIT');
+    await tester.enterText(find.widgetWithText(TextField, 'Nombre'), 'NIT');
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.createdIdentificationTypes, 1);
+    expect(api.lastCreateIdentificationType?.code, 'NIT');
+    expect(api.lastCreateIdentificationType?.name, 'NIT');
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('tipo de identificacion existente se renombra y desactiva', (
+    tester,
+  ) async {
+    final api = _RecordingConfigurationApi(
+      identificationTypes: const [
+        IdentificationTypeDto(
+          id: 'type-1',
+          code: 'JURIDICAL_ID',
+          name: 'Cédula jurídica',
+          isActive: true,
+          version: 3,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Cédula jurídica'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Cédula jurídica'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre'),
+      'Cédula jurídica (CR)',
+    );
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: find.byType(Switch)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.lastUpdateIdentificationType?.id, 'type-1');
+    expect(api.lastUpdateIdentificationType?.name, 'Cédula jurídica (CR)');
+    expect(api.lastUpdateIdentificationType?.isActive, false);
+    expect(api.lastUpdateIdentificationType?.expectedVersion, 3);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
 }
 
 Widget _app(_RecordingConfigurationApi api) => ProviderScope(
@@ -220,9 +298,13 @@ Widget _app(_RecordingConfigurationApi api) => ProviderScope(
 );
 
 class _RecordingConfigurationApi implements ConfigurationApi {
-  _RecordingConfigurationApi({this.presentations = const []});
+  _RecordingConfigurationApi({
+    this.presentations = const [],
+    this.identificationTypes = const [],
+  });
 
   final List<PackagingPresentationDto> presentations;
+  final List<IdentificationTypeDto> identificationTypes;
   int savedBusinessSettings = 0;
   int createdPresentations = 0;
   SaveBusinessSettingsCommand? lastBusinessCommand;
@@ -234,6 +316,9 @@ class _RecordingConfigurationApi implements ConfigurationApi {
   int? deactivatedPresentationVersion;
   int savedCarriers = 0;
   SaveCarrierCommand? lastCarrierCommand;
+  int createdIdentificationTypes = 0;
+  CreateIdentificationTypeCommand? lastCreateIdentificationType;
+  UpdateIdentificationTypeCommand? lastUpdateIdentificationType;
 
   @override
   Future<BusinessSettingsDto> getBusinessSettings() async =>
@@ -279,7 +364,38 @@ class _RecordingConfigurationApi implements ConfigurationApi {
   Future<List<CarrierDto>> getCarriers() async => const [];
 
   @override
-  Future<List<IdentificationTypeDto>> getIdentificationTypes() async => const [];
+  Future<List<IdentificationTypeDto>> getIdentificationTypes({
+    bool includeInactive = false,
+  }) async => identificationTypes;
+
+  @override
+  Future<IdentificationTypeDto> createIdentificationType(
+    CreateIdentificationTypeCommand command,
+  ) async {
+    createdIdentificationTypes++;
+    lastCreateIdentificationType = command;
+    return IdentificationTypeDto(
+      id: 'type-new',
+      code: command.code,
+      name: command.name,
+      isActive: true,
+      version: 1,
+    );
+  }
+
+  @override
+  Future<IdentificationTypeDto> updateIdentificationType(
+    UpdateIdentificationTypeCommand command,
+  ) async {
+    lastUpdateIdentificationType = command;
+    return IdentificationTypeDto(
+      id: command.id,
+      code: 'JURIDICAL_ID',
+      name: command.name,
+      isActive: command.isActive,
+      version: command.expectedVersion + 1,
+    );
+  }
 
   @override
   Future<BusinessSettingsDto> saveBusinessSettings(

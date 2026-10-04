@@ -333,6 +333,60 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
               },
             ),
         const SizedBox(height: 28),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Tipos de identificación',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: () => _editIdentificationType(),
+              icon: const Icon(Icons.add),
+              label: const Text('Nuevo tipo'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Gestiona los tipos que se usan en el formulario de cliente y en los '
+          'datos fiscales. Desactivar un tipo impide asignarlo a clientes '
+          'nuevos; los clientes que ya lo usan lo conservan.',
+        ),
+        const SizedBox(height: 16),
+        ref
+            .watch(identificationTypesAdminDtosProvider)
+            .when(
+              loading: () => const LinearProgressIndicator(),
+              error: (error, _) => Text('No se pudieron cargar: $error'),
+              data: (items) {
+                if (items.isEmpty) {
+                  return const Text('No hay tipos de identificación.');
+                }
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final item in items)
+                      ActionChip(
+                        avatar: Icon(
+                          item.isActive
+                              ? Icons.badge_outlined
+                              : Icons.block,
+                          size: 18,
+                        ),
+                        label: Text(
+                          item.isActive ? item.name : '${item.name} (inactivo)',
+                        ),
+                        tooltip: 'Editar tipo de identificación',
+                        onPressed: () => _editIdentificationType(item),
+                      ),
+                  ],
+                );
+              },
+            ),
+        const SizedBox(height: 28),
         Text(
           'Precios e impuestos',
           style: Theme.of(context).textTheme.headlineSmall,
@@ -872,6 +926,180 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     });
     if (accepted == true) {
       ref.invalidate(carrierDtosProvider);
+    }
+  }
+
+  Future<void> _editIdentificationType([
+    IdentificationTypeDto? existing,
+  ]) async {
+    final code = TextEditingController();
+    final name = TextEditingController(text: existing?.name ?? '');
+    String? codeError;
+    String? nameError;
+    var isActive = existing?.isActive ?? true;
+    var dirty = false;
+    final accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          void markDirty() {
+            if (dirty) return;
+            setDialogState(() => dirty = true);
+          }
+
+          Future<void> cancel() async {
+            final navigator = Navigator.of(context);
+            final discard = await UnsavedChangesGuard.instance.confirmDiscard(
+              context,
+              hasUnsavedChanges: dirty,
+            );
+            if (discard && context.mounted) navigator.pop(false);
+          }
+
+          Future<void> submit() async {
+            var invalid = false;
+            if (existing == null && code.text.trim().isEmpty) {
+              setDialogState(
+                () => codeError = 'Escriba el código del tipo.',
+              );
+              invalid = true;
+            }
+            if (name.text.trim().isEmpty) {
+              setDialogState(() => nameError = 'Escriba el nombre del tipo.');
+              invalid = true;
+            }
+            if (invalid) return;
+            final api = ref.read(configurationApiProvider);
+            final identity = ref.read(identityContextProvider);
+            try {
+              if (existing == null) {
+                await api.createIdentificationType(
+                  CreateIdentificationTypeCommand(
+                    commandId: const Uuid().v4(),
+                    code: code.text.trim().toUpperCase(),
+                    name: name.text.trim(),
+                    identity: identity,
+                  ),
+                );
+              } else {
+                await api.updateIdentificationType(
+                  UpdateIdentificationTypeCommand(
+                    id: existing.id,
+                    name: name.text.trim(),
+                    isActive: isActive,
+                    expectedVersion: existing.version,
+                    identity: identity,
+                  ),
+                );
+              }
+              if (context.mounted) Navigator.pop(context, true);
+            } catch (error) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'No fue posible guardar: '
+                      '${_friendlyConfigurationError(error)}',
+                    ),
+                  ),
+                );
+              }
+            }
+          }
+
+          return PopScope(
+            canPop: !dirty,
+            onPopInvokedWithResult: (didPop, _) async {
+              if (didPop) return;
+              await cancel();
+            },
+            child: AlertDialog(
+              title: Text(
+                existing == null
+                    ? 'Nuevo tipo de identificación'
+                    : 'Editar tipo de identificación',
+              ),
+              content: SizedBox(
+                width: 420,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (existing == null) ...[
+                        TextField(
+                          controller: code,
+                          autofocus: true,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: InputDecoration(
+                            labelText: 'Código',
+                            hintText: 'PHYSICAL_ID',
+                            errorText: codeError,
+                            border: const OutlineInputBorder(),
+                          ),
+                          onChanged: (_) {
+                            markDirty();
+                            if (codeError != null) {
+                              setDialogState(() => codeError = null);
+                            }
+                          },
+                          onSubmitted: (_) => submit(),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      TextField(
+                        controller: name,
+                        autofocus: existing != null,
+                        decoration: InputDecoration(
+                          labelText: 'Nombre',
+                          hintText: 'Cédula física',
+                          errorText: nameError,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: (_) {
+                          markDirty();
+                          if (nameError != null) {
+                            setDialogState(() => nameError = null);
+                          }
+                        },
+                        onSubmitted: (_) => submit(),
+                      ),
+                      if (existing != null) ...[
+                        const SizedBox(height: 12),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Activo'),
+                          subtitle: const Text(
+                            'Los tipos inactivos no se pueden asignar a '
+                            'clientes nuevos.',
+                          ),
+                          value: isActive,
+                          onChanged: (value) {
+                            markDirty();
+                            setDialogState(() => isActive = value);
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: cancel, child: const Text('Cancelar')),
+                FilledButton(onPressed: submit, child: const Text('Guardar')),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      code.dispose();
+      name.dispose();
+    });
+    if (accepted == true) {
+      ref.invalidate(identificationTypesAdminDtosProvider);
+      ref.invalidate(identificationTypeDtosProvider);
     }
   }
 

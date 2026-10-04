@@ -914,6 +914,7 @@ const _identificationTypes = [
     code: 'JURIDICAL_ID',
     name: 'Cédula jurídica',
     isActive: true,
+    version: 1,
   ),
 ];
 
@@ -1257,8 +1258,19 @@ class _RecordingConfigurationApi implements ConfigurationApi {
   Future<List<CarrierDto>> getCarriers() async => carriers;
 
   @override
-  Future<List<IdentificationTypeDto>> getIdentificationTypes() async =>
-      identificationTypes;
+  Future<List<IdentificationTypeDto>> getIdentificationTypes({
+    bool includeInactive = false,
+  }) async => identificationTypes;
+
+  @override
+  Future<IdentificationTypeDto> createIdentificationType(
+    CreateIdentificationTypeCommand command,
+  ) async => throw UnimplementedError();
+
+  @override
+  Future<IdentificationTypeDto> updateIdentificationType(
+    UpdateIdentificationTypeCommand command,
+  ) async => throw UnimplementedError();
 
   @override
   Future<BusinessSettingsDto> getBusinessSettings() async =>

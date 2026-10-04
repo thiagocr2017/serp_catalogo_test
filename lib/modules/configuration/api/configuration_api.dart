@@ -15,7 +15,18 @@ abstract interface class ConfigurationApi {
   Future<CatalogPreferencesDto> getCatalogPreferences();
   Future<List<PackagingPresentationDto>> getPackagingPresentations();
   Future<List<CarrierDto>> getCarriers();
-  Future<List<IdentificationTypeDto>> getIdentificationTypes();
+
+  /// Tipos de identificación. Los consumidores (formulario de cliente) solo
+  /// necesitan los activos; la gestión en Configuración necesita todos.
+  Future<List<IdentificationTypeDto>> getIdentificationTypes({
+    bool includeInactive = false,
+  });
+  Future<IdentificationTypeDto> createIdentificationType(
+    CreateIdentificationTypeCommand command,
+  );
+  Future<IdentificationTypeDto> updateIdentificationType(
+    UpdateIdentificationTypeCommand command,
+  );
 
   Future<BusinessSettingsDto> saveBusinessSettings(
     SaveBusinessSettingsCommand command,
@@ -67,3 +78,12 @@ final carrierDtosProvider = FutureProvider<List<CarrierDto>>(
 final identificationTypeDtosProvider = FutureProvider<List<IdentificationTypeDto>>(
   (ref) => ref.watch(configurationApiProvider).getIdentificationTypes(),
 );
+
+/// Incluye los inactivos: la gestión necesita reactivar tipos desactivados.
+final identificationTypesAdminDtosProvider =
+    FutureProvider<List<IdentificationTypeDto>>(
+      (ref) =>
+          ref.watch(configurationApiProvider).getIdentificationTypes(
+            includeInactive: true,
+          ),
+    );

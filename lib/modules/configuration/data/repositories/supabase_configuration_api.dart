@@ -52,13 +52,47 @@ class SupabaseConfigurationApi implements ConfigurationApi {
   }
 
   @override
-  Future<List<IdentificationTypeDto>> getIdentificationTypes() async {
-    final rows = await _client
-        .from('identification_types')
-        .select()
-        .eq('is_active', true)
-        .order('name');
+  Future<List<IdentificationTypeDto>> getIdentificationTypes({
+    bool includeInactive = false,
+  }) async {
+    final query = _client.from('identification_types').select();
+    final rows = await (includeInactive
+        ? query.order('name')
+        : query.eq('is_active', true).order('name'));
     return rows.map(_identificationType).toList();
+  }
+
+  @override
+  Future<IdentificationTypeDto> createIdentificationType(
+    CreateIdentificationTypeCommand command,
+  ) async {
+    final row = await _client.rpc<dynamic>(
+      'create_identification_type',
+      params: {
+        'p_command_id': command.commandId,
+        'p_code': command.code,
+        'p_name': command.name,
+        ..._identity(command.identity),
+      },
+    );
+    return _identificationType(Map<String, dynamic>.from(row as Map));
+  }
+
+  @override
+  Future<IdentificationTypeDto> updateIdentificationType(
+    UpdateIdentificationTypeCommand command,
+  ) async {
+    final row = await _client.rpc<dynamic>(
+      'update_identification_type',
+      params: {
+        'p_type_id': command.id,
+        'p_name': command.name,
+        'p_is_active': command.isActive,
+        'p_expected_version': command.expectedVersion,
+        ..._identity(command.identity),
+      },
+    );
+    return _identificationType(Map<String, dynamic>.from(row as Map));
   }
 
   @override
@@ -361,5 +395,6 @@ class SupabaseConfigurationApi implements ConfigurationApi {
         code: row['code'] as String,
         name: row['name'] as String,
         isActive: row['is_active'] as bool? ?? true,
+        version: row['version'] as int? ?? 1,
       );
 }
