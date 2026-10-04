@@ -234,6 +234,22 @@ class _ContactDraft {
   }
 }
 
+class _EmailDraft {
+  _EmailDraft({
+    this.id,
+    String email = '',
+    this.label = '',
+    this.isActive = true,
+  }) : email = TextEditingController(text: email);
+
+  final String? id;
+  final TextEditingController email;
+  String label;
+  bool isActive;
+
+  void dispose() => email.dispose();
+}
+
 String _dateText(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
@@ -263,7 +279,10 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   late String _documentPreference;
   final _contacts = <_ContactDraft>[];
   final _removedContactIds = <String>[];
+  final _copyEmails = <_EmailDraft>[];
+  final _removedEmailIds = <String>[];
   Customer? _existing;
+  String? _primaryEmailId;
   bool _loadingCustomer = false;
   bool _loadingContacts = false;
   bool _saving = false;
@@ -365,6 +384,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
         _documentPreference = customer.documentPreference;
       });
       await _loadContacts(customer.id);
+      await _loadEmails(customer.id);
       _hydrating = false;
       _markClean();
     } catch (error) {
@@ -407,6 +427,41 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       }
     } finally {
       if (mounted) setState(() => _loadingContacts = false);
+    }
+  }
+
+  Future<void> _loadEmails(String customerId) async {
+    try {
+      final emails = await ref
+          .read(customerApiProvider)
+          .getCustomerEmails(customerId);
+      if (!mounted) return;
+      setState(() {
+        for (final email in emails) {
+          if (email.purpose == CustomerEmailPurpose.primary) {
+            // El correo principal ya tiene su propio campo legacy; los correos
+            // en copia viven en la lista.
+            _email.text = email.email;
+            _primaryEmailId = email.id;
+          } else {
+            _copyEmails.add(
+              _EmailDraft(
+                id: email.id,
+                email: email.email,
+                label: email.label ?? '',
+                isActive: email.isActive,
+              ),
+            );
+            _copyEmails.last.email.addListener(_markDirty);
+          }
+        }
+      });
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No fue posible cargar correos: $error')),
+        );
+      }
     }
   }
 
@@ -462,6 +517,10 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
         '${c.id}|${c.name.text}|${c.countryCode.text}|${c.phone.text}|'
             '${c.role.text}|${c.birthday.text}',
     ].join('§');
+    final copyEmails = [
+      for (final e in _copyEmails)
+        '${e.id}|${e.email.text}|${e.label}|${e.isActive}',
+    ].join('§');
     return [
       _name.text,
       _displayName.text,
@@ -480,6 +539,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       _contactsError ?? '',
       _creditDaysError ?? '',
       contacts,
+      copyEmails,
     ].join('§');
   }
 
@@ -508,6 +568,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     _gira.dispose();
     for (final contact in _contacts) {
       contact.dispose();
+    }
+    for (final email in _copyEmails) {
+      email.dispose();
     }
     super.dispose();
   }
@@ -543,6 +606,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
         body: _loadingCustomer
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
+                key: const ValueKey('customerFormScroll'),
                 padding: const EdgeInsets.all(32),
                 child: Center(
                   child: ConstrainedBox(
@@ -644,6 +708,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                 border: OutlineInputBorder(),
                               ),
                             ),
+                            const SizedBox(height: 12),
+                            _buildCopyEmailsSection(),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -952,6 +1018,82 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     ],
   );
 
+  Widget _buildCopyEmailsSection() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Correos en copia',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () => setState(() {
+              final draft = _EmailDraft();
+              draft.email.addListener(_markDirty);
+              _copyEmails.add(draft);
+              _markDirty();
+            }),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Agregar correo'),
+          ),
+        ],
+      ),
+      if (_copyEmails.isEmpty)
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 4),
+          child: Text(
+            'Nadie recibe copia.',
+            style: TextStyle(fontStyle: FontStyle.italic),
+          ),
+        )
+      else
+        ...[
+          for (var i = 0; i < _copyEmails.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                key: ValueKey(_copyEmails[i].id ?? i),
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _copyEmails[i].email,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Correo ${i + 1}',
+                        hintText: 'copia@example.com',
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Quitar correo',
+                    onPressed: () => setState(() {
+                      final draft = _copyEmails.removeAt(i);
+                      if (draft.id != null) {
+                        _removedEmailIds.add(draft.id!);
+                      }
+                      draft.dispose();
+                      _markDirty();
+                    }),
+                    icon: const Icon(Icons.delete_outline),
+                    constraints: const BoxConstraints(),
+                    padding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
+            ),
+          const Text(
+            'Reciben copia de facturas y documentos.',
+            style: TextStyle(fontSize: 12),
+          ),
+        ],
+    ],
+  );
+
   Widget _contactRow(int index) {
     final draft = _contacts[index];
     return Card(
@@ -1089,6 +1231,20 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       setState(() => _emailError = 'Ingrese un correo válido.');
       return;
     }
+    final invalidCopyEmail = _copyEmails
+        .where((draft) => draft.email.text.trim().isNotEmpty)
+        .where((draft) => !_isValidEmail(draft.email.text.trim()))
+        .firstOrNull;
+    if (invalidCopyEmail != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Un correo en copia no tiene formato válido.'),
+          ),
+        );
+      }
+      return;
+    }
     if (_contacts.any(
       (draft) =>
           draft.name.text.trim().isEmpty ||
@@ -1184,6 +1340,31 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
           ),
           role: draft.role.text.trim().isEmpty ? null : draft.role.text.trim(),
           birthday: _parseDate(draft.birthday.text),
+        );
+      }
+      for (final removedId in _removedEmailIds) {
+        await api.deleteCustomerEmail(removedId);
+      }
+      if (email.isNotEmpty) {
+        await api.saveCustomerEmail(
+          id: _primaryEmailId,
+          customerId: customerId,
+          email: email,
+          purpose: CustomerEmailPurpose.primary,
+        );
+      } else if (_primaryEmailId != null) {
+        await api.deleteCustomerEmail(_primaryEmailId!);
+      }
+      for (final draft in _copyEmails) {
+        final copyEmail = draft.email.text.trim();
+        if (copyEmail.isEmpty) continue;
+        await api.saveCustomerEmail(
+          id: draft.id,
+          customerId: customerId,
+          email: copyEmail,
+          purpose: CustomerEmailPurpose.copy,
+          label: draft.label.isEmpty ? null : draft.label,
+          isActive: draft.isActive,
         );
       }
       if (mounted) _returnToCustomerProfile(customerId);

@@ -250,6 +250,132 @@ void main() {
     expect(api.createdCustomers, 0);
   });
 
+  testWidgets('cliente guarda correo principal y copias', (tester) async {
+    final api = _RecordingCustomerApi();
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nuevo cliente'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
+      'Cliente Emails',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Correo principal'),
+      'principal@example.com',
+    );
+    await tester.tap(find.widgetWithText(TextButton, 'Agregar correo'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Correo 1'),
+      'copia1@example.com',
+    );
+    await tester.tap(find.widgetWithText(TextButton, 'Agregar correo'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Correo 2'),
+      'copia2@example.com',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.createdCustomers, 1);
+    expect(api.createdEmail, 'principal@example.com');
+    expect(api.savedEmails.length, 3);
+    expect(
+      api.savedEmails.where((e) => e.purpose == CustomerEmailPurpose.copy).length,
+      2,
+    );
+    expect(
+      api.savedEmails.where((e) => e.purpose == CustomerEmailPurpose.primary).length,
+      1,
+    );
+  });
+
+  testWidgets('cliente existente actualiza correo en copia', (
+    tester,
+  ) async {
+    const customerId = 'customer-1';
+    final api = _RecordingCustomerApi(
+      initialCustomers: const [
+        Customer(
+          id: customerId,
+          name: 'Cliente Actual',
+          displayName: 'Actual',
+          phone: '+506 1111-2222',
+          email: 'principal@example.com',
+          isActive: true,
+        ),
+      ],
+      initialEmails: const [
+        CustomerEmail(
+          id: 'email-copy-1',
+          customerId: customerId,
+          email: 'borrar@example.com',
+          purpose: CustomerEmailPurpose.copy,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Actual · Cliente Actual'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Editar'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Correo 1'),
+      'actualizado@example.com',
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.updatedCustomerId, customerId);
+    expect(api.savedEmails.length, 2); // primary + 1 copy
+    expect(
+      api.savedEmails
+          .where(
+            (e) =>
+                e.id == 'email-copy-1' && e.email == 'actualizado@example.com',
+          )
+          .length,
+      1,
+    );
+  });
+
+  testWidgets('cliente rechaza correo en copia invalido', (tester) async {
+    final api = _RecordingCustomerApi();
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nuevo cliente'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
+      'Cliente Emails',
+    );
+    await tester.tap(find.widgetWithText(TextButton, 'Agregar correo'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Correo 1'),
+      'no-es-email',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Un correo en copia no tiene formato válido.'),
+      findsOneWidget,
+    );
+    expect(api.createdCustomers, 0);
+  });
+
   testWidgets('cliente credito exige dias de credito', (tester) async {
     final api = _RecordingCustomerApi();
 
@@ -628,6 +754,7 @@ class _RecordingCustomerApi implements CustomerApi {
   _RecordingCustomerApi({
     this.initialCustomers = const [],
     this.initialContacts = const [],
+    this.initialEmails = const [],
     this.hydrateDelay = Duration.zero,
   });
 
@@ -661,6 +788,9 @@ class _RecordingCustomerApi implements CustomerApi {
   final savedContactIds = <String?>[];
   final savedContacts = <_SavedContact>[];
   final deletedContactIds = <String>[];
+  final List<CustomerEmail> initialEmails;
+  final savedEmails = <_SavedEmail>[];
+  final deletedEmailIds = <String>[];
 
   @override
   Future<List<Customer>> getCustomers() async => initialCustomers;
@@ -810,7 +940,10 @@ class _RecordingCustomerApi implements CustomerApi {
   }
 
   @override
-  Future<List<CustomerEmail>> getCustomerEmails(String customerId) async => const [];
+  Future<List<CustomerEmail>> getCustomerEmails(String customerId) async =>
+      initialEmails
+          .where((email) => email.customerId == customerId)
+          .toList();
 
   @override
   Future<CustomerEmail> saveCustomerEmail({
@@ -820,17 +953,31 @@ class _RecordingCustomerApi implements CustomerApi {
     CustomerEmailPurpose purpose = CustomerEmailPurpose.copy,
     String? label,
     bool isActive = true,
-  }) async => CustomerEmail(
-    id: id ?? 'email-new',
-    customerId: customerId,
-    email: email,
-    purpose: purpose,
-    label: label,
-    isActive: isActive,
-  );
+  }) async {
+    savedEmails.add(
+      _SavedEmail(
+        id: id,
+        customerId: customerId,
+        email: email,
+        purpose: purpose,
+        label: label,
+        isActive: isActive,
+      ),
+    );
+    return CustomerEmail(
+      id: id ?? 'email-new',
+      customerId: customerId,
+      email: email,
+      purpose: purpose,
+      label: label,
+      isActive: isActive,
+    );
+  }
 
   @override
-  Future<void> deleteCustomerEmail(String id) async {}
+  Future<void> deleteCustomerEmail(String id) async {
+    deletedEmailIds.add(id);
+  }
 
   @override
   Future<List<ProductBuyer>> getProductBuyers(String productId) async =>
@@ -853,6 +1000,24 @@ class _SavedContact {
   final String? phone;
   final String? role;
   final DateTime? birthday;
+}
+
+class _SavedEmail {
+  const _SavedEmail({
+    required this.id,
+    required this.customerId,
+    required this.email,
+    required this.purpose,
+    required this.label,
+    required this.isActive,
+  });
+
+  final String? id;
+  final String customerId;
+  final String email;
+  final CustomerEmailPurpose purpose;
+  final String? label;
+  final bool isActive;
 }
 
 class _RecordingConfigurationApi implements ConfigurationApi {
