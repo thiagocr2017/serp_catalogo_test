@@ -107,6 +107,30 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
       _source.deleteCustomerContact(id);
 
   @override
+  Future<List<CustomerEmail>> getCustomerEmails(String customerId) =>
+      _source.getCustomerEmails(customerId);
+
+  @override
+  Future<CustomerEmail> saveCustomerEmail({
+    String? id,
+    required String customerId,
+    required String email,
+    CustomerEmailPurpose purpose = CustomerEmailPurpose.copy,
+    String? label,
+    bool isActive = true,
+  }) => _source.saveCustomerEmail(
+    id: id,
+    customerId: customerId,
+    email: email,
+    purpose: purpose,
+    label: label,
+    isActive: isActive,
+  );
+
+  @override
+  Future<void> deleteCustomerEmail(String id) => _source.deleteCustomerEmail(id);
+
+  @override
   Future<List<ProductBuyer>> getProductBuyers(String productId) =>
       _source.getProductBuyers(productId);
 }

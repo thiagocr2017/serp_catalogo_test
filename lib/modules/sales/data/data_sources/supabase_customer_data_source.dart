@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/device/device_identity.dart';
 import '../../domain/entities/customer.dart';
 import '../../domain/entities/customer_commercial.dart';
+import '../../domain/entities/customer_email.dart';
 
 class SupabaseCustomerDataSource {
   const SupabaseCustomerDataSource(this._client, this._device);
@@ -178,6 +179,66 @@ class SupabaseCustomerDataSource {
     );
   }
 
+  Future<List<CustomerEmail>> getCustomerEmails(String customerId) async {
+    final rows = await _client
+        .from('customer_emails')
+        .select()
+        .eq('customer_id', customerId)
+        .order('created_at');
+    return rows.map(_email).toList();
+  }
+
+  Future<CustomerEmail> saveCustomerEmail({
+    String? id,
+    required String customerId,
+    required String email,
+    CustomerEmailPurpose purpose = CustomerEmailPurpose.copy,
+    String? label,
+    bool isActive = true,
+  }) async {
+    if (id == null) {
+      final row = await _client.rpc<Map<String, dynamic>>(
+        'create_customer_email',
+        params: {
+          'p_customer_id': customerId,
+          'p_email': email,
+          'p_purpose': purpose.toJson(),
+          'p_label': label,
+          'p_actor_name': _device.actorName,
+          'p_device_name': _device.name,
+          'p_device_identifier': _device.identifier,
+        },
+      );
+      return _email(row);
+    }
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'update_customer_email',
+      params: {
+        'p_email_id': id,
+        'p_email': email,
+        'p_purpose': purpose.toJson(),
+        'p_label': label,
+        'p_is_active': isActive,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
+    return _email(row);
+  }
+
+  Future<void> deleteCustomerEmail(String id) async {
+    await _client.rpc(
+      'delete_customer_email',
+      params: {
+        'p_email_id': id,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
+  }
+
   Future<List<ProductBuyer>> getProductBuyers(String productId) async {
     final rows = await _client.rpc<List<dynamic>>(
       'product_buyers',
@@ -195,6 +256,15 @@ class SupabaseCustomerDataSource {
     birthday: row['birthday'] == null
         ? null
         : DateTime.parse(row['birthday'] as String),
+  );
+
+  CustomerEmail _email(Map<String, dynamic> row) => CustomerEmail(
+    id: row['id'] as String,
+    customerId: row['customer_id'] as String,
+    email: row['email'] as String,
+    purpose: CustomerEmailPurpose.fromJson(row['purpose'] as String),
+    label: row['label'] as String?,
+    isActive: row['is_active'] as bool? ?? true,
   );
 
   ProductBuyer _buyer(Map<String, dynamic> row) => ProductBuyer(

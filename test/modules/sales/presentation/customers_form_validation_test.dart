@@ -810,6 +810,29 @@ class _RecordingCustomerApi implements CustomerApi {
   }
 
   @override
+  Future<List<CustomerEmail>> getCustomerEmails(String customerId) async => const [];
+
+  @override
+  Future<CustomerEmail> saveCustomerEmail({
+    String? id,
+    required String customerId,
+    required String email,
+    CustomerEmailPurpose purpose = CustomerEmailPurpose.copy,
+    String? label,
+    bool isActive = true,
+  }) async => CustomerEmail(
+    id: id ?? 'email-new',
+    customerId: customerId,
+    email: email,
+    purpose: purpose,
+    label: label,
+    isActive: isActive,
+  );
+
+  @override
+  Future<void> deleteCustomerEmail(String id) async {}
+
+  @override
   Future<List<ProductBuyer>> getProductBuyers(String productId) async =>
       const [];
 }

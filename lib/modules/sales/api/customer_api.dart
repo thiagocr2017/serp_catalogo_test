@@ -2,9 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/entities/customer.dart';
 import '../domain/entities/customer_commercial.dart';
+import '../domain/entities/customer_email.dart';
 
 export '../domain/entities/customer.dart';
 export '../domain/entities/customer_commercial.dart';
+export '../domain/entities/customer_email.dart';
 
 abstract interface class CustomerApi {
   Future<List<Customer>> getCustomers();
@@ -52,6 +54,17 @@ abstract interface class CustomerApi {
     DateTime? birthday,
   });
   Future<void> deleteCustomerContact(String id);
+
+  Future<List<CustomerEmail>> getCustomerEmails(String customerId);
+  Future<CustomerEmail> saveCustomerEmail({
+    String? id,
+    required String customerId,
+    required String email,
+    CustomerEmailPurpose purpose,
+    String? label,
+    bool isActive,
+  });
+  Future<void> deleteCustomerEmail(String id);
 
   Future<List<ProductBuyer>> getProductBuyers(String productId);
 }

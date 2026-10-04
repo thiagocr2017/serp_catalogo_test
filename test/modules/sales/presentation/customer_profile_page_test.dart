@@ -177,6 +177,22 @@ class _FakeCustomerApi implements CustomerApi {
   Future<void> deleteCustomerContact(String id) async {}
 
   @override
+  Future<List<CustomerEmail>> getCustomerEmails(String customerId) async => const [];
+
+  @override
+  Future<CustomerEmail> saveCustomerEmail({
+    String? id,
+    required String customerId,
+    required String email,
+    CustomerEmailPurpose purpose = CustomerEmailPurpose.copy,
+    String? label,
+    bool isActive = true,
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<void> deleteCustomerEmail(String id) async {}
+
+  @override
   Future<List<ProductBuyer>> getProductBuyers(String productId) async =>
       const [];
 }
