@@ -246,6 +246,7 @@ class _EmailDraft {
   final TextEditingController email;
   String label;
   bool isActive;
+  String? error;
 
   void dispose() => email.dispose();
 }
@@ -315,10 +316,12 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   String? _identificationTypeError;
   String? _addressError;
   String? _economicActivityError;
+  late final ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
     final existing = _existing;
     final phone = splitPhoneNumber(existing?.phone);
     _name = TextEditingController(text: existing?.name ?? '');
@@ -617,6 +620,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     for (final email in _copyEmails) {
       email.dispose();
     }
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -652,6 +656,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
                 key: const ValueKey('customerFormScroll'),
+                controller: _scrollController,
                 padding: const EdgeInsets.all(32),
                 child: Center(
                   child: ConstrainedBox(
@@ -953,15 +958,95 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                             ),
                             if (_documentPreference == 'E_INVOICE') ...[
                               const SizedBox(height: 12),
-                              const SwitchListTile(
-                                key: ValueKey('customerRequiresEInvoiceSwitch'),
-                                contentPadding: EdgeInsets.zero,
-                                title: Text('Requiere factura electrónica'),
-                                subtitle: Text(
-                                  'Requerido automáticamente al tener Factura electrónica como documento habitual. Exige identificación, dirección, correo de documentación y actividad económica.',
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer
+                                      .withValues(alpha: 0.25),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withValues(alpha: 0.35),
+                                    width: 1.5,
+                                  ),
                                 ),
-                                value: true,
-                                onChanged: null,
+                                child: SwitchListTile(
+                                  key: const ValueKey(
+                                    'customerRequiresEInvoiceSwitch',
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 4,
+                                  ),
+                                  secondary: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withValues(alpha: 0.15),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.receipt_long,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  title: const Text(
+                                    'Requiere factura electrónica',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      'Activado automáticamente porque el documento habitual es Factura electrónica. Exige identificación, dirección, correo y actividad económica.',
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                        fontSize: 12.5,
+                                      ),
+                                    ),
+                                  ),
+                                  value: true,
+                                  thumbColor:
+                                      WidgetStateProperty.resolveWith<Color>(
+                                    (states) => Theme.of(context)
+                                        .colorScheme
+                                        .primary,
+                                  ),
+                                  trackColor:
+                                      WidgetStateProperty.resolveWith<Color>(
+                                    (states) => Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer,
+                                  ),
+                                  trackOutlineColor:
+                                      WidgetStateProperty.resolveWith<Color>(
+                                    (states) => Theme.of(context)
+                                        .colorScheme
+                                        .primary,
+                                  ),
+                                  thumbIcon:
+                                      WidgetStateProperty.resolveWith<Icon?>(
+                                    (states) => Icon(
+                                      Icons.check,
+                                      size: 14,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onPrimary,
+                                    ),
+                                  ),
+                                  onChanged: null,
+                                ),
                               ),
                             ],
                           ],
@@ -1408,23 +1493,53 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     required IconData icon,
     required List<Widget> children,
     Widget? trailing,
-  }) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Row(
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-          ),
-          ?trailing,
-        ],
+  }) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 20),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
       ),
-      const SizedBox(height: 12),
-      ...children,
-    ],
-  );
+      color: theme.colorScheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 20, color: theme.colorScheme.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.15,
+                    ),
+                  ),
+                ),
+                ?trailing,
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildCopyEmailsSection() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1471,8 +1586,15 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                     decoration: InputDecoration(
                       labelText: 'Correo ${i + 1}',
                       hintText: 'copia@example.com',
+                      errorText: _copyEmails[i].error,
                       border: const OutlineInputBorder(),
                     ),
+                    onChanged: (_) {
+                      if (_copyEmails[i].error != null) {
+                        setState(() => _copyEmails[i].error = null);
+                      }
+                      _markDirty();
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1625,33 +1747,51 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   }
 
   Future<void> _save() async {
+    bool hasError = false;
+    String? newNameError;
+    String? newPhoneError;
+    String? newEmailError;
+    String? newContactsError;
+    String? newCreditLimitError;
+    String? newCreditDaysError;
+    String? newTaxIdError;
+    String? newIdentificationTypeError;
+    String? newAddressError;
+    String? newEconomicActivityError;
+
+    // 1. Nombre fiscal
     if (_name.text.trim().isEmpty) {
-      setState(() => _nameError = 'Escriba el nombre del negocio.');
-      return;
+      newNameError = 'Escriba el nombre del negocio.';
+      hasError = true;
     }
+
+    // 2. Teléfono
     if (_phone.text.trim().isNotEmpty && !isValidLocalPhone(_phone.text)) {
-      setState(() => _phoneError = 'Ingrese al menos 8 dígitos.');
-      return;
+      newPhoneError = 'Ingrese al menos 8 dígitos.';
+      hasError = true;
     }
+
+    // 3. Email principal
     final email = _email.text.trim();
     if (email.isNotEmpty && !_isValidEmail(email)) {
-      setState(() => _emailError = 'Ingrese un correo válido.');
-      return;
+      newEmailError = 'Ingrese un correo válido.';
+      hasError = true;
     }
-    final invalidCopyEmail = _copyEmails
-        .where((draft) => draft.email.text.trim().isNotEmpty)
-        .where((draft) => !_isValidEmail(draft.email.text.trim()))
-        .firstOrNull;
-    if (invalidCopyEmail != null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Un correo en copia no tiene formato válido.'),
-          ),
-        );
+
+    // 4. Correos en copia
+    bool hasInvalidCopyEmail = false;
+    for (final draft in _copyEmails) {
+      final copyText = draft.email.text.trim();
+      if (copyText.isNotEmpty && !_isValidEmail(copyText)) {
+        draft.error = 'Ingrese un correo válido.';
+        hasInvalidCopyEmail = true;
+        hasError = true;
+      } else {
+        draft.error = null;
       }
-      return;
     }
+
+    // 5. Contactos
     if (_contacts.any(
       (draft) =>
           draft.name.text.trim().isEmpty ||
@@ -1659,67 +1799,97 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
           draft.role.text.trim().isEmpty ||
           !isValidLocalPhone(draft.phone.text),
     )) {
-      setState(
-        () => _contactsError = 'Cada contacto necesita nombre, teléfono de al menos 8 dígitos y cargo.',
-      );
-      return;
+      newContactsError =
+          'Cada contacto necesita nombre, teléfono de al menos 8 dígitos y cargo.';
+      hasError = true;
     }
+
+    // 6. Límite de crédito
     final creditLimitText = _creditLimit.text.trim();
     final creditLimit = creditLimitText.isEmpty
         ? null
         : double.tryParse(creditLimitText.replaceAll(',', '.'));
     if (creditLimitText.isNotEmpty && creditLimit == null) {
-      setState(() => _creditLimitError = 'Ingrese un número válido.');
-      return;
+      newCreditLimitError = 'Ingrese un número válido.';
+      hasError = true;
     }
+
+    // 7. Días de crédito
     final creditDaysText = _creditDays.text.trim();
     final creditDays = creditDaysText.isEmpty
         ? null
         : int.tryParse(creditDaysText);
     if (_customerType == 'CREDIT' && (creditDays == null || creditDays <= 0)) {
-      setState(() => _creditDaysError = 'Ingrese días de crédito.');
-      return;
+      newCreditDaysError = 'Ingrese días de crédito.';
+      hasError = true;
     }
+
+    // 8. Requisitos de Factura Electrónica (Alcance completo: Decisión 20)
     if (_requiresEInvoice) {
-      // Decisión 20: alcance completo. Se marcan todas las faltantes a la vez
-      // para que el usuario las resuelva en una sola pasada.
-      final missingTaxId = _taxId.text.trim().isEmpty;
-      final missingType = _identificationTypeId == null;
-      final missingEmail = email.isEmpty;
-      final missingAddress = _address.text.trim().isEmpty;
-      final missingActivity = _economicActivity.text.trim().isEmpty;
-      if (missingTaxId ||
-          missingType ||
-          missingEmail ||
-          missingAddress ||
-          missingActivity) {
-        setState(() {
-          _taxIdError = missingTaxId
-              ? 'Requerido para factura electrónica.'
-              : null;
-          _identificationTypeError = missingType
-              ? 'Requerido para factura electrónica.'
-              : null;
-          _emailError = missingEmail
-              ? 'Correo de documentación obligatorio para factura electrónica.'
-              : null;
-          _addressError = missingAddress
-              ? 'Requerido para factura electrónica.'
-              : null;
-          _economicActivityError = missingActivity
-              ? 'Requerido para factura electrónica.'
-              : null;
-        });
-        return;
+      if (_taxId.text.trim().isEmpty) {
+        newTaxIdError = 'Requerido para factura electrónica.';
+        hasError = true;
+      }
+      if (_identificationTypeId == null) {
+        newIdentificationTypeError = 'Requerido para factura electrónica.';
+        hasError = true;
+      }
+      if (email.isEmpty) {
+        newEmailError =
+            'Correo de documentación obligatorio para factura electrónica.';
+        hasError = true;
+      }
+      if (_address.text.trim().isEmpty) {
+        newAddressError = 'Requerido para factura electrónica.';
+        hasError = true;
+      }
+      if (_economicActivity.text.trim().isEmpty) {
+        newEconomicActivityError = 'Requerido para factura electrónica.';
+        hasError = true;
       }
     }
+
+    // 9. Formato numérico de actividad económica (si se ingresó)
     final activity = _economicActivity.text.trim();
     if (activity.isNotEmpty &&
         !RegExp(r'^\d{4,8}(\.\d+)?$').hasMatch(activity)) {
-      setState(
-        () => _economicActivityError =
-            'Código CIIU / Hacienda inválido (ej: 464900 ó 464900.1).',
-      );
+      newEconomicActivityError =
+          'Código CIIU / Hacienda inválido (ej: 464900 ó 464900.1).';
+      hasError = true;
+    }
+
+    if (hasError) {
+      setState(() {
+        _nameError = newNameError;
+        _phoneError = newPhoneError;
+        _emailError = newEmailError;
+        _contactsError = newContactsError;
+        _creditLimitError = newCreditLimitError;
+        _creditDaysError = newCreditDaysError;
+        _taxIdError = newTaxIdError;
+        _identificationTypeError = newIdentificationTypeError;
+        _addressError = newAddressError;
+        _economicActivityError = newEconomicActivityError;
+      });
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              hasInvalidCopyEmail
+                  ? 'Un correo en copia no tiene formato válido.'
+                  : 'Por favor revise los campos requeridos marcados en rojo.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       return;
     }
     setState(() => _saving = true);
