@@ -25,6 +25,9 @@ class _FakeConfigurationApi implements ConfigurationApi {
   Future<List<CarrierDto>> getCarriers() async => const [];
 
   @override
+  Future<List<IdentificationTypeDto>> getIdentificationTypes() async => const [];
+
+  @override
   Future<BusinessSettingsDto> getBusinessSettings() async => _settings;
 
   @override

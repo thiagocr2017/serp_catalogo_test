@@ -279,6 +279,9 @@ class _RecordingConfigurationApi implements ConfigurationApi {
   Future<List<CarrierDto>> getCarriers() async => const [];
 
   @override
+  Future<List<IdentificationTypeDto>> getIdentificationTypes() async => const [];
+
+  @override
   Future<BusinessSettingsDto> saveBusinessSettings(
     SaveBusinessSettingsCommand command,
   ) async {

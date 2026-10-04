@@ -275,6 +275,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   late final TextEditingController _province;
   late final TextEditingController _gira;
   late String? _preferredCarrierId;
+  late String? _identificationTypeId;
+  late final TextEditingController _economicActivity;
   late String _customerType;
   late String _documentPreference;
   final _contacts = <_ContactDraft>[];
@@ -328,8 +330,12 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     _province = TextEditingController(text: existing?.province ?? '');
     _gira = TextEditingController(text: existing?.gira ?? '');
     _preferredCarrierId = existing?.preferredCarrierId;
+    _identificationTypeId = existing?.identificationTypeId;
+    _economicActivity = TextEditingController(
+      text: existing?.economicActivity ?? '',
+    );
     _customerType = existing?.customerType ?? 'CASH';
-    _documentPreference = existing?.documentPreference ?? 'E_INVOICE';
+    _documentPreference = existing?.documentPreference ?? 'ASK_EACH_TIME';
     for (final controller in [
       _name,
       _displayName,
@@ -342,6 +348,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       _creditDays,
       _province,
       _gira,
+      _economicActivity,
     ]) {
       controller.addListener(_markDirty);
     }
@@ -380,6 +387,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
         _province.text = customer.province ?? '';
         _gira.text = customer.gira ?? '';
         _preferredCarrierId = customer.preferredCarrierId;
+        _identificationTypeId = customer.identificationTypeId;
+        _economicActivity.text = customer.economicActivity ?? '';
         _customerType = customer.customerType;
         _documentPreference = customer.documentPreference;
       });
@@ -534,6 +543,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       _province.text,
       _gira.text,
       _preferredCarrierId ?? '',
+      _identificationTypeId ?? '',
+      _economicActivity.text,
       _customerType,
       _documentPreference,
       _contactsError ?? '',
@@ -566,6 +577,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     _creditDays.dispose();
     _province.dispose();
     _gira.dispose();
+    _economicActivity.dispose();
     for (final contact in _contacts) {
       contact.dispose();
     }
@@ -705,6 +717,48 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                               controller: _taxId,
                               decoration: const InputDecoration(
                                 labelText: 'Cédula jurídica / Tax ID',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ref
+                                .watch(identificationTypeDtosProvider)
+                                .when(
+                                  loading: () =>
+                                      const LinearProgressIndicator(),
+                                  error: (error, _) => Text(
+                                    'No fue posible cargar tipos de identificación: $error',
+                                  ),
+                                  data: (types) =>
+                                      DropdownButtonFormField<String?>(
+                                        initialValue: _identificationTypeId,
+                                        isExpanded: true,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Tipo de identificación',
+                                          border: OutlineInputBorder(),
+                                        ),
+                                        items: [
+                                          const DropdownMenuItem<String?>(
+                                            value: null,
+                                            child: Text('Sin tipo'),
+                                          ),
+                                          for (final type in types)
+                                            DropdownMenuItem<String?>(
+                                              value: type.id,
+                                              child: Text(type.name),
+                                            ),
+                                        ],
+                                        onChanged: (value) => setState(() {
+                                          _identificationTypeId = value;
+                                          _markDirty();
+                                        }),
+                                      ),
+                                ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _economicActivity,
+                              decoration: const InputDecoration(
+                                labelText: 'Actividad económica',
                                 border: OutlineInputBorder(),
                               ),
                             ),
@@ -1273,6 +1327,28 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       setState(() => _creditDaysError = 'Ingrese días de crédito.');
       return;
     }
+    if (_documentPreference == 'E_INVOICE') {
+      if (_identificationTypeId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('La factura electrónica requiere tipo de identificación.'),
+            ),
+          );
+        }
+        return;
+      }
+      if (_economicActivity.text.trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('La factura electrónica requiere actividad económica.'),
+            ),
+          );
+        }
+        return;
+      }
+    }
     setState(() => _saving = true);
     try {
       final api = ref.read(customerApiProvider);
@@ -1300,6 +1376,10 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
           province: province,
           gira: gira,
           preferredCarrierId: _preferredCarrierId,
+          identificationTypeId: _identificationTypeId,
+          economicActivity: _economicActivity.text.trim().isEmpty
+              ? null
+              : _economicActivity.text.trim(),
           customerType: _customerType,
           creditDays: _customerType == 'CREDIT' ? creditDays : null,
           documentPreference: _documentPreference,
@@ -1320,6 +1400,10 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
           province: province,
           gira: gira,
           preferredCarrierId: _preferredCarrierId,
+          identificationTypeId: _identificationTypeId,
+          economicActivity: _economicActivity.text.trim().isEmpty
+              ? null
+              : _economicActivity.text.trim(),
           customerType: _customerType,
           creditDays: _customerType == 'CREDIT' ? creditDays : null,
           documentPreference: _documentPreference,

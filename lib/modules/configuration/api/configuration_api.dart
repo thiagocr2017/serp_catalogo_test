@@ -15,6 +15,7 @@ abstract interface class ConfigurationApi {
   Future<CatalogPreferencesDto> getCatalogPreferences();
   Future<List<PackagingPresentationDto>> getPackagingPresentations();
   Future<List<CarrierDto>> getCarriers();
+  Future<List<IdentificationTypeDto>> getIdentificationTypes();
 
   Future<BusinessSettingsDto> saveBusinessSettings(
     SaveBusinessSettingsCommand command,
@@ -61,4 +62,8 @@ final packagingPresentationDtosProvider =
 
 final carrierDtosProvider = FutureProvider<List<CarrierDto>>(
   (ref) => ref.watch(configurationApiProvider).getCarriers(),
+);
+
+final identificationTypeDtosProvider = FutureProvider<List<IdentificationTypeDto>>(
+  (ref) => ref.watch(configurationApiProvider).getIdentificationTypes(),
 );

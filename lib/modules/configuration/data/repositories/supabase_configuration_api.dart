@@ -52,6 +52,16 @@ class SupabaseConfigurationApi implements ConfigurationApi {
   }
 
   @override
+  Future<List<IdentificationTypeDto>> getIdentificationTypes() async {
+    final rows = await _client
+        .from('identification_types')
+        .select()
+        .eq('is_active', true)
+        .order('name');
+    return rows.map(_identificationType).toList();
+  }
+
+  @override
   Future<BusinessSettingsDto> saveBusinessSettings(
     SaveBusinessSettingsCommand command,
   ) async => _business(
@@ -344,4 +354,12 @@ class SupabaseConfigurationApi implements ConfigurationApi {
     isActive: row['is_active'] as bool? ?? true,
     version: row['version'] as int? ?? 1,
   );
+
+  IdentificationTypeDto _identificationType(Map<String, dynamic> row) =>
+      IdentificationTypeDto(
+        id: row['id'] as String,
+        code: row['code'] as String,
+        name: row['name'] as String,
+        isActive: row['is_active'] as bool? ?? true,
+      );
 }

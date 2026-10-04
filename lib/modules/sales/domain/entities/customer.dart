@@ -10,6 +10,8 @@ class Customer {
     this.province,
     this.gira,
     this.preferredCarrierId,
+    this.identificationTypeId,
+    this.economicActivity,
     this.customerType = 'CASH',
     this.creditDays,
     this.documentPreference = 'E_INVOICE',
@@ -31,6 +33,8 @@ class Customer {
   final String? province;
   final String? gira;
   final String? preferredCarrierId;
+  final String? identificationTypeId;
+  final String? economicActivity;
   final String customerType;
   final int? creditDays;
   final String documentPreference;

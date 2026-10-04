@@ -266,6 +266,9 @@ void main() {
       find.widgetWithText(TextField, 'Correo principal'),
       'principal@example.com',
     );
+    await tester.ensureVisible(
+      find.widgetWithText(TextButton, 'Agregar correo'),
+    );
     await tester.tap(find.widgetWithText(TextButton, 'Agregar correo'));
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -306,6 +309,7 @@ void main() {
           displayName: 'Actual',
           phone: '+506 1111-2222',
           email: 'principal@example.com',
+          documentPreference: 'TICKET',
           isActive: true,
         ),
       ],
@@ -360,6 +364,9 @@ void main() {
       find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
       'Cliente Emails',
     );
+    await tester.ensureVisible(
+      find.widgetWithText(TextButton, 'Agregar correo'),
+    );
     await tester.tap(find.widgetWithText(TextButton, 'Agregar correo'));
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -375,6 +382,91 @@ void main() {
     );
     expect(api.createdCustomers, 0);
   });
+
+  testWidgets(
+    'cliente con factura electronica requiere tipo de identificacion',
+    (tester) async {
+      final api = _RecordingCustomerApi();
+
+      await tester.pumpWidget(
+        _app(
+          api,
+          identificationTypes: const [
+            IdentificationTypeDto(
+              id: 'type-1',
+              code: 'JURIDICAL_ID',
+              name: 'Cédula jurídica',
+              isActive: true,
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Nuevo cliente'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
+        'Cliente FE',
+      );
+      await _selectDocumentPreference(tester, 'Factura electrónica');
+      await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('La factura electrónica requiere tipo de identificación.'),
+        findsOneWidget,
+      );
+      expect(api.createdCustomers, 0);
+    },
+  );
+
+  testWidgets(
+    'cliente con factura electronica requiere actividad economica',
+    (tester) async {
+      final api = _RecordingCustomerApi();
+
+      await tester.pumpWidget(
+        _app(
+          api,
+          identificationTypes: const [
+            IdentificationTypeDto(
+              id: 'type-1',
+              code: 'JURIDICAL_ID',
+              name: 'Cédula jurídica',
+              isActive: true,
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Nuevo cliente'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
+        'Cliente FE',
+      );
+      await _selectDocumentPreference(tester, 'Factura electrónica');
+      await tester.ensureVisible(
+        find.widgetWithText(DropdownButtonFormField<String?>, 'Tipo de identificación'),
+      );
+      await tester.tap(
+        find.widgetWithText(DropdownButtonFormField<String?>, 'Tipo de identificación'),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cédula jurídica').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('La factura electrónica requiere actividad económica.'),
+        findsOneWidget,
+      );
+      expect(api.createdCustomers, 0);
+    },
+  );
 
   testWidgets('cliente credito exige dias de credito', (tester) async {
     final api = _RecordingCustomerApi();
@@ -448,6 +540,7 @@ void main() {
           province: 'San José',
           gira: 'Gira Central',
           creditLimit: 25,
+          documentPreference: 'TICKET',
           isActive: true,
         ),
       ],
@@ -537,6 +630,7 @@ void main() {
           displayName: 'Actual',
           phone: '+506 1111-2222',
           email: 'actual@example.com',
+          documentPreference: 'TICKET',
           isActive: true,
         ),
       ],
@@ -571,7 +665,8 @@ void main() {
             displayName: 'Actual',
             phone: '+506 1111-2222',
             email: 'actual@example.com',
-            isActive: true,
+            documentPreference: 'TICKET',
+          isActive: true,
           ),
         ],
       );
@@ -609,6 +704,7 @@ void main() {
           name: 'Cliente Actual',
           phone: '+506 1111-2222',
           email: 'actual@example.com',
+          documentPreference: 'TICKET',
           isActive: true,
         ),
       ],
@@ -660,7 +756,8 @@ void main() {
             phone: '+506 1111-2222',
             email: 'actual@example.com',
             creditLimit: 250,
-            isActive: true,
+            documentPreference: 'TICKET',
+          isActive: true,
           ),
         ],
         initialContacts: const [
@@ -723,11 +820,15 @@ void main() {
 Widget _app(
   _RecordingCustomerApi customerApi, {
   List<CarrierDto> carriers = const [],
+  List<IdentificationTypeDto> identificationTypes = const [],
 }) => ProviderScope(
   overrides: [
     customerApiProvider.overrideWithValue(customerApi),
     configurationApiProvider.overrideWithValue(
-      _RecordingConfigurationApi(carriers: carriers),
+      _RecordingConfigurationApi(
+        carriers: carriers,
+        identificationTypes: identificationTypes,
+      ),
     ),
   ],
   child: MaterialApp.router(
@@ -744,6 +845,18 @@ Future<void> _selectCustomerType(WidgetTester tester, String label) async {
   );
   await tester.tap(
     find.widgetWithText(DropdownButtonFormField<String>, 'Tipo de cliente'),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label).last);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _selectDocumentPreference(WidgetTester tester, String label) async {
+  await tester.ensureVisible(
+    find.widgetWithText(DropdownButtonFormField<String>, 'Documento habitual'),
+  );
+  await tester.tap(
+    find.widgetWithText(DropdownButtonFormField<String>, 'Documento habitual'),
   );
   await tester.pumpAndSettle();
   await tester.tap(find.text(label).last);
@@ -776,6 +889,8 @@ class _RecordingCustomerApi implements CustomerApi {
   String? createdProvince;
   String? createdGira;
   String? createdPreferredCarrierId;
+  String? createdIdentificationTypeId;
+  String? createdEconomicActivity;
   String? createdCustomerType;
   int? createdCreditDays;
   String? createdDocumentPreference;
@@ -783,6 +898,8 @@ class _RecordingCustomerApi implements CustomerApi {
   String? updatedCustomerName;
   double? updatedCreditLimit;
   String? updatedPreferredCarrierId;
+  String? updatedIdentificationTypeId;
+  String? updatedEconomicActivity;
   String? deactivatedCustomerId;
   String? deactivationReason;
   final savedContactIds = <String?>[];
@@ -817,6 +934,8 @@ class _RecordingCustomerApi implements CustomerApi {
     String? province,
     String? gira,
     String? preferredCarrierId,
+    String? identificationTypeId,
+    String? economicActivity,
     String customerType = 'CASH',
     int? creditDays,
     String documentPreference = 'E_INVOICE',
@@ -832,6 +951,8 @@ class _RecordingCustomerApi implements CustomerApi {
     createdProvince = province;
     createdGira = gira;
     createdPreferredCarrierId = preferredCarrierId;
+    createdIdentificationTypeId = identificationTypeId;
+    createdEconomicActivity = economicActivity;
     createdCustomerType = customerType;
     createdCreditDays = creditDays;
     createdDocumentPreference = documentPreference;
@@ -846,6 +967,8 @@ class _RecordingCustomerApi implements CustomerApi {
       province: province,
       gira: gira,
       preferredCarrierId: preferredCarrierId,
+      identificationTypeId: identificationTypeId,
+      economicActivity: economicActivity,
       customerType: customerType,
       creditDays: creditDays,
       documentPreference: documentPreference,
@@ -866,6 +989,8 @@ class _RecordingCustomerApi implements CustomerApi {
     String? province,
     String? gira,
     String? preferredCarrierId,
+    String? identificationTypeId,
+    String? economicActivity,
     String customerType = 'CASH',
     int? creditDays,
     String documentPreference = 'E_INVOICE',
@@ -874,6 +999,8 @@ class _RecordingCustomerApi implements CustomerApi {
     updatedCustomerName = name;
     updatedCreditLimit = creditLimit ?? 0;
     updatedPreferredCarrierId = preferredCarrierId;
+    updatedIdentificationTypeId = identificationTypeId;
+    updatedEconomicActivity = economicActivity;
     return Customer(
       id: id,
       name: name,
@@ -885,6 +1012,8 @@ class _RecordingCustomerApi implements CustomerApi {
       province: province,
       gira: gira,
       preferredCarrierId: preferredCarrierId,
+      identificationTypeId: identificationTypeId,
+      economicActivity: economicActivity,
       customerType: customerType,
       creditDays: creditDays,
       documentPreference: documentPreference,
@@ -1021,12 +1150,20 @@ class _SavedEmail {
 }
 
 class _RecordingConfigurationApi implements ConfigurationApi {
-  const _RecordingConfigurationApi({this.carriers = const []});
+  const _RecordingConfigurationApi({
+    this.carriers = const [],
+    this.identificationTypes = const [],
+  });
 
   final List<CarrierDto> carriers;
+  final List<IdentificationTypeDto> identificationTypes;
 
   @override
   Future<List<CarrierDto>> getCarriers() async => carriers;
+
+  @override
+  Future<List<IdentificationTypeDto>> getIdentificationTypes() async =>
+      identificationTypes;
 
   @override
   Future<BusinessSettingsDto> getBusinessSettings() async =>
