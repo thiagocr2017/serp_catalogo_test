@@ -1361,6 +1361,12 @@ class _RecordingCustomerApi implements CustomerApi {
   @override
   Future<List<ProductBuyer>> getProductBuyers(String productId) async =>
       const [];
+
+  @override
+  Future<CustomerCommercialSummaryDto> getCustomerCommercialSummary(
+    String customerId,
+  ) async =>
+      CustomerCommercialSummaryDto.empty(customerId);
 }
 
 class _SavedContact {

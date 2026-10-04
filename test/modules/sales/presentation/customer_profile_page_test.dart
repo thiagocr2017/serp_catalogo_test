@@ -105,6 +105,86 @@ void main() {
     expect(find.text('Cierre temporal'), findsOneWidget);
   });
 
+  testWidgets(
+    'perfil muestra alertas de credito vencido y documentos pendientes',
+    (tester) async {
+      final api = _FakeCustomerApi(
+        customers: const [
+          Customer(
+            id: 'customer-1',
+            name: 'Cliente Con Alertas',
+            customerType: 'CREDIT',
+            creditLimit: 500,
+            currentBalance: 200,
+          ),
+        ],
+        summary: const CustomerCommercialSummaryDto(
+          customerId: 'customer-1',
+          overdueInvoicesCount: 2,
+          overdueInvoicesAmount: 150.0,
+          totalPendingDocuments: 3,
+        ),
+      );
+
+      await tester.pumpWidget(_profileApp(api, 'customer-1'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Credito vencido'), findsOneWidget);
+      expect(
+        find.text('2 factura(s) vencida(s) por un total de 150.00.'),
+        findsOneWidget,
+      );
+      expect(find.text('Documentos pendientes'), findsOneWidget);
+      expect(
+        find.text(
+          '3 documento(s) pendientes de procesar, despachar o liquidar.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'perfil muestra ultima compra y productos frecuentes cuando existen',
+    (tester) async {
+      final api = _FakeCustomerApi(
+        customers: const [
+          Customer(
+            id: 'customer-1',
+            name: 'Cliente Con Historial',
+          ),
+        ],
+        summary: CustomerCommercialSummaryDto(
+          customerId: 'customer-1',
+          lastPurchaseAt: DateTime(2026, 9, 15),
+          totalInvoiced: 1250.0,
+          frequentProducts: const [
+            FrequentProductDto(
+              productId: 'prod-1',
+              productName: 'Jabón Líquido 1L',
+              productSku: 'JAB-001',
+              totalQuantity: 24,
+              purchaseCount: 3,
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpWidget(_profileApp(api, 'customer-1'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('2026-09-15'), findsWidgets);
+      expect(find.text('Total facturado'), findsOneWidget);
+      expect(find.text('1250.00'), findsOneWidget);
+      expect(find.text('Productos frecuentes'), findsOneWidget);
+      expect(find.text('Jabón Líquido 1L'), findsOneWidget);
+      expect(
+        find.text('24 unidades compradas en 3 documento(s)'),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('lista navega al perfil del cliente', (tester) async {
     final api = _FakeCustomerApi(
       customers: const [
@@ -156,7 +236,11 @@ Widget _routesApp(_FakeCustomerApi api) => ProviderScope(
 );
 
 class _FakeCustomerApi implements CustomerApi {
-  const _FakeCustomerApi({this.customers = const [], this.contacts = const []});
+  const _FakeCustomerApi({
+    this.customers = const [],
+    this.contacts = const [],
+    this.summary,
+  });
 
   final List<Customer> customers;
   final List<CustomerContact> contacts;
@@ -253,4 +337,12 @@ class _FakeCustomerApi implements CustomerApi {
   @override
   Future<List<ProductBuyer>> getProductBuyers(String productId) async =>
       const [];
+
+  @override
+  Future<CustomerCommercialSummaryDto> getCustomerCommercialSummary(
+    String customerId,
+  ) async =>
+      summary ?? CustomerCommercialSummaryDto.empty(customerId);
+
+  final CustomerCommercialSummaryDto? summary;
 }

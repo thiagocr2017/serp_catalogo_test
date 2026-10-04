@@ -154,4 +154,9 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
   @override
   Future<List<ProductBuyer>> getProductBuyers(String productId) =>
       _source.getProductBuyers(productId);
+
+  @override
+  Future<CustomerCommercialSummaryDto> getCustomerCommercialSummary(
+    String customerId,
+  ) => _source.getCustomerCommercialSummary(customerId);
 }

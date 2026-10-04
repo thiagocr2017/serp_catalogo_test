@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/entities/customer.dart';
 import '../domain/entities/customer_commercial.dart';
 import '../domain/entities/customer_email.dart';
+import 'customer_summary_dtos.dart';
 
 export '../domain/entities/customer.dart';
 export '../domain/entities/customer_commercial.dart';
 export '../domain/entities/customer_email.dart';
+export 'customer_summary_dtos.dart';
 
 abstract interface class CustomerApi {
   Future<List<Customer>> getCustomers();
@@ -77,6 +79,7 @@ abstract interface class CustomerApi {
   Future<void> deleteCustomerEmail(String id);
 
   Future<List<ProductBuyer>> getProductBuyers(String productId);
+  Future<CustomerCommercialSummaryDto> getCustomerCommercialSummary(String customerId);
 }
 
 final customerApiProvider = Provider<CustomerApi>(

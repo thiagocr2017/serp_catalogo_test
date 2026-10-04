@@ -164,13 +164,16 @@ class _Header extends StatelessWidget {
   );
 }
 
-class _Alerts extends StatelessWidget {
+class _Alerts extends ConsumerWidget {
   const _Alerts({required this.customer});
 
   final Customer customer;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summaryAsync = ref.watch(customerCommercialSummaryProvider(customer.id));
+    final summary = summaryAsync.value;
+
     final alerts = <_ProfileAlert>[
       if (!customer.isActive)
         _ProfileAlert(
@@ -190,6 +193,22 @@ class _Alerts extends StatelessWidget {
           message:
               'Saldo ${_money(customer.currentBalance)} de limite ${_money(customer.creditLimit)}.',
           color: Theme.of(context).colorScheme.errorContainer,
+        ),
+      if (summary != null && summary.overdueInvoicesCount > 0)
+        _ProfileAlert(
+          icon: Icons.warning_amber_rounded,
+          title: 'Credito vencido',
+          message:
+              '${summary.overdueInvoicesCount} factura(s) vencida(s) por un total de ${_money(summary.overdueInvoicesAmount)}.',
+          color: Theme.of(context).colorScheme.errorContainer,
+        ),
+      if (summary != null && summary.totalPendingDocuments > 0)
+        _ProfileAlert(
+          icon: Icons.pending_actions_outlined,
+          title: 'Documentos pendientes',
+          message:
+              '${summary.totalPendingDocuments} documento(s) pendientes de procesar, despachar o liquidar.',
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
         ),
     ];
 
@@ -343,53 +362,97 @@ class _InfoColumn extends ConsumerWidget {
   );
 }
 
-class _SummaryColumn extends StatelessWidget {
+class _SummaryColumn extends ConsumerWidget {
   const _SummaryColumn({required this.customer});
 
   final Customer customer;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          _MetricCard(
-            title: 'Saldo actual',
-            value: _money(customer.currentBalance),
-            icon: Icons.account_balance_wallet_outlined,
-          ),
-          _MetricCard(
-            title: 'Disponible',
-            value: customer.customerType != 'CREDIT'
-                ? 'No aplica'
-                : customer.creditLimit == 0
-                ? 'Sin limite'
-                : _money(customer.creditLimit - customer.currentBalance),
-            icon: Icons.request_quote_outlined,
-          ),
-          _MetricCard(
-            title: 'Ultima compra',
-            value: 'Sin historial',
-            icon: Icons.shopping_bag_outlined,
-          ),
-        ],
-      ),
-      const SizedBox(height: 16),
-      _ProfileSection(
-        title: 'Resumen comercial',
-        icon: Icons.insights_outlined,
-        children: const [
-          _EmptyState(
-            title: 'Sin resumen de compras todavia',
-            message: 'Cuando existan documentos de venta, aqui apareceran ultima compra, productos frecuentes y actividad reciente.',
-          ),
-        ],
-      ),
-      const SizedBox(height: 16),
-      _ProfileSection(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summaryAsync = ref.watch(customerCommercialSummaryProvider(customer.id));
+    final summary = summaryAsync.value;
+
+    final lastPurchaseText = summary?.lastPurchaseAt != null
+        ? _dateText(summary!.lastPurchaseAt!)
+        : 'Sin historial';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            _MetricCard(
+              title: 'Saldo actual',
+              value: _money(customer.currentBalance),
+              icon: Icons.account_balance_wallet_outlined,
+            ),
+            _MetricCard(
+              title: 'Disponible',
+              value: customer.customerType != 'CREDIT'
+                  ? 'No aplica'
+                  : customer.creditLimit == 0
+                  ? 'Sin limite'
+                  : _money(customer.creditLimit - customer.currentBalance),
+              icon: Icons.request_quote_outlined,
+            ),
+            _MetricCard(
+              title: 'Ultima compra',
+              value: lastPurchaseText,
+              icon: Icons.shopping_bag_outlined,
+            ),
+            if (summary != null && summary.totalInvoiced > 0)
+              _MetricCard(
+                title: 'Total facturado',
+                value: _money(summary.totalInvoiced),
+                icon: Icons.receipt_long_outlined,
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _ProfileSection(
+          title: 'Resumen comercial',
+          icon: Icons.insights_outlined,
+          children: [
+            if (summary == null ||
+                (summary.lastPurchaseAt == null && summary.frequentProducts.isEmpty))
+              const _EmptyState(
+                title: 'Sin resumen de compras todavia',
+                message:
+                    'Cuando existan documentos de venta, aqui apareceran ultima compra, productos frecuentes y actividad reciente.',
+              )
+            else ...[
+              if (summary.lastPurchaseAt != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    'Ultima compra: $lastPurchaseText',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              if (summary.frequentProducts.isNotEmpty) ...[
+                Text(
+                  'Productos frecuentes',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                for (final prod in summary.frequentProducts)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: const Icon(Icons.star_outline, size: 20),
+                    title: Text(prod.productName),
+                    subtitle: Text(
+                      '${prod.totalQuantity} unidades compradas en ${prod.purchaseCount} documento(s)',
+                    ),
+                  ),
+              ],
+            ],
+          ],
+        ),
+        const SizedBox(height: 16),
+        _ProfileSection(
         title: 'Documentos',
         icon: Icons.folder_copy_outlined,
         children: const [
@@ -429,6 +492,7 @@ class _SummaryColumn extends StatelessWidget {
       ),
     ],
   );
+}
 }
 
 class _ProfileSection extends StatelessWidget {

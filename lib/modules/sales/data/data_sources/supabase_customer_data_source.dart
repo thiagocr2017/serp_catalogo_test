@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/device/device_identity.dart';
+import '../../api/customer_summary_dtos.dart';
 import '../../domain/entities/customer.dart';
 import '../../domain/entities/customer_commercial.dart';
 import '../../domain/entities/customer_email.dart';
@@ -265,6 +266,16 @@ class SupabaseCustomerDataSource {
       params: {'p_product_id': productId},
     );
     return rows.map((row) => _buyer(row as Map<String, dynamic>)).toList();
+  }
+
+  Future<CustomerCommercialSummaryDto> getCustomerCommercialSummary(
+    String customerId,
+  ) async {
+    final result = await _client.rpc<Map<String, dynamic>>(
+      'customer_commercial_summary',
+      params: {'p_customer_id': customerId},
+    );
+    return CustomerCommercialSummaryDto.fromJson(result);
   }
 
   CustomerContact _contact(Map<String, dynamic> row) => CustomerContact(
