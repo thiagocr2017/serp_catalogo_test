@@ -400,6 +400,79 @@ void main() {
     expect(api.deactivationReason, 'Duplicado');
   });
 
+  testWidgets('editar sin cambios cancela hacia el perfil sin advertencia', (
+    tester,
+  ) async {
+    final api = _RecordingCustomerApi(
+      initialCustomers: const [
+        Customer(
+          id: 'customer-1',
+          name: 'Cliente Actual',
+          displayName: 'Actual',
+          phone: '+506 1111-2222',
+          email: 'actual@example.com',
+          isActive: true,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Actual · Cliente Actual'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Editar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar cliente'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Salir sin guardar'), findsNothing);
+    expect(find.text('Perfil de cliente'), findsOneWidget);
+    expect(find.text('Actual'), findsOneWidget);
+  });
+
+  testWidgets(
+    'editar con hidratación retardada no advierte al cancelar sin tocar nada',
+    (tester) async {
+      final api = _RecordingCustomerApi(
+        hydrateDelay: const Duration(milliseconds: 50),
+        initialCustomers: const [
+          Customer(
+            id: 'customer-1',
+            name: 'Cliente Actual',
+            displayName: 'Actual',
+            phone: '+506 1111-2222',
+            email: 'actual@example.com',
+            isActive: true,
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(_app(api));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Actual · Cliente Actual'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Editar'));
+
+      // La carga del cliente llega con retardo, asi que la hidratacion cae en
+      // un frame distinto al de creacion del estado. Es el caso que el fake
+      // sincrono no cubria y bajo el cual se rellenaban los 11 controllers sin
+      // linea base a la que comparar.
+      await tester.pump(const Duration(milliseconds: 10));
+      await tester.pumpAndSettle();
+      expect(find.text('Editar cliente'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Cancelar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Salir sin guardar'), findsNothing);
+      expect(find.text('Perfil de cliente'), findsOneWidget);
+    },
+  );
+
   testWidgets('cliente existente permite agregar contacto nuevo al editar', (
     tester,
   ) async {
@@ -555,10 +628,16 @@ class _RecordingCustomerApi implements CustomerApi {
   _RecordingCustomerApi({
     this.initialCustomers = const [],
     this.initialContacts = const [],
+    this.hydrateDelay = Duration.zero,
   });
 
   final List<Customer> initialCustomers;
   final List<CustomerContact> initialContacts;
+
+  /// Retardo simulado de red al cargar. Hace que la hidratacion ocurra en un
+  /// frame distinto al de la creacion del estado, que es lo que reproduce el
+  /// aviso falso de cambios sin guardar.
+  final Duration hydrateDelay;
   int createdCustomers = 0;
   String? createdCustomerName;
   String? createdPhone;
@@ -587,8 +666,14 @@ class _RecordingCustomerApi implements CustomerApi {
   Future<List<Customer>> getCustomers() async => initialCustomers;
 
   @override
-  Future<Customer?> getCustomerById(String id) async =>
-      initialCustomers.where((customer) => customer.id == id).firstOrNull;
+  Future<Customer?> getCustomerById(String id) async {
+    if (hydrateDelay > Duration.zero) {
+      await Future<void>.delayed(hydrateDelay);
+    }
+    return initialCustomers
+        .where((customer) => customer.id == id)
+        .firstOrNull;
+  }
 
   @override
   Future<Customer> createCustomer({

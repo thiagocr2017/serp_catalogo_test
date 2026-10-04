@@ -268,6 +268,16 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   bool _loadingContacts = false;
   bool _saving = false;
   bool _dirty = false;
+
+  /// Línea base de los valores cargados. `_dirty` se calcula comparando contra
+  /// ella, no por el mero hecho de que un controller notifique.
+  ///
+  /// Antes `_markDirty()` marcaba sucio ante cualquier notificación de uno de
+  /// los 11 controllers. Consecuencia: al editar entraba el formulario y el
+  /// aviso de "cambios sin guardar" saltaba sin que se hubiera tocado nada, y
+  /// Cancelar dejaba de poder salir directo.
+  String? _baseline;
+
   bool _hydrating = false;
   String? _nameError;
   String? _phoneError;
@@ -354,8 +364,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
         _customerType = customer.customerType;
         _documentPreference = customer.documentPreference;
       });
-      _hydrating = false;
       await _loadContacts(customer.id);
+      _hydrating = false;
+      _markClean();
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -407,15 +418,69 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     });
   }
 
+  void _returnToCustomerProfile(String customerId) {
+    _markClean();
+    ref.invalidate(customersProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.go('/sales/customers/$customerId');
+    });
+  }
+
+  void _returnFromForm() {
+    final customerId = _existing?.id ?? widget.customerId;
+    if (customerId == null) {
+      _returnToCustomers();
+    } else {
+      _returnToCustomerProfile(customerId);
+    }
+  }
+
   void _markDirty() {
-    if (_hydrating || _saving) return;
-    _dirty = true;
-    UnsavedChangesGuard.instance.markDirty();
+    if (_saving) return;
+    // No se marca durante la carga: rellenar los controllers tambien notifica.
+    if (_hydrating) return;
+    final differs = _baseline == null || _snapshot() != _baseline;
+    if (differs == _dirty) return;
+    setState(() => _dirty = differs);
+    if (differs) {
+      UnsavedChangesGuard.instance.markDirty();
+    } else {
+      UnsavedChangesGuard.instance.markClean();
+    }
   }
 
   void _markClean() {
     _dirty = false;
+    _baseline = _snapshot();
     UnsavedChangesGuard.instance.markClean();
+  }
+
+  /// Estado actual del formulario. Se usa como línea base y como comparacion.
+  String _snapshot() {
+    final contacts = [
+      for (final c in _contacts)
+        '${c.id}|${c.name.text}|${c.countryCode.text}|${c.phone.text}|'
+            '${c.role.text}|${c.birthday.text}',
+    ].join('§');
+    return [
+      _name.text,
+      _displayName.text,
+      _phoneCountryCode.text,
+      _phone.text,
+      _email.text,
+      _address.text,
+      _taxId.text,
+      _creditLimit.text,
+      _creditDays.text,
+      _province.text,
+      _gira.text,
+      _preferredCarrierId ?? '',
+      _customerType,
+      _documentPreference,
+      _contactsError ?? '',
+      _creditDaysError ?? '',
+      contacts,
+    ].join('§');
   }
 
   Future<void> _cancel() async {
@@ -425,7 +490,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       return;
     }
     _markClean();
-    if (mounted) context.go('/sales/customers');
+    if (mounted) _returnFromForm();
   }
 
   @override
@@ -455,14 +520,20 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
         if (customer.gira?.trim().isNotEmpty == true) customer.gira!.trim(),
     }.toList()..sort();
     return PopScope(
-      canPop: !_dirty || _saving,
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
-        final navigator = Navigator.of(context);
-        if (await UnsavedChangesGuard.instance.confirmNavigation(context) &&
-            mounted) {
+        if (didPop || _saving) return;
+        if (_dirty &&
+            !await UnsavedChangesGuard.instance.confirmNavigation(context)) {
+          return;
+        }
+        // Igual que el boton Cancelar: volver al perfil desde el que se abrio
+        // la edicion, o a la lista si es un cliente nuevo. Antes se hacia un
+        // `navigator.pop()`, que con `context.go` en toda la app acababa en la
+        // lista de clientes.
+        if (mounted) {
           _markClean();
-          navigator.pop();
+          _returnFromForm();
         }
       },
       child: Scaffold(
@@ -1115,7 +1186,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
           birthday: _parseDate(draft.birthday.text),
         );
       }
-      if (mounted) _returnToCustomers();
+      if (mounted) _returnToCustomerProfile(customerId);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
