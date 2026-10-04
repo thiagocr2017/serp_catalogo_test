@@ -46,7 +46,7 @@ void main() {
       'San José',
     );
     await tester.enterText(
-      find.widgetWithText(TextField, 'Cédula jurídica / Tax ID'),
+      find.widgetWithText(TextField, 'Número de documento'),
       '3-101-123456',
     );
     await _selectCustomerType(tester, 'Crédito');
@@ -436,7 +436,7 @@ void main() {
       );
       await _enableRequiresEInvoice(tester);
       await tester.enterText(
-        find.widgetWithText(TextField, 'Cédula jurídica / Tax ID'),
+        find.widgetWithText(TextField, 'Número de documento'),
         '123456789',
       );
       await tester.enterText(
@@ -449,7 +449,7 @@ void main() {
       );
       await tester.enterText(
         find.widgetWithText(TextField, 'Actividad económica'),
-        'Servicios',
+        '464900',
       );
       await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar'));
       await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
@@ -478,7 +478,7 @@ void main() {
     );
     await _enableRequiresEInvoice(tester);
     await tester.enterText(
-      find.widgetWithText(TextField, 'Cédula jurídica / Tax ID'),
+      find.widgetWithText(TextField, 'Número de documento'),
       '123456789',
     );
     await tester.enterText(
@@ -491,7 +491,7 @@ void main() {
     );
     await tester.enterText(
       find.widgetWithText(TextField, 'Actividad económica'),
-      'Servicios',
+      '464900',
     );
     await _selectIdentificationType(tester, 'Cédula jurídica');
     await _selectDocumentPreference(tester, 'Factura electrónica');
@@ -505,7 +505,7 @@ void main() {
     expect(api.createdEmail, 'fe@example.com');
     expect(api.createdAddress, 'Av. Central 1');
     expect(api.createdIdentificationTypeId, 'type-1');
-    expect(api.createdEconomicActivity, 'Servicios');
+    expect(api.createdEconomicActivity, '464900');
     expect(api.createdDocumentPreference, 'E_INVOICE');
   });
 
@@ -534,6 +534,97 @@ void main() {
     expect(api.createdTaxId, isNull);
     expect(api.createdIdentificationTypeId, isNull);
   });
+
+  testWidgets(
+    'toggle requiere factura electronica aparece y esta bloqueado cuando documento habitual es Factura electronica',
+    (tester) async {
+      final api = _RecordingCustomerApi();
+
+      await tester.pumpWidget(
+        _app(api, identificationTypes: _identificationTypes),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Nuevo cliente'));
+      await tester.pumpAndSettle();
+
+      // Por defecto está en Tiquete y el Switch no debe aparecer
+      expect(find.text('Requiere factura electrónica'), findsNothing);
+      expect(find.byType(Switch), findsNothing);
+
+      // Al cambiar a Factura electrónica debe aparecer seleccionado y deshabilitado
+      await _selectDocumentPreference(tester, 'Factura electrónica');
+      expect(find.text('Requiere factura electrónica'), findsOneWidget);
+      final switchWidget = tester.widget<Switch>(find.byType(Switch));
+      expect(switchWidget.value, isTrue);
+      expect(switchWidget.onChanged, isNull);
+
+      // Al volver a Tiquete vuelve a desaparecer
+      await _selectDocumentPreference(tester, 'Tiquete');
+      expect(find.text('Requiere factura electrónica'), findsNothing);
+      expect(find.byType(Switch), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'actividad economica rechaza formato invalido y acepta formato numerico',
+    (tester) async {
+      final api = _RecordingCustomerApi();
+
+      await tester.pumpWidget(
+        _app(api, identificationTypes: _identificationTypes),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Nuevo cliente'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
+        'Cliente FE',
+      );
+      await _enableRequiresEInvoice(tester);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Número de documento'),
+        '123456789',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Correo principal'),
+        'fe@example.com',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Dirección'),
+        'Av. Central 1',
+      );
+      await _selectIdentificationType(tester, 'Cédula jurídica');
+
+      // Intentar ingresar un código demasiado corto (ej: 12)
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Actividad económica'),
+        '12',
+      );
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Código CIIU / Hacienda inválido (ej: 464900 ó 464900.1).'),
+        findsOneWidget,
+      );
+      expect(api.createdCustomers, 0);
+
+      // Corregir con formato válido con decimal
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Actividad económica'),
+        '464900.1',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      expect(api.createdCustomers, 1);
+      expect(api.createdEconomicActivity, '464900.1');
+    },
+  );
 
   testWidgets('cliente credito exige dias de credito', (tester) async {
     final api = _RecordingCustomerApi();
@@ -969,9 +1060,7 @@ const _identificationTypes = [
 ];
 
 Future<void> _enableRequiresEInvoice(WidgetTester tester) async {
-  await tester.ensureVisible(find.byType(Switch));
-  await tester.tap(find.byType(Switch));
-  await tester.pumpAndSettle();
+  await _selectDocumentPreference(tester, 'Factura electrónica');
 }
 
 Future<void> _selectIdentificationType(
@@ -980,7 +1069,7 @@ Future<void> _selectIdentificationType(
 ) async {
   final dropdown = find.widgetWithText(
     DropdownButtonFormField<String?>,
-    'Tipo de identificación',
+    'Tipo de documento',
   );
   await tester.ensureVisible(dropdown);
   await tester.tap(dropdown);

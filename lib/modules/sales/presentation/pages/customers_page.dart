@@ -344,8 +344,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       text: existing?.economicActivity ?? '',
     );
     _customerType = existing?.customerType ?? 'CASH';
-    _documentPreference = existing?.documentPreference ?? 'E_INVOICE';
-    _requiresEInvoice = existing?.requiresEInvoice ?? false;
+    _documentPreference = existing?.documentPreference ?? 'TICKET';
+    _requiresEInvoice = _documentPreference == 'E_INVOICE' || (existing?.requiresEInvoice ?? false);
     for (final controller in [
       _name,
       _displayName,
@@ -404,7 +404,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
         _economicActivity.text = customer.economicActivity ?? '';
         _customerType = customer.customerType;
         _documentPreference = customer.documentPreference;
-        _requiresEInvoice = customer.requiresEInvoice;
+        _requiresEInvoice =
+            customer.documentPreference == 'E_INVOICE' ||
+            customer.requiresEInvoice;
       });
       await _loadContacts(customer.id);
       await _loadEmails(customer.id);
@@ -653,6 +655,18 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                           icon: Icons.storefront_outlined,
                           children: [
                             TextField(
+                              key: const ValueKey('customerDisplayNameField'),
+                              controller: _displayName,
+                              decoration: const InputDecoration(
+                                labelText: 'Nombre fantasía',
+                                hintText:
+                                    'Nombre comercial o conocido del negocio',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              key: const ValueKey('customerNameField'),
                               controller: _name,
                               autofocus: true,
                               decoration: InputDecoration(
@@ -667,14 +681,89 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                               },
                             ),
                             const SizedBox(height: 12),
+                            ref
+                                .watch(identificationTypeDtosProvider)
+                                .when(
+                                  loading: () =>
+                                      const LinearProgressIndicator(),
+                                  error: (error, _) => Text(
+                                    'No fue posible cargar tipos de documento: $error',
+                                  ),
+                                  data: (types) =>
+                                      DropdownButtonFormField<String?>(
+                                        key: ValueKey(
+                                          'customerIdentificationTypeDropdown_$_identificationTypeId',
+                                        ),
+                                        initialValue: _identificationTypeId,
+                                        isExpanded: true,
+                                        decoration: InputDecoration(
+                                          labelText: 'Tipo de documento',
+                                          errorText: _identificationTypeError,
+                                          border: const OutlineInputBorder(),
+                                        ),
+                                        items: [
+                                          const DropdownMenuItem<String?>(
+                                            value: null,
+                                            child: Text('Sin tipo'),
+                                          ),
+                                          for (final type in types)
+                                            DropdownMenuItem<String?>(
+                                              value: type.id,
+                                              child: Text(type.name),
+                                            ),
+                                        ],
+                                        onChanged: (value) => setState(() {
+                                          _identificationTypeId = value;
+                                          _identificationTypeError = null;
+                                          _markDirty();
+                                        }),
+                                      ),
+                                ),
+                            const SizedBox(height: 12),
                             TextField(
-                              controller: _displayName,
-                              decoration: const InputDecoration(
-                                labelText: 'Nombre fantasía',
+                              key: const ValueKey('customerTaxIdField'),
+                              controller: _taxId,
+                              decoration: InputDecoration(
+                                labelText: 'Número de documento',
                                 hintText:
-                                    'Nombre interno para buscar y recordar',
-                                border: OutlineInputBorder(),
+                                    'Cédula física, jurídica, DIMEX, etc.',
+                                errorText: _taxIdError,
+                                border: const OutlineInputBorder(),
                               ),
+                              onChanged: (_) {
+                                if (_taxIdError != null) {
+                                  setState(() => _taxIdError = null);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              key: const ValueKey(
+                                'customerEconomicActivityField',
+                              ),
+                              controller: _economicActivity,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9.]'),
+                                ),
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'Actividad económica',
+                                hintText: 'Ej: 464900 o 464900.1 (CIIU)',
+                                helperText:
+                                    'Código CIIU registrado ante Hacienda (normalmente 6 dígitos o ######.#)',
+                                errorText: _economicActivityError,
+                                border: const OutlineInputBorder(),
+                              ),
+                              onChanged: (_) {
+                                if (_economicActivityError != null) {
+                                  setState(() => _economicActivityError = null);
+                                }
+                              },
                             ),
                             const SizedBox(height: 12),
                             Row(
@@ -731,70 +820,6 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                               onChanged: (_) {
                                 if (_emailError != null) {
                                   setState(() => _emailError = null);
-                                }
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _taxId,
-                              decoration: InputDecoration(
-                                labelText: 'Cédula jurídica / Tax ID',
-                                errorText: _taxIdError,
-                                border: const OutlineInputBorder(),
-                              ),
-                              onChanged: (_) {
-                                if (_taxIdError != null) {
-                                  setState(() => _taxIdError = null);
-                                }
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            ref
-                                .watch(identificationTypeDtosProvider)
-                                .when(
-                                  loading: () =>
-                                      const LinearProgressIndicator(),
-                                  error: (error, _) => Text(
-                                    'No fue posible cargar tipos de identificación: $error',
-                                  ),
-                                  data: (types) =>
-                                      DropdownButtonFormField<String?>(
-                                        initialValue: _identificationTypeId,
-                                        isExpanded: true,
-                                        decoration: InputDecoration(
-                                          labelText: 'Tipo de identificación',
-                                          errorText: _identificationTypeError,
-                                          border: const OutlineInputBorder(),
-                                        ),
-                                        items: [
-                                          const DropdownMenuItem<String?>(
-                                            value: null,
-                                            child: Text('Sin tipo'),
-                                          ),
-                                          for (final type in types)
-                                            DropdownMenuItem<String?>(
-                                              value: type.id,
-                                              child: Text(type.name),
-                                            ),
-                                        ],
-                                        onChanged: (value) => setState(() {
-                                          _identificationTypeId = value;
-                                          _identificationTypeError = null;
-                                          _markDirty();
-                                        }),
-                                      ),
-                                ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _economicActivity,
-                              decoration: InputDecoration(
-                                labelText: 'Actividad económica',
-                                errorText: _economicActivityError,
-                                border: const OutlineInputBorder(),
-                              ),
-                              onChanged: (_) {
-                                if (_economicActivityError != null) {
-                                  setState(() => _economicActivityError = null);
                                 }
                               },
                             ),
@@ -880,6 +905,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                             ),
                             const SizedBox(height: 12),
                             DropdownButtonFormField<String>(
+                              key: ValueKey(
+                                'customerDocumentPreferenceDropdown_$_documentPreference',
+                              ),
                               initialValue: _documentPreference,
                               isExpanded: true,
                               decoration: const InputDecoration(
@@ -888,12 +916,12 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                               ),
                               items: const [
                                 DropdownMenuItem(
-                                  value: 'E_INVOICE',
-                                  child: Text('Factura electrónica'),
-                                ),
-                                DropdownMenuItem(
                                   value: 'TICKET',
                                   child: Text('Tiquete'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'E_INVOICE',
+                                  child: Text('Factura electrónica'),
                                 ),
                                 DropdownMenuItem(
                                   value: 'ASK_EACH_TIME',
@@ -901,23 +929,32 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                 ),
                               ],
                               onChanged: (value) => setState(() {
-                                _documentPreference = value ?? 'E_INVOICE';
+                                _documentPreference = value ?? 'TICKET';
+                                if (_documentPreference == 'E_INVOICE') {
+                                  _requiresEInvoice = true;
+                                } else {
+                                  _requiresEInvoice = false;
+                                  _taxIdError = null;
+                                  _identificationTypeError = null;
+                                  _economicActivityError = null;
+                                  _addressError = null;
+                                }
                                 _markDirty();
                               }),
                             ),
-                            const SizedBox(height: 12),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text('Requiere factura electrónica'),
-                              subtitle: const Text(
-                                'Exige identificación, dirección, correo de documentación y actividad económica.',
+                            if (_documentPreference == 'E_INVOICE') ...[
+                              const SizedBox(height: 12),
+                              const SwitchListTile(
+                                key: ValueKey('customerRequiresEInvoiceSwitch'),
+                                contentPadding: EdgeInsets.zero,
+                                title: Text('Requiere factura electrónica'),
+                                subtitle: Text(
+                                  'Requerido automáticamente al tener Factura electrónica como documento habitual. Exige identificación, dirección, correo de documentación y actividad económica.',
+                                ),
+                                value: true,
+                                onChanged: null,
                               ),
-                              value: _requiresEInvoice,
-                              onChanged: (value) => setState(() {
-                                _requiresEInvoice = value;
-                                _markDirty();
-                              }),
-                            ),
+                            ],
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -1586,6 +1623,15 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
         });
         return;
       }
+    }
+    final activity = _economicActivity.text.trim();
+    if (activity.isNotEmpty &&
+        !RegExp(r'^\d{4,8}(\.\d+)?$').hasMatch(activity)) {
+      setState(
+        () => _economicActivityError =
+            'Código CIIU / Hacienda inválido (ej: 464900 ó 464900.1).',
+      );
+      return;
     }
     setState(() => _saving = true);
     try {
