@@ -245,8 +245,17 @@ Objetivo: cerrar los permisos amplios.
       `audit_actions` y `catalog_logo_operations`. Migracion
       `20261003110000_harden_audit_trail.sql`, pruebas en
       `audit_trail_immutability_test.sql` (25, 12 fallaban antes).
-- [ ] Revocar escritura directa restante segun `.specs/refactors/04-block-1b-contract-cleanup.md`
-      (1B.3), migrando antes todos los consumidores a fachadas y RPC.
+- [x] **Completado antes de lo previsto (2026-10-03)**: revocar la escritura
+      directa restante segun `.specs/refactors/04-block-1b-contract-cleanup.md`
+      (1B.3). Verificado con dos metodos independientes sobre **todas** las
+      tablas de `public`: `has_table_privilege` de `anon` y `authenticated` para
+      `INSERT`/`UPDATE`/`DELETE`/`TRUNCATE` devuelve **cero tablas**, y los
+      intentos reales de escritura sobre `app_settings`,
+      `packaging_presentations` y `sales_agents` dan `permission denied`.
+      Ademas los cuatro puentes heredados (`createLegacyAgent`,
+      `updateLegacyAgent`, `deactivateLegacyAgent`, `typedef SalesAgent`) ya no
+      existen, `configuration_api.dart` no exporta entidades internas y
+      Productos no importa `configuration/di`.
 - [x] **Revisado 2026-10-03**: `product-images` y `catalog-assets` estan mas
       endurecidos de lo que decia `block-1a-baseline.md` — las politicas ya
       acotan bucket, patron de nombre y MIME, y `catalog-assets` no permite
