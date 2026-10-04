@@ -61,12 +61,19 @@ void main() {
 
       final lines = file.readAsLinesSync();
       for (var i = 0; i < lines.length; i++) {
-        final uri = _exportUriOf(lines[i]);
+        final line = lines[i];
+        final uri = _exportUriOf(line);
         if (uri == null) continue;
 
         final target = _resolve(file.path, uri);
         if (target == null) continue;
         if (!_isForbiddenFromPublicSurface(target)) continue;
+
+        // Re-exportar tipos de valor o enums especificos con `show` desde domain/entities/
+        // esta permitido (.specs/architecture/module-security-contract.md §3).
+        if (target.contains('domain/entities/') && line.contains('show ')) {
+          continue;
+        }
 
         violations.add('${file.path}:${i + 1} -> $target');
       }
@@ -100,14 +107,10 @@ bool _isInternalLayer(String path) {
 }
 
 /// Lo que una superficie publica (`api/` o `<module>_module.dart`) jamas puede
-/// exportar.
+/// exportar (.specs/architecture/module-security-contract.md §3).
 ///
-/// `domain/entities/` **tambien** deberia estar prohibido por
-/// `.specs/architecture/module-security-contract.md` §3 («entidades internas con campos que el
-/// consumidor no necesita»), pero todavia se expone en `product`
-/// y `sales`. `inventory` ya fue migrado en T5. Quitarlo es T7 de
-/// `.specs/refactors/03-public-dto-migration.md`; cuando se completen, hay que
-/// ampliar esta lista y comprobar que el test sigue pasando.
+/// Nota: re-exportar enums/value types especificos usando `show` desde
+/// `domain/entities/` esta permitido para tipos compartidos.
 const _forbiddenFromPublicSurface = [
   'data/',
   'di/',
@@ -115,6 +118,7 @@ const _forbiddenFromPublicSurface = [
   'services/',
   'domain/repositories/',
   'domain/use_cases/',
+  'domain/entities/',
 ];
 
 bool _isForbiddenFromPublicSurface(String path) {

@@ -242,18 +242,16 @@ el código y forman parte del árbol real.
 
 ### Deuda técnica reconocida
 
-- Las API públicas de Productos e Inventario exponen temporalmente algunas
-  entidades de dominio como modelos estables; podrán sustituirse por DTO
-  públicos si ambos dominios divergen. Ver `02-tech-debt-plan.md` fase 3.
-- `main.dart`, como raíz de composición autorizada, todavía construye las
-  implementaciones Supabase y registra sus overrides de Riverpod.
-- El nombre histórico `catalog_agents` quedó resuelto: la tabla se renombró a
-  `sales_agents` y `catalog_agents` sobrevive solo como vista de
-  compatibilidad sin escritura. Falta retirar esa vista.
-- `sales_module.dart` no exporta todo lo que `api/` contiene, y `main.dart`
-  importa `api/sales_invoice_api.dart` y `api/quote_api.dart` directamente.
-- `inventory_module.dart` exporta `di/inventory_providers.dart`, contra la
-  prohibición de exponer providers internos de Riverpod.
+- Las API públicas de Productos, Inventario y Ventas ya han sido migradas a DTOs
+  públicos estables (`03-public-dto-migration.md`), aislando completamente las
+  entidades de dominio internas.
+- `main.dart`, como raíz de composición autorizada, construye las
+  implementaciones de los contratos públicos de API de cada módulo y registra sus
+  overrides de Riverpod.
+- La vista de compatibilidad `catalog_agents` ha sido retirada mediante la migración
+  `20261004180000_drop_legacy_catalog_agents_view.sql`.
+- `sales_module.dart` exporta todos los contratos de `api/`, permitiendo a `main.dart`
+  consumir el módulo a través de su punto de entrada público.
 - La preferencia de tema y la configuración técnica de conexión permanecen en
   `core/configuration`; no son datos comerciales del módulo Configuración.
 - `inventory_transactions` ya no acepta `INSERT` ni `TRUNCATE` de `anon` ni

@@ -4,7 +4,7 @@ select public.create_sales_agent('11111111-1111-1111-1111-111111111111','A','','
 select public.create_packaging_presentation('22222222-2222-2222-2222-222222222222','P','t','d','i');
 select throws_ok($$select public.create_sales_agent('11111111-1111-1111-1111-111111111111','A','otro','t','d','i')$$,'P0001','COMMAND_PAYLOAD_MISMATCH','agente rechaza carga distinta');
 select throws_ok($$select public.create_packaging_presentation('22222222-2222-2222-2222-222222222222','otra','t','d','i')$$,'P0001','COMMAND_PAYLOAD_MISMATCH','presentación rechaza carga distinta');
-select ok((select reloptions @> array['security_invoker=true'] from pg_class where oid='public.catalog_agents'::regclass),'vista heredada es security_invoker');
+select hasnt_view('public', 'catalog_agents', 'la vista heredada catalog_agents ya no existe');
 select ok(not has_function_privilege('anon','public.clear_selected_catalog_agent_internal(uuid,uuid)'::regprocedure,'EXECUTE'),'anon no ejecuta limpieza interna');
 select ok(not has_table_privilege('anon','public.sales_agent_create_commands','SELECT'),'anon no lee recibos');
 select ok(not exists(select 1 from pg_type t join pg_attribute a on a.attrelid=t.typrelid where t.typname='business_settings_rpc_result' and a.attname in ('app_mode','superadmin_device_identifier')),'retorno de empresa no expone campos administrativos');

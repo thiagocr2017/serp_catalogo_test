@@ -1,8 +1,8 @@
-import '../../api/customer_api.dart';
+import '../../domain/entities/customer.dart';
 import '../../domain/repositories/customer_repository.dart';
 import '../data_sources/supabase_customer_data_source.dart';
 
-class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
+class SupabaseCustomerRepository implements CustomerRepository {
   const SupabaseCustomerRepository(this._source);
 
   final SupabaseCustomerDataSource _source;
@@ -108,67 +108,4 @@ class SupabaseCustomerRepository implements CustomerRepository, CustomerApi {
   @override
   Future<void> deactivateCustomer(String id, {String? reason}) =>
       _source.deactivateCustomer(id, reason: reason);
-
-  @override
-  Future<List<CustomerContact>> getCustomerContacts(String customerId) =>
-      _source.getCustomerContacts(customerId);
-
-  @override
-  Future<CustomerContact> saveCustomerContact({
-    String? id,
-    required String customerId,
-    required String name,
-    String? phone,
-    String? role,
-    DateTime? birthday,
-  }) => _source.saveCustomerContact(
-    id: id,
-    customerId: customerId,
-    name: name,
-    phone: phone,
-    role: role,
-    birthday: birthday,
-  );
-
-  @override
-  Future<void> deleteCustomerContact(String id) =>
-      _source.deleteCustomerContact(id);
-
-  @override
-  Future<List<CustomerEmail>> getCustomerEmails(String customerId) =>
-      _source.getCustomerEmails(customerId);
-
-  @override
-  Future<CustomerEmail> saveCustomerEmail({
-    String? id,
-    required String customerId,
-    required String email,
-    CustomerEmailPurpose purpose = CustomerEmailPurpose.copy,
-    String? label,
-    bool isActive = true,
-  }) => _source.saveCustomerEmail(
-    id: id,
-    customerId: customerId,
-    email: email,
-    purpose: purpose,
-    label: label,
-    isActive: isActive,
-  );
-
-  @override
-  Future<void> deleteCustomerEmail(String id) =>
-      _source.deleteCustomerEmail(id);
-
-  @override
-  Future<List<ProductBuyer>> getProductBuyers(String productId) =>
-      _source.getProductBuyers(productId);
-
-  @override
-  Future<CustomerCommercialSummaryDto> getCustomerCommercialSummary(
-    String customerId,
-  ) => _source.getCustomerCommercialSummary(customerId);
-
-  @override
-  Future<List<CustomerCategoryDto>> getCustomerCategories() =>
-      _source.getCustomerCategories();
 }

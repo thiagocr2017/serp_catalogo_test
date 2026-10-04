@@ -112,9 +112,14 @@ Todas completadas salvo T13.
       `warehouses_page.dart`, y contra un `.tsx` de control.
 - [x] T12. Versionar `.specs/`, `.opencode/` y `docs/` en git (D10), en un
       commit separado del trabajo en curso ajeno.
-- [ ] T13. Retirar la vista `catalog_agents` cuando se compruebe que no quedan
-      consumidores, con prueba pgTAP de ausencia. Depende de Fase 3 en
-      `02-tech-debt-plan.md`.
+- [x] T13. Retirar la vista `catalog_agents` cuando se compruebe que no quedan
+      consumidores, con prueba pgTAP de ausencia.
+      Resuelto: migración `20261004180000_drop_legacy_catalog_agents_view.sql`
+      elimina la vista de compatibilidad `catalog_agents`. Pruebas pgTAP
+      actualizadas (`1b2_configuration_sales_behavior_test.sql`,
+      `1b2_configuration_sales_state_test.sql`,
+      `1b2_configuration_sales_lifecycle_test.sql`,
+      `1b3_legacy_write_revocation_test.sql`) verificando ausencia con `hasnt_view`.
 
 ## Decisiones requeridas
 

@@ -1,9 +1,8 @@
-import '../../api/consignment_api.dart';
+import '../../domain/entities/sales_consignment.dart';
 import '../../domain/repositories/consignment_repository.dart';
 import '../data_sources/supabase_consignment_data_source.dart';
 
-class SupabaseConsignmentRepository
-    implements ConsignmentRepository, ConsignmentApi {
+class SupabaseConsignmentRepository implements ConsignmentRepository {
   const SupabaseConsignmentRepository(this._source);
 
   final SupabaseConsignmentDataSource _source;

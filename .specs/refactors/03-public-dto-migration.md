@@ -157,14 +157,27 @@ Notas de la decision:
       sustituirlos por contratos de `api/`.
       Resuelto en `85c72cb`: `sales_module.dart` ahora expone estrictamente
       `sales_api.dart`, `customer_api.dart` y `sales_routes.dart`.
-- [ ] T7. Crear DTO de `sales` para las 6 entidades restantes.
-- [ ] T8. Verificar con la prueba de frontera que ningun modulo importa capas
+- [x] T7. Crear DTO de `sales` para las 6 entidades restantes.
+      Resuelto: creados `CustomerDto`, `CustomerContactDto`, `CustomerEmailDto`,
+      `ProductBuyerDto` en `customer_dtos.dart`, y los DTOs de documentos
+      comerciales (`SalesInvoiceDto`, `SalesQuoteDto`, `SalesOrderDto`,
+      `SalesReturnDto`, `SalesConsignmentDto`) e inputs de líneas en
+      `sales_document_dtos.dart`. Creado `sales_dto_mapper.dart`.
+      Las interfaces públicas (`CustomerApi`, `SalesInvoiceApi`, etc.)
+      devuelven DTOs; ninguna entidad de dominio se exporta desde `sales/api/`.
+- [x] T8. Verificar con la prueba de frontera que ningun modulo importa capas
       internas de otro.
-- [ ] T9. Retirar la vista `catalog_agents` (T13 de
+      Resuelto: `test/core/architecture/module_boundary_test.dart` actualizado
+      con `domain/entities/` prohibido en la superficie pública (excepto
+      re-export de enums compartidos con `show`). Todos los tests pasan.
+- [x] T9. Retirar la vista `catalog_agents` (T13 de
       `01-document-consistency.md`) con prueba pgTAP de ausencia, actualizando
       `1b2_configuration_sales_behavior_test.sql`,
       `1b2_configuration_sales_state_test.sql` y
       `1b2_configuration_sales_lifecycle_test.sql`, que hoy la consultan.
+      Resuelto: migración `20261004180000_drop_legacy_catalog_agents_view.sql`
+      elimina `catalog_agents`. Pruebas pgTAP actualizadas para verificar
+      ausencia (`hasnt_view`). 246 pruebas pgTAP pasan.
 
 ## Contrato de pruebas
 

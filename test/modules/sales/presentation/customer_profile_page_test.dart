@@ -11,7 +11,7 @@ void main() {
   testWidgets('perfil renderiza datos generales y contactos', (tester) async {
     final api = _FakeCustomerApi(
       customers: const [
-        Customer(
+        CustomerDto(
           id: 'customer-1',
           name: 'Distribuidora Legal S.A.',
           displayName: 'La Legal',
@@ -29,7 +29,7 @@ void main() {
         ),
       ],
       contacts: const [
-        CustomerContact(
+        CustomerContactDto(
           id: 'contact-1',
           customerId: 'customer-1',
           name: 'Andrea Compras',
@@ -64,7 +64,7 @@ void main() {
   ) async {
     final api = _FakeCustomerApi(
       customers: const [
-        Customer(
+        CustomerDto(
           id: 'customer-1',
           name: 'Cliente FE Completo',
           requiresEInvoice: true,
@@ -89,7 +89,7 @@ void main() {
   testWidgets('perfil muestra alerta de cliente inactivo', (tester) async {
     final api = _FakeCustomerApi(
       customers: const [
-        Customer(
+        CustomerDto(
           id: 'customer-1',
           name: 'Cliente Pausado',
           isActive: false,
@@ -110,7 +110,7 @@ void main() {
     (tester) async {
       final api = _FakeCustomerApi(
         customers: const [
-          Customer(
+          CustomerDto(
             id: 'customer-1',
             name: 'Cliente Con Alertas',
             customerType: 'CREDIT',
@@ -149,7 +149,7 @@ void main() {
     (tester) async {
       final api = _FakeCustomerApi(
         customers: const [
-          Customer(
+          CustomerDto(
             id: 'customer-1',
             name: 'Cliente Con Historial',
           ),
@@ -188,7 +188,7 @@ void main() {
   testWidgets('lista navega al perfil del cliente', (tester) async {
     final api = _FakeCustomerApi(
       customers: const [
-        Customer(
+        CustomerDto(
           id: 'customer-1',
           name: 'Distribuidora Legal S.A.',
           displayName: 'La Legal',
@@ -209,7 +209,7 @@ void main() {
   testWidgets(
     'perfil muestra politica de envio, categorias y rankings comerciales',
     (tester) async {
-      const customer = Customer(
+      const customer = CustomerDto(
         id: 'cust-comercial',
         name: 'Distribuidora Mayorista S.A.',
         shippingPaymentPolicy: 'PREPAID',
@@ -271,22 +271,22 @@ class _FakeCustomerApi implements CustomerApi {
     this.summary,
   });
 
-  final List<Customer> customers;
-  final List<CustomerContact> contacts;
+  final List<CustomerDto> customers;
+  final List<CustomerContactDto> contacts;
 
   @override
-  Future<List<Customer>> getCustomers() async => customers;
+  Future<List<CustomerDto>> getCustomers() async => customers;
 
   @override
-  Future<Customer?> getCustomerById(String id) async =>
+  Future<CustomerDto?> getCustomerById(String id) async =>
       customers.where((customer) => customer.id == id).firstOrNull;
 
   @override
-  Future<List<CustomerContact>> getCustomerContacts(String customerId) async =>
+  Future<List<CustomerContactDto>> getCustomerContacts(String customerId) async =>
       contacts.where((contact) => contact.customerId == customerId).toList();
 
   @override
-  Future<Customer> createCustomer({
+  Future<CustomerDto> createCustomer({
     required String name,
     String? displayName,
     String? phone,
@@ -310,7 +310,7 @@ class _FakeCustomerApi implements CustomerApi {
   }) async => throw UnimplementedError();
 
   @override
-  Future<Customer> updateCustomer({
+  Future<CustomerDto> updateCustomer({
     required String id,
     required String name,
     String? displayName,
@@ -338,7 +338,7 @@ class _FakeCustomerApi implements CustomerApi {
   Future<void> deactivateCustomer(String id, {String? reason}) async {}
 
   @override
-  Future<CustomerContact> saveCustomerContact({
+  Future<CustomerContactDto> saveCustomerContact({
     String? id,
     required String customerId,
     required String name,
@@ -351,11 +351,11 @@ class _FakeCustomerApi implements CustomerApi {
   Future<void> deleteCustomerContact(String id) async {}
 
   @override
-  Future<List<CustomerEmail>> getCustomerEmails(String customerId) async =>
+  Future<List<CustomerEmailDto>> getCustomerEmails(String customerId) async =>
       const [];
 
   @override
-  Future<CustomerEmail> saveCustomerEmail({
+  Future<CustomerEmailDto> saveCustomerEmail({
     String? id,
     required String customerId,
     required String email,
@@ -368,7 +368,7 @@ class _FakeCustomerApi implements CustomerApi {
   Future<void> deleteCustomerEmail(String id) async {}
 
   @override
-  Future<List<ProductBuyer>> getProductBuyers(String productId) async =>
+  Future<List<ProductBuyerDto>> getProductBuyers(String productId) async =>
       const [];
 
   @override

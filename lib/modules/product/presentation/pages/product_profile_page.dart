@@ -865,7 +865,7 @@ class _ProductBuyersState extends ConsumerState<_ProductBuyers> {
 class _BuyerTile extends StatelessWidget {
   const _BuyerTile({required this.buyer});
 
-  final ProductBuyer buyer;
+  final ProductBuyerDto buyer;
 
   @override
   Widget build(BuildContext context) {

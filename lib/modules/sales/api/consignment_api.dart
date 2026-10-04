@@ -1,14 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/entities/sales_consignment.dart';
-import '../domain/repositories/consignment_repository.dart';
+import 'sales_document_dtos.dart';
 
-export '../domain/entities/sales_consignment.dart';
+export 'sales_document_dtos.dart';
 
 abstract interface class ConsignmentApi {
-  Future<List<SalesConsignment>> getConsignments();
-  Future<SalesConsignment?> getConsignmentById(String id);
-  Future<SalesConsignment> createConsignment({
+  Future<List<SalesConsignmentDto>> getConsignments();
+  Future<SalesConsignmentDto?> getConsignmentById(String id);
+  Future<SalesConsignmentDto> createConsignment({
     required String customerId,
     required String customerName,
     required String currencyCode,
@@ -18,7 +17,7 @@ abstract interface class ConsignmentApi {
     required String warehouseId,
     required String locationId,
   });
-  Future<SalesConsignment> registerReturn({
+  Future<SalesConsignmentDto> registerReturn({
     required String consignmentId,
     required String productId,
     required int quantity,
@@ -29,6 +28,6 @@ final consignmentApiProvider = Provider<ConsignmentApi>(
   (ref) => throw StateError('ConsignmentApi must be overridden.'),
 );
 
-final consignmentsProvider = FutureProvider<List<SalesConsignment>>(
+final consignmentsProvider = FutureProvider<List<SalesConsignmentDto>>(
   (ref) => ref.watch(consignmentApiProvider).getConsignments(),
 );

@@ -1,6 +1,6 @@
 begin;
 
-select plan(8);
+select plan(7);
 
 select ok(
   has_table_privilege('anon', 'public.sales_agents', 'SELECT'),
@@ -18,21 +18,10 @@ select ok(
   ),
   'authenticated no escribe agentes directamente'
 );
-select ok(
-  not has_table_privilege(
-    'anon',
-    'public.catalog_agents',
-    'INSERT,UPDATE,DELETE'
-  ),
-  'la vista heredada tampoco admite escritura de anon'
-);
-select ok(
-  not has_table_privilege(
-    'authenticated',
-    'public.catalog_agents',
-    'INSERT,UPDATE,DELETE'
-  ),
-  'la vista heredada tampoco admite escritura autenticada'
+select hasnt_view(
+  'public',
+  'catalog_agents',
+  'la vista heredada catalog_agents ya no existe'
 );
 select ok(
   has_table_privilege('authenticated', 'public.packaging_presentations', 'SELECT'),

@@ -190,17 +190,10 @@ select is(
   'audit_record_id permanece estable después de cambios reales'
 );
 
-select is(
-  (
-    select count(*)
-    from public.catalog_agents legacy
-    join public.sales_agents current_agent using (id)
-    where legacy.id = (select id from _selected_agent)
-      and legacy.name = current_agent.name
-      and legacy.is_active = current_agent.is_active
-  ),
-  1::bigint,
-  'la vista heredada y sales_agents representan la misma entidad'
+select hasnt_view(
+  'public',
+  'catalog_agents',
+  'la vista heredada catalog_agents ya no existe'
 );
 
 select ok(

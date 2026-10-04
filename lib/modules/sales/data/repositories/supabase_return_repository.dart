@@ -1,8 +1,8 @@
-import '../../api/return_api.dart';
+import '../../domain/entities/sales_return.dart';
 import '../../domain/repositories/return_repository.dart';
 import '../data_sources/supabase_return_data_source.dart';
 
-class SupabaseReturnRepository implements ReturnRepository, ReturnApi {
+class SupabaseReturnRepository implements ReturnRepository {
   const SupabaseReturnRepository(this._source);
 
   final SupabaseReturnDataSource _source;

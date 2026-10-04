@@ -302,7 +302,7 @@ void main() {
     const customerId = 'customer-1';
     final api = _RecordingCustomerApi(
       initialCustomers: const [
-        Customer(
+        CustomerDto(
           id: customerId,
           name: 'Cliente Actual',
           displayName: 'Actual',
@@ -313,7 +313,7 @@ void main() {
         ),
       ],
       initialEmails: const [
-        CustomerEmail(
+        CustomerEmailDto(
           id: 'email-copy-1',
           customerId: customerId,
           email: 'borrar@example.com',
@@ -690,7 +690,7 @@ void main() {
   ) async {
     final api = _RecordingCustomerApi(
       initialCustomers: const [
-        Customer(
+        CustomerDto(
           id: 'customer-1',
           name: 'Cliente Actual',
           phone: '+506 1111-2222',
@@ -703,14 +703,14 @@ void main() {
         ),
       ],
       initialContacts: const [
-        CustomerContact(
+        CustomerContactDto(
           id: 'contact-1',
           customerId: 'customer-1',
           name: 'Comprador',
           phone: '+506 2222-3333',
           role: 'Compras',
         ),
-        CustomerContact(
+        CustomerContactDto(
           id: 'contact-2',
           customerId: 'customer-1',
           name: 'Gerencia',
@@ -782,7 +782,7 @@ void main() {
   ) async {
     final api = _RecordingCustomerApi(
       initialCustomers: const [
-        Customer(
+        CustomerDto(
           id: 'customer-1',
           name: 'Cliente Actual',
           displayName: 'Actual',
@@ -817,7 +817,7 @@ void main() {
       final api = _RecordingCustomerApi(
         hydrateDelay: const Duration(milliseconds: 50),
         initialCustomers: const [
-          Customer(
+          CustomerDto(
             id: 'customer-1',
             name: 'Cliente Actual',
             displayName: 'Actual',
@@ -857,7 +857,7 @@ void main() {
   ) async {
     final api = _RecordingCustomerApi(
       initialCustomers: const [
-        Customer(
+        CustomerDto(
           id: 'customer-1',
           name: 'Cliente Actual',
           phone: '+506 1111-2222',
@@ -908,7 +908,7 @@ void main() {
     (tester) async {
       final api = _RecordingCustomerApi(
         initialCustomers: const [
-          Customer(
+          CustomerDto(
             id: 'customer-1',
             name: 'Cliente Actual',
             phone: '+506 1111-2222',
@@ -919,7 +919,7 @@ void main() {
           ),
         ],
         initialContacts: const [
-          CustomerContact(
+          CustomerContactDto(
             id: 'contact-1',
             customerId: 'customer-1',
             name: 'Contacto Existente',
@@ -1142,8 +1142,8 @@ class _RecordingCustomerApi implements CustomerApi {
     this.hydrateDelay = Duration.zero,
   });
 
-  final List<Customer> initialCustomers;
-  final List<CustomerContact> initialContacts;
+  final List<CustomerDto> initialCustomers;
+  final List<CustomerContactDto> initialContacts;
 
   /// Retardo simulado de red al cargar. Hace que la hidratacion ocurra en un
   /// frame distinto al de la creacion del estado, que es lo que reproduce el
@@ -1186,15 +1186,15 @@ class _RecordingCustomerApi implements CustomerApi {
   final savedContactIds = <String?>[];
   final savedContacts = <_SavedContact>[];
   final deletedContactIds = <String>[];
-  final List<CustomerEmail> initialEmails;
+  final List<CustomerEmailDto> initialEmails;
   final savedEmails = <_SavedEmail>[];
   final deletedEmailIds = <String>[];
 
   @override
-  Future<List<Customer>> getCustomers() async => initialCustomers;
+  Future<List<CustomerDto>> getCustomers() async => initialCustomers;
 
   @override
-  Future<Customer?> getCustomerById(String id) async {
+  Future<CustomerDto?> getCustomerById(String id) async {
     if (hydrateDelay > Duration.zero) {
       await Future<void>.delayed(hydrateDelay);
     }
@@ -1202,7 +1202,7 @@ class _RecordingCustomerApi implements CustomerApi {
   }
 
   @override
-  Future<Customer> createCustomer({
+  Future<CustomerDto> createCustomer({
     required String name,
     String? displayName,
     String? phone,
@@ -1245,7 +1245,7 @@ class _RecordingCustomerApi implements CustomerApi {
     createdRequiresEInvoice = requiresEInvoice;
     createdShippingPaymentPolicy = shippingPaymentPolicy;
     createdCategoryIds = categoryIds;
-    return Customer(
+    return CustomerDto(
       id: 'customer-new',
       name: name,
       displayName: displayName,
@@ -1271,7 +1271,7 @@ class _RecordingCustomerApi implements CustomerApi {
   }
 
   @override
-  Future<Customer> updateCustomer({
+  Future<CustomerDto> updateCustomer({
     required String id,
     required String name,
     String? displayName,
@@ -1305,7 +1305,7 @@ class _RecordingCustomerApi implements CustomerApi {
     updatedCity = city;
     updatedShippingPaymentPolicy = shippingPaymentPolicy;
     updatedCategoryIds = categoryIds;
-    return Customer(
+    return CustomerDto(
       id: id,
       name: name,
       displayName: displayName,
@@ -1337,13 +1337,13 @@ class _RecordingCustomerApi implements CustomerApi {
   }
 
   @override
-  Future<List<CustomerContact>> getCustomerContacts(String customerId) async =>
+  Future<List<CustomerContactDto>> getCustomerContacts(String customerId) async =>
       initialContacts
           .where((contact) => contact.customerId == customerId)
           .toList();
 
   @override
-  Future<CustomerContact> saveCustomerContact({
+  Future<CustomerContactDto> saveCustomerContact({
     String? id,
     required String customerId,
     required String name,
@@ -1362,7 +1362,7 @@ class _RecordingCustomerApi implements CustomerApi {
         birthday: birthday,
       ),
     );
-    return CustomerContact(
+    return CustomerContactDto(
       id: id ?? 'contact-new',
       customerId: customerId,
       name: name,
@@ -1378,11 +1378,11 @@ class _RecordingCustomerApi implements CustomerApi {
   }
 
   @override
-  Future<List<CustomerEmail>> getCustomerEmails(String customerId) async =>
+  Future<List<CustomerEmailDto>> getCustomerEmails(String customerId) async =>
       initialEmails.where((email) => email.customerId == customerId).toList();
 
   @override
-  Future<CustomerEmail> saveCustomerEmail({
+  Future<CustomerEmailDto> saveCustomerEmail({
     String? id,
     required String customerId,
     required String email,
@@ -1400,7 +1400,7 @@ class _RecordingCustomerApi implements CustomerApi {
         isActive: isActive,
       ),
     );
-    return CustomerEmail(
+    return CustomerEmailDto(
       id: id ?? 'email-new',
       customerId: customerId,
       email: email,
@@ -1416,7 +1416,7 @@ class _RecordingCustomerApi implements CustomerApi {
   }
 
   @override
-  Future<List<ProductBuyer>> getProductBuyers(String productId) async =>
+  Future<List<ProductBuyerDto>> getProductBuyers(String productId) async =>
       const [];
 
   @override

@@ -1,21 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/entities/customer.dart';
-import '../domain/entities/customer_commercial.dart';
-import '../domain/entities/customer_email.dart';
 import 'customer_category_dtos.dart';
+import 'customer_dtos.dart';
 import 'customer_summary_dtos.dart';
 
-export '../domain/entities/customer.dart';
-export '../domain/entities/customer_commercial.dart';
-export '../domain/entities/customer_email.dart';
 export 'customer_category_dtos.dart';
+export 'customer_dtos.dart';
 export 'customer_summary_dtos.dart';
 
 abstract interface class CustomerApi {
-  Future<List<Customer>> getCustomers();
-  Future<Customer?> getCustomerById(String id);
-  Future<Customer> createCustomer({
+  Future<List<CustomerDto>> getCustomers();
+  Future<CustomerDto?> getCustomerById(String id);
+  Future<CustomerDto> createCustomer({
     required String name,
     String? displayName,
     String? phone,
@@ -37,7 +33,7 @@ abstract interface class CustomerApi {
     String shippingPaymentPolicy,
     List<String> categoryIds,
   });
-  Future<Customer> updateCustomer({
+  Future<CustomerDto> updateCustomer({
     required String id,
     required String name,
     String? displayName,
@@ -62,8 +58,8 @@ abstract interface class CustomerApi {
   });
   Future<void> deactivateCustomer(String id, {String? reason});
 
-  Future<List<CustomerContact>> getCustomerContacts(String customerId);
-  Future<CustomerContact> saveCustomerContact({
+  Future<List<CustomerContactDto>> getCustomerContacts(String customerId);
+  Future<CustomerContactDto> saveCustomerContact({
     String? id,
     required String customerId,
     required String name,
@@ -73,8 +69,8 @@ abstract interface class CustomerApi {
   });
   Future<void> deleteCustomerContact(String id);
 
-  Future<List<CustomerEmail>> getCustomerEmails(String customerId);
-  Future<CustomerEmail> saveCustomerEmail({
+  Future<List<CustomerEmailDto>> getCustomerEmails(String customerId);
+  Future<CustomerEmailDto> saveCustomerEmail({
     String? id,
     required String customerId,
     required String email,
@@ -84,7 +80,7 @@ abstract interface class CustomerApi {
   });
   Future<void> deleteCustomerEmail(String id);
 
-  Future<List<ProductBuyer>> getProductBuyers(String productId);
+  Future<List<ProductBuyerDto>> getProductBuyers(String productId);
   Future<CustomerCommercialSummaryDto> getCustomerCommercialSummary(String customerId);
   Future<List<CustomerCategoryDto>> getCustomerCategories();
 }
@@ -93,11 +89,11 @@ final customerApiProvider = Provider<CustomerApi>(
   (ref) => throw StateError('CustomerApi must be overridden.'),
 );
 
-final customersProvider = FutureProvider<List<Customer>>(
+final customersProvider = FutureProvider<List<CustomerDto>>(
   (ref) => ref.watch(customerApiProvider).getCustomers(),
 );
 
-final productBuyersProvider = FutureProvider.family<List<ProductBuyer>, String>(
+final productBuyersProvider = FutureProvider.family<List<ProductBuyerDto>, String>(
   (ref, productId) =>
       ref.watch(customerApiProvider).getProductBuyers(productId),
 );

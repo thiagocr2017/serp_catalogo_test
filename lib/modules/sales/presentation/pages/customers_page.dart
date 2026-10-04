@@ -288,7 +288,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   final _removedContactIds = <String>[];
   final _copyEmails = <_EmailDraft>[];
   final _removedEmailIds = <String>[];
-  Customer? _existing;
+  CustomerDto? _existing;
   String? _primaryEmailId;
   bool _loadingCustomer = false;
   bool _loadingContacts = false;
@@ -623,8 +623,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   @override
   Widget build(BuildContext context) {
     final existing = _existing;
-    final existingGiras = {
-      for (final customer in ref.watch(customersProvider).value ?? <Customer>[])
+    final existingGiras = <String>{
+      for (final customer in ref.watch(customersProvider).value ?? <CustomerDto>[])
         if (customer.gira?.trim().isNotEmpty == true) customer.gira!.trim(),
     }.toList()..sort();
     return PopScope(
@@ -1856,7 +1856,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     return DateTime.tryParse(trimmed);
   }
 
-  Future<void> _deactivate(Customer customer) async {
+  Future<void> _deactivate(CustomerDto customer) async {
     final reason = TextEditingController();
     String? reasonError;
     var dirty = false;

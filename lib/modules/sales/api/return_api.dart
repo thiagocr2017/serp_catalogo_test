@@ -1,14 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/entities/sales_return.dart';
-import '../domain/repositories/return_repository.dart';
+import 'sales_document_dtos.dart';
 
-export '../domain/entities/sales_return.dart';
+export 'sales_document_dtos.dart';
 
 abstract interface class ReturnApi {
-  Future<List<SalesReturn>> getReturns();
-  Future<SalesReturn?> getReturnById(String id);
-  Future<SalesReturn> createReturn({
+  Future<List<SalesReturnDto>> getReturns();
+  Future<SalesReturnDto?> getReturnById(String id);
+  Future<SalesReturnDto> createReturn({
     required String invoiceId,
     required String customerId,
     required String customerName,
@@ -21,6 +20,6 @@ final returnApiProvider = Provider<ReturnApi>(
   (ref) => throw StateError('ReturnApi must be overridden.'),
 );
 
-final returnsProvider = FutureProvider<List<SalesReturn>>(
+final returnsProvider = FutureProvider<List<SalesReturnDto>>(
   (ref) => ref.watch(returnApiProvider).getReturns(),
 );

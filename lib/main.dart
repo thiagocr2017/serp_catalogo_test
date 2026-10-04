@@ -31,22 +31,17 @@ import 'modules/inventory/inventory_module.dart';
 import 'modules/sales/data/data_sources/supabase_sales_data_source.dart';
 import 'modules/sales/data/repositories/supabase_sales_repository.dart';
 import 'modules/sales/data/data_sources/supabase_sales_invoice_data_source.dart';
-import 'modules/sales/data/repositories/supabase_sales_invoice_repository.dart';
-import 'modules/sales/api/sales_invoice_api.dart';
+import 'modules/sales/data/repositories/supabase_sales_invoice_api.dart';
 import 'modules/sales/data/data_sources/supabase_customer_data_source.dart';
-import 'modules/sales/data/repositories/supabase_customer_repository.dart';
+import 'modules/sales/data/repositories/supabase_customer_api.dart';
 import 'modules/sales/data/data_sources/supabase_quote_data_source.dart';
-import 'modules/sales/data/repositories/supabase_quote_repository.dart';
-import 'modules/sales/api/quote_api.dart';
+import 'modules/sales/data/repositories/supabase_quote_api.dart';
 import 'modules/sales/data/data_sources/supabase_order_data_source.dart';
-import 'modules/sales/data/repositories/supabase_order_repository.dart';
-import 'modules/sales/api/order_api.dart';
+import 'modules/sales/data/repositories/supabase_order_api.dart';
 import 'modules/sales/data/data_sources/supabase_return_data_source.dart';
-import 'modules/sales/data/repositories/supabase_return_repository.dart';
-import 'modules/sales/api/return_api.dart';
+import 'modules/sales/data/repositories/supabase_return_api.dart';
 import 'modules/sales/data/data_sources/supabase_consignment_data_source.dart';
-import 'modules/sales/data/repositories/supabase_consignment_repository.dart';
-import 'modules/sales/api/consignment_api.dart';
+import 'modules/sales/data/repositories/supabase_consignment_api.dart';
 import 'modules/sales/di/sales_providers.dart';
 import 'modules/sales/sales_module.dart';
 import 'modules/payments/data/data_sources/supabase_payment_data_source.dart';
@@ -85,24 +80,42 @@ Future<void> main() async {
   final salesRepository = SupabaseSalesRepository(
     SupabaseSalesDataSource(Supabase.instance.client),
   );
-  final salesInvoiceRepository = SupabaseSalesInvoiceRepository(
-    SupabaseSalesInvoiceDataSource(Supabase.instance.client, device),
+  final salesInvoiceDataSource = SupabaseSalesInvoiceDataSource(
+    Supabase.instance.client,
+    device,
   );
-  final customerRepository = SupabaseCustomerRepository(
-    SupabaseCustomerDataSource(Supabase.instance.client, device),
+  final salesInvoiceApi = SupabaseSalesInvoiceApi(salesInvoiceDataSource);
+
+  final customerDataSource = SupabaseCustomerDataSource(
+    Supabase.instance.client,
+    device,
   );
-  final quoteRepository = SupabaseQuoteRepository(
-    SupabaseQuoteDataSource(Supabase.instance.client, device),
+  final customerApi = SupabaseCustomerApi(customerDataSource);
+
+  final quoteDataSource = SupabaseQuoteDataSource(
+    Supabase.instance.client,
+    device,
   );
-  final orderRepository = SupabaseOrderRepository(
-    SupabaseOrderDataSource(Supabase.instance.client, device),
+  final quoteApi = SupabaseQuoteApi(quoteDataSource);
+
+  final orderDataSource = SupabaseOrderDataSource(
+    Supabase.instance.client,
+    device,
   );
-  final returnRepository = SupabaseReturnRepository(
-    SupabaseReturnDataSource(Supabase.instance.client, device),
+  final orderApi = SupabaseOrderApi(orderDataSource);
+
+  final returnDataSource = SupabaseReturnDataSource(
+    Supabase.instance.client,
+    device,
   );
-  final consignmentRepository = SupabaseConsignmentRepository(
-    SupabaseConsignmentDataSource(Supabase.instance.client, device),
+  final returnApi = SupabaseReturnApi(returnDataSource);
+
+  final consignmentDataSource = SupabaseConsignmentDataSource(
+    Supabase.instance.client,
+    device,
   );
+  final consignmentApi = SupabaseConsignmentApi(consignmentDataSource);
+
   final paymentDataSource = SupabasePaymentDataSource(
     Supabase.instance.client,
     device,
@@ -138,12 +151,12 @@ Future<void> main() async {
         productImageServiceProvider.overrideWithValue(imageService),
         salesRepositoryProvider.overrideWithValue(salesRepository),
         salesApiProvider.overrideWithValue(salesRepository),
-        salesInvoiceApiProvider.overrideWithValue(salesInvoiceRepository),
-        customerApiProvider.overrideWithValue(customerRepository),
-        quoteApiProvider.overrideWithValue(quoteRepository),
-        orderApiProvider.overrideWithValue(orderRepository),
-        returnApiProvider.overrideWithValue(returnRepository),
-        consignmentApiProvider.overrideWithValue(consignmentRepository),
+        salesInvoiceApiProvider.overrideWithValue(salesInvoiceApi),
+        customerApiProvider.overrideWithValue(customerApi),
+        quoteApiProvider.overrideWithValue(quoteApi),
+        orderApiProvider.overrideWithValue(orderApi),
+        returnApiProvider.overrideWithValue(returnApi),
+        consignmentApiProvider.overrideWithValue(consignmentApi),
         paymentRepositoryProvider.overrideWithValue(paymentRepository),
         paymentApiProvider.overrideWithValue(paymentApi),
         offlineSyncServiceProvider.overrideWithValue(offlineSyncService),

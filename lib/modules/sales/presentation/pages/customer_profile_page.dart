@@ -13,7 +13,7 @@ class CustomerProfilePage extends ConsumerWidget {
   final String customerId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => FutureBuilder<Customer?>(
+  Widget build(BuildContext context, WidgetRef ref) => FutureBuilder<CustomerDto?>(
     future: ref.read(customerApiProvider).getCustomerById(customerId),
     builder: (context, snapshot) {
       if (snapshot.connectionState != ConnectionState.done) {
@@ -34,7 +34,7 @@ class CustomerProfilePage extends ConsumerWidget {
 class _CustomerProfileView extends ConsumerWidget {
   const _CustomerProfileView({required this.customer});
 
-  final Customer customer;
+  final CustomerDto customer;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -98,7 +98,7 @@ class _Header extends ConsumerWidget {
     required this.subtitle,
   });
 
-  final Customer customer;
+  final CustomerDto customer;
   final String title;
   final String? subtitle;
 
@@ -189,7 +189,7 @@ class _Header extends ConsumerWidget {
 class _Alerts extends ConsumerWidget {
   const _Alerts({required this.customer});
 
-  final Customer customer;
+  final CustomerDto customer;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -264,8 +264,8 @@ class _Alerts extends ConsumerWidget {
 class _InfoColumn extends ConsumerWidget {
   const _InfoColumn({required this.customer, required this.contacts});
 
-  final Customer customer;
-  final AsyncValue<List<CustomerContact>> contacts;
+  final CustomerDto customer;
+  final AsyncValue<List<CustomerContactDto>> contacts;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Column(
@@ -391,7 +391,7 @@ class _InfoColumn extends ConsumerWidget {
 class _SummaryColumn extends ConsumerWidget {
   const _SummaryColumn({required this.customer});
 
-  final Customer customer;
+  final CustomerDto customer;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -655,7 +655,7 @@ class _ProfileAlert {
 }
 
 final _customerContactsProvider =
-    FutureProvider.family<List<CustomerContact>, String>(
+    FutureProvider.family<List<CustomerContactDto>, String>(
       (ref, customerId) =>
           ref.watch(customerApiProvider).getCustomerContacts(customerId),
     );

@@ -1,14 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/entities/sales_order.dart';
-import '../domain/repositories/order_repository.dart';
+import 'sales_document_dtos.dart';
 
-export '../domain/entities/sales_order.dart';
+export 'sales_document_dtos.dart';
 
 abstract interface class OrderApi {
-  Future<List<SalesOrder>> getOrders();
-  Future<SalesOrder?> getOrderById(String id);
-  Future<SalesOrder> createOrder({
+  Future<List<SalesOrderDto>> getOrders();
+  Future<SalesOrderDto?> getOrderById(String id);
+  Future<SalesOrderDto> createOrder({
     required String customerId,
     required String customerName,
     required String currencyCode,
@@ -20,13 +19,13 @@ abstract interface class OrderApi {
     required String warehouseId,
     required String locationId,
   });
-  Future<SalesOrder> cancelOrder(String id);
+  Future<SalesOrderDto> cancelOrder(String id);
 }
 
 final orderApiProvider = Provider<OrderApi>(
   (ref) => throw StateError('OrderApi must be overridden.'),
 );
 
-final ordersProvider = FutureProvider<List<SalesOrder>>(
+final ordersProvider = FutureProvider<List<SalesOrderDto>>(
   (ref) => ref.watch(orderApiProvider).getOrders(),
 );

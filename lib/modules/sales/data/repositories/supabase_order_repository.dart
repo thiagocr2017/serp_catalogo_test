@@ -1,8 +1,8 @@
-import '../../api/order_api.dart';
+import '../../domain/entities/sales_order.dart';
 import '../../domain/repositories/order_repository.dart';
 import '../data_sources/supabase_order_data_source.dart';
 
-class SupabaseOrderRepository implements OrderRepository, OrderApi {
+class SupabaseOrderRepository implements OrderRepository {
   const SupabaseOrderRepository(this._source);
 
   final SupabaseOrderDataSource _source;

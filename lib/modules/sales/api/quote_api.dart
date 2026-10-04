@@ -1,14 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/entities/sales_quote.dart';
-import '../domain/repositories/quote_repository.dart';
+import 'sales_document_dtos.dart';
 
-export '../domain/entities/sales_quote.dart';
+export 'sales_document_dtos.dart';
 
 abstract interface class QuoteApi {
-  Future<List<SalesQuote>> getQuotes();
-  Future<SalesQuote?> getQuoteById(String id);
-  Future<SalesQuote> createQuote({
+  Future<List<SalesQuoteDto>> getQuotes();
+  Future<SalesQuoteDto?> getQuoteById(String id);
+  Future<SalesQuoteDto> createQuote({
     required String customerId,
     required String customerName,
     required String currencyCode,
@@ -18,13 +17,13 @@ abstract interface class QuoteApi {
     String? agentId,
     required List<QuoteLineInput> lines,
   });
-  Future<SalesQuote> updateQuoteStatus(String id, QuoteStatus status);
+  Future<SalesQuoteDto> updateQuoteStatus(String id, QuoteStatus status);
 }
 
 final quoteApiProvider = Provider<QuoteApi>(
   (ref) => throw StateError('QuoteApi must be overridden.'),
 );
 
-final quotesProvider = FutureProvider<List<SalesQuote>>(
+final quotesProvider = FutureProvider<List<SalesQuoteDto>>(
   (ref) => ref.watch(quoteApiProvider).getQuotes(),
 );

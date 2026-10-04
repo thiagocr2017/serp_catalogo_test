@@ -1,8 +1,8 @@
-import '../../api/quote_api.dart';
+import '../../domain/entities/sales_quote.dart';
 import '../../domain/repositories/quote_repository.dart';
 import '../data_sources/supabase_quote_data_source.dart';
 
-class SupabaseQuoteRepository implements QuoteRepository, QuoteApi {
+class SupabaseQuoteRepository implements QuoteRepository {
   const SupabaseQuoteRepository(this._source);
 
   final SupabaseQuoteDataSource _source;

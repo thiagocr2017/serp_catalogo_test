@@ -5,6 +5,6 @@ select ok((select audit_record_id is not null from public.app_settings where id=
 select ok(not has_table_privilege('authenticated','public.sales_agent_create_commands','SELECT'),'authenticated no lee recibos');
 select ok(not has_table_privilege('authenticated','public.packaging_presentation_create_commands','INSERT'),'authenticated no escribe recibos');
 select ok(not has_table_privilege('anon','public.catalog_logo_operations','UPDATE'),'anon no modifica recibos de logo');
-select ok((select reloptions @> array['security_invoker=true'] from pg_class where oid='public.catalog_agents'::regclass),'vista heredada conserva security_invoker');
+select hasnt_view('public', 'catalog_agents', 'la vista heredada catalog_agents ya no existe');
 select * from finish();
 rollback;
