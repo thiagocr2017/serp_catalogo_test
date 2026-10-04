@@ -80,10 +80,17 @@ inteiramente por crear, junto con el perfil Rongta RPP300 y los transportes.
 
 ### D-7. Preguntas abiertas de Clientes
 
-Confirmado. `.specs/modules/sales/customer-management/0.open-questions.md`
-contiene 23 preguntas sin resolver sobre fiscalidad, identificacion, credito,
-geografia, categorias, envio y perfil. La propia spec del modulo establece la
-regla: no implementar el rediseño completo de Clientes sin resolverlas primero.
+**Resuelto el 2026-10-03.** Las 23 preguntas de
+`.specs/modules/sales/customer-management/0.open-questions.md` quedaron cerradas
+y el registro llega a **44 decisiones** (seccion B, decisiones 20 a 44):
+fiscalidad, identificacion, geografia, credito y PIN, rankings, alertas del
+perfil y envio.
+
+El rediseño de Clientes ya puede implementarse. Antes hay que leer ese registro.
+
+Quedan sueltas dos preguntas menores del PIN (longitud y modo de entrega) en
+`.specs/modules/authorization/1.one-time-pin-approval.spec.md`, que no bloquean
+el rediseño de Clientes.
 
 ### D-8. Ventas sin conversion cotizacion a pedido, sin liquidacion de
 consignacion, sin integracion Pagos
@@ -153,8 +160,10 @@ todos los agentes que lean la documentacion.
 
 Objetivo: cerrar lo que no se puede resolver tecnicamente.
 
-- [ ] Resolver las 23 preguntas de
+- [x] Resolver las 23 preguntas de
       `.specs/modules/sales/customer-management/0.open-questions.md`.
+      **Cerradas el 2026-10-03**; el registro llega a 44 decisiones y el
+      rediseño de Clientes queda desbloqueado.
 - [ ] Definir el contrato publico Ventas <-> Pagos antes de crear facturas
       persistentes con aplicaciones de pago.
 - [ ] Definir el alcance real de `payments` frente al SDD: que partes del
@@ -249,7 +258,7 @@ Depende de Fase 2 y del contrato Ventas <-> Pagos.
 
 | # | Decision | Por que bloquea | Alternativas |
 |---|---|---|---|
-| R1 | Respuestas a las 23 preguntas de Clientes | Sin ellas no se puede diseñar el formulario ni las migraciones | Resolver todas; o resolver solo el bloque fiscal y posponer envio y perfil |
+| R1 | Respuestas a las 23 preguntas de Clientes | Sin ellas no se puede diseñar el formulario ni las migraciones | **Resuelto 2026-10-03: resolver todas.** Registro completo en `modules/sales/customer-management/0.open-questions.md` (44 decisiones) |
 | R2 | Alcance real de `payments` frente al SDD | Determina que es deuda y que es funcionalidad nueva | **Resuelto 2026-10-03: alinear el SDD al codigo.** `SDD_Modulo_Pagos.md` §1 declara el alcance vigente y §15 el futuro |
 | R3 | Contrato publico Ventas <-> Pagos | Condiciona facturas persistentes y `PAID` | **Resuelto 2026-10-03: definirlo ahora como spec** |
 | R4 | Retirar o documentar el export de `di/inventory_providers.dart` | Afecta la frontera publica de Inventario | Retirarlo (recomendado); o registrar excepcion con condicion de retiro |

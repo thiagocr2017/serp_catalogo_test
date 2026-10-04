@@ -7,8 +7,9 @@ El SDD historico sigue en `SDD_Modulo_Ventas.md`.
 
 ## Specs nuevas
 
-- `customer-management/0.open-questions.md`: decisiones pendientes antes del
-  rediseño completo de Clientes.
+- `customer-management/0.open-questions.md`: **registro canonico de las 44
+  decisiones de Clientes**. Las 23 preguntas abiertas se cerraron el
+  2026-10-03.
 - `customer-management/1.customer-data-model.spec.md`: modelo objetivo de datos
   del cliente.
 - `customer-management/2.customer-catalogs.spec.md`: paises, provincias,
@@ -21,6 +22,14 @@ El SDD historico sigue en `SDD_Modulo_Ventas.md`.
 
 ## Regla para Clientes
 
-No implementar el rediseño completo de Clientes sin resolver primero las
-preguntas abiertas que afectan fiscalidad, credito, geografia, categorias,
-envio y perfil comercial.
+**Las preguntas abiertas quedaron resueltas el 2026-10-03.** El registro
+canonico de las 44 decisiones esta en
+`customer-management/0.open-questions.md` (seccion B, decisiones 20 a 44).
+
+El rediseño de Clientes ya puede implementarse. Antes de hacerlo hay que leer
+ese registro: fija datos fiscales, identificacion, geografia, envio, rankings,
+alertas del perfil y la estructura de la guia de carga.
+
+Quedan sueltas solo dos preguntas menores del PIN de aprobacion (longitud y
+modo de entrega), en
+`../authorization/1.one-time-pin-approval.spec.md`.
