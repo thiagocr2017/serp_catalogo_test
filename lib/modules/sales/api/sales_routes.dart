@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../presentation/pages/agent_page.dart';
+import '../presentation/pages/customer_profile_page.dart';
 import '../presentation/pages/invoices_page.dart';
 import '../presentation/pages/customers_page.dart';
 import '../presentation/pages/quotes_page.dart';
@@ -24,6 +25,11 @@ final List<RouteBase> salesRoutes = [
   GoRoute(
     path: '/sales/customers/new',
     builder: (context, state) => const CustomerFormPage(),
+  ),
+  GoRoute(
+    path: '/sales/customers/:id',
+    builder: (context, state) =>
+        CustomerProfilePage(customerId: state.pathParameters['id']!),
   ),
   GoRoute(
     path: '/sales/customers/:id/edit',

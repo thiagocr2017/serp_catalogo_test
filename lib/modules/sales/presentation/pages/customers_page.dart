@@ -187,7 +187,7 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
                               : StatusTone.danger,
                         ),
                         onTap: () =>
-                            context.go('/sales/customers/${customer.id}/edit'),
+                            context.go('/sales/customers/${customer.id}'),
                       ),
                     );
                   },

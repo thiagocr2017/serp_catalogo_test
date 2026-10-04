@@ -348,6 +348,8 @@ void main() {
 
     await tester.tap(find.text('Cliente Actual'));
     await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Editar'));
+    await tester.pumpAndSettle();
     expect(find.text('Editar cliente'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Cliente Actual'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Comprador'), findsOneWidget);
@@ -379,6 +381,8 @@ void main() {
     expect(api.savedContactIds, contains('contact-2'));
 
     await tester.tap(find.text('Cliente Actual'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Editar'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextButton, 'Desactivar'));
     await tester.pumpAndSettle();
@@ -415,6 +419,8 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Cliente Actual'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Editar'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.widgetWithText(TextButton, 'Agregar'));
     await tester.tap(find.widgetWithText(TextButton, 'Agregar'));
@@ -473,6 +479,8 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Cliente Actual'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Editar'));
       await tester.pumpAndSettle();
       await _selectCustomerType(tester, 'Crédito');
       await tester.enterText(
