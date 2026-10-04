@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/navigation/unsaved_changes_guard.dart';
 import '../../api/inventory_api.dart';
 import '../../di/inventory_providers.dart';
+import 'package:serp/modules/inventory/domain/entities/audit_entry.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_balance.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_count.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_document.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_reservation.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_transaction.dart';
+import 'package:serp/modules/inventory/domain/entities/warehouse.dart';
 
 class WarehousesPage extends ConsumerWidget {
   const WarehousesPage({super.key});
@@ -98,10 +106,11 @@ class WarehousesPage extends ConsumerWidget {
   Future<void> _editWarehouse(
     BuildContext context,
     WidgetRef ref, [
-    Warehouse? warehouse,
+    WarehouseDto? warehouse,
   ]) async {
     final result = await showDialog<_WarehouseResult>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => _WarehouseDialog(
         title: warehouse == null ? 'Nueva bodega' : 'Editar bodega',
         initialCode: warehouse?.code ?? '',
@@ -131,11 +140,12 @@ class WarehousesPage extends ConsumerWidget {
   Future<void> _editLocation(
     BuildContext context,
     WidgetRef ref,
-    Warehouse warehouse, [
-    InventoryLocation? location,
+    WarehouseDto warehouse, [
+    InventoryLocationDto? location,
   ]) async {
     final result = await showDialog<_WarehouseResult>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => _WarehouseDialog(
         title: location == null ? 'Nueva ubicación' : 'Editar ubicación',
         initialCode: location?.code ?? '',
@@ -191,6 +201,7 @@ class _WarehouseDialogState extends State<_WarehouseDialog> {
   late final TextEditingController _name;
   String? _codeError;
   String? _nameError;
+  bool _dirty = false;
 
   @override
   void initState() {
@@ -208,62 +219,83 @@ class _WarehouseDialogState extends State<_WarehouseDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: 420,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _code,
-                decoration: InputDecoration(
-                  labelText: 'Código',
-                  errorText: _codeError,
-                  border: const OutlineInputBorder(),
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        await _cancel();
+      },
+      child: AlertDialog(
+        title: Text(widget.title),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _code,
+                  decoration: InputDecoration(
+                    labelText: 'Código',
+                    errorText: _codeError,
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (_) {
+                    _markDirty();
+                    if (_codeError != null) setState(() => _codeError = null);
+                  },
                 ),
-                onChanged: (_) {
-                  if (_codeError != null) setState(() => _codeError = null);
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _name,
-                decoration: InputDecoration(
-                  labelText: 'Nombre',
-                  errorText: _nameError,
-                  border: const OutlineInputBorder(),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _name,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre',
+                    errorText: _nameError,
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (_) {
+                    _markDirty();
+                    if (_nameError != null) setState(() => _nameError = null);
+                  },
                 ),
-                onChanged: (_) {
-                  if (_nameError != null) setState(() => _nameError = null);
-                },
-              ),
-            ],
+              ],
+            ),
           ),
         ),
+        actions: [
+          TextButton(onPressed: _cancel, child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () {
+              final code = _code.text.trim();
+              final name = _name.text.trim();
+              if (code.isEmpty || name.isEmpty) {
+                setState(() {
+                  _codeError = code.isEmpty ? 'Escriba el código.' : null;
+                  _nameError = name.isEmpty ? 'Escriba el nombre.' : null;
+                });
+                return;
+              }
+              Navigator.pop(context, _WarehouseResult(code: code, name: name));
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () {
-            final code = _code.text.trim();
-            final name = _name.text.trim();
-            if (code.isEmpty || name.isEmpty) {
-              setState(() {
-                _codeError = code.isEmpty ? 'Escriba el código.' : null;
-                _nameError = name.isEmpty ? 'Escriba el nombre.' : null;
-              });
-              return;
-            }
-            Navigator.pop(context, _WarehouseResult(code: code, name: name));
-          },
-          child: const Text('Guardar'),
-        ),
-      ],
     );
+  }
+
+  void _markDirty() {
+    if (_dirty) return;
+    setState(() => _dirty = true);
+  }
+
+  Future<void> _cancel() async {
+    final navigator = Navigator.of(context);
+    final discard = await UnsavedChangesGuard.instance.confirmDiscard(
+      context,
+      hasUnsavedChanges: _dirty,
+    );
+    if (!discard || !mounted) return;
+    navigator.pop();
   }
 }

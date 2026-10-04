@@ -4,9 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../shared/navigation/unsaved_changes_guard.dart';
 import '../../../product/product_module.dart';
 import '../../api/inventory_api.dart';
 import '../../di/inventory_providers.dart';
+import 'package:serp/modules/inventory/domain/entities/audit_entry.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_balance.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_count.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_document.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_reservation.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_transaction.dart';
+import 'package:serp/modules/inventory/domain/entities/warehouse.dart';
 
 class InventoryDocumentFormPage extends ConsumerStatefulWidget {
   const InventoryDocumentFormPage({super.key});
@@ -27,6 +35,14 @@ class _InventoryDocumentFormPageState
   final _notes = TextEditingController();
   final _lines = <_DocumentLineDraft>[_DocumentLineDraft()];
   bool _saving = false;
+  bool _dirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _reference.addListener(_markDirty);
+    _notes.addListener(_markDirty);
+  }
 
   @override
   void dispose() {
@@ -41,57 +57,77 @@ class _InventoryDocumentFormPageState
   @override
   Widget build(BuildContext context) {
     final warehouses = ref.watch(warehousesProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Nuevo documento de inventario')),
-      body: warehouses.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) =>
-            Center(child: Text('No fue posible cargar: $error')),
-        data: (items) {
-          _ensureDefaults(items);
-          return FutureBuilder<List<dynamic>>(
-            future: Future.wait([
-              ref
-                  .read(productApiProvider)
-                  .listProducts(const ProductListQuery(isActive: true)),
-              ref.read(inventoryApiProvider).getLocationBalances(),
-            ]),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              return _content(
-                context,
-                items,
-                snapshot.data![0] as List<ProductSummaryDto>,
-                snapshot.data![1] as List<InventoryBalance>,
-              );
-            },
-          );
-        },
+    return PopScope(
+      canPop: !_dirty || _saving,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        if (await UnsavedChangesGuard.instance.confirmNavigation(context) &&
+            mounted) {
+          _markClean();
+          navigator.pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Nuevo documento de inventario')),
+        body: warehouses.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) =>
+              Center(child: Text('No fue posible cargar: $error')),
+          data: (items) {
+            _ensureDefaults(items);
+            return FutureBuilder<List<dynamic>>(
+              future: Future.wait([
+                ref
+                    .read(productApiProvider)
+                    .listProducts(const ProductListQuery(isActive: true)),
+                ref.read(inventoryApiProvider).getLocationBalances(),
+              ]),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return _content(
+                  context,
+                  items,
+                  snapshot.data![0] as List<ProductSummaryDto>,
+                  snapshot.data![1] as List<InventoryBalanceDto>,
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
 
+  void _markDirty() {
+    if (_saving) return;
+    _dirty = true;
+    UnsavedChangesGuard.instance.markDirty();
+  }
+
+  void _markClean() {
+    _dirty = false;
+    UnsavedChangesGuard.instance.markClean();
+  }
+
   /// Propone valores iniciales sin pisar lo que el usuario ya eligió.
-  void _ensureDefaults(List<Warehouse> warehouses) {
+  void _ensureDefaults(List<WarehouseDto> warehouses) {
     _destinationWarehouseId ??= _defaultWarehouse(warehouses)?.id;
     _originWarehouseId ??= _defaultWarehouse(warehouses)?.id;
     _destinationLocationId ??= _defaultLocation(
       warehouses,
       _destinationWarehouseId,
     )?.id;
-    _originLocationId ??= _defaultLocation(
-      warehouses,
-      _originWarehouseId,
-    )?.id;
+    _originLocationId ??= _defaultLocation(warehouses, _originWarehouseId)?.id;
   }
 
   Widget _content(
     BuildContext context,
-    List<Warehouse> warehouses,
+    List<WarehouseDto> warehouses,
     List<ProductSummaryDto> products,
-    List<InventoryBalance> balances,
+    List<InventoryBalanceDto> balances,
   ) {
     final isTransfer = _type == InventoryDocumentType.transfer;
     final availability = <String, int>{
@@ -138,7 +174,10 @@ class _InventoryDocumentFormPageState
             ),
           ],
           selected: {_type},
-          onSelectionChanged: (value) => setState(() => _type = value.single),
+          onSelectionChanged: (value) => setState(() {
+            _type = value.single;
+            _markDirty();
+          }),
         ),
         const SizedBox(height: 20),
         if (isTransfer)
@@ -155,7 +194,9 @@ class _InventoryDocumentFormPageState
         const SizedBox(height: 12),
         TextField(
           controller: _notes,
-          decoration: const InputDecoration(labelText: 'Motivo u observaciones'),
+          decoration: const InputDecoration(
+            labelText: 'Motivo u observaciones',
+          ),
         ),
         const SizedBox(height: 24),
         Row(
@@ -187,20 +228,32 @@ class _InventoryDocumentFormPageState
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 24),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton.icon(
-            onPressed: canSave ? () => _save(context) : null,
-            icon: _saving
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.check),
-            label: Text(
-              isTransfer ? 'Confirmar traslado' : 'Confirmar ajuste',
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (_type == InventoryDocumentType.transfer)
+              OutlinedButton.icon(
+                onPressed: _saving ? null : () => _save(context, draft: true),
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('Guardar como borrador'),
+              ),
+            if (_type == InventoryDocumentType.transfer)
+              const SizedBox(width: 12),
+            FilledButton.icon(
+              onPressed: canSave ? () => _save(context) : null,
+              icon: _saving
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check),
+              label: Text(
+                _type == InventoryDocumentType.transfer
+                    ? 'Confirmar traslado'
+                    : 'Confirmar ajuste',
+              ),
             ),
-          ),
+          ],
         ),
         if (!canSave && !_saving)
           Padding(
@@ -208,13 +261,12 @@ class _InventoryDocumentFormPageState
             child: Align(
               alignment: Alignment.centerRight,
               child: Text(
-                    movementError ??
-                        'Completa productos y cantidades para continuar.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    textAlign: TextAlign.right,
-                  ),
+                movementError ??
+                    'Completa productos y cantidades para continuar.',
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: Theme.of(context).colorScheme.error),
+                textAlign: TextAlign.right,
+              ),
             ),
           ),
       ],
@@ -225,7 +277,7 @@ class _InventoryDocumentFormPageState
   /// La misma bodega está permitida: lo que debe diferir es la ubicación.
   Widget _movementCard(
     BuildContext context,
-    List<Warehouse> warehouses,
+    List<WarehouseDto> warehouses,
     String? movementError,
   ) {
     return Card(
@@ -249,11 +301,16 @@ class _InventoryDocumentFormPageState
                     warehouses: warehouses,
                     onWarehouseChanged: (value) => setState(() {
                       _originWarehouseId = value;
-                      _originLocationId =
-                          _defaultLocation(warehouses, value)?.id;
+                      _originLocationId = _defaultLocation(
+                        warehouses,
+                        value,
+                      )?.id;
+                      _markDirty();
                     }),
-                    onLocationChanged: (value) =>
-                        setState(() => _originLocationId = value),
+                    onLocationChanged: (value) => setState(() {
+                      _originLocationId = value;
+                      _markDirty();
+                    }),
                   ),
                 ),
                 Padding(
@@ -267,6 +324,7 @@ class _InventoryDocumentFormPageState
                       _originLocationId = _destinationLocationId;
                       _destinationWarehouseId = warehouseId;
                       _destinationLocationId = locationId;
+                      _markDirty();
                     }),
                     icon: const Icon(Icons.swap_horiz),
                   ),
@@ -283,11 +341,16 @@ class _InventoryDocumentFormPageState
                     warehouses: warehouses,
                     onWarehouseChanged: (value) => setState(() {
                       _destinationWarehouseId = value;
-                      _destinationLocationId =
-                          _defaultLocation(warehouses, value)?.id;
+                      _destinationLocationId = _defaultLocation(
+                        warehouses,
+                        value,
+                      )?.id;
+                      _markDirty();
                     }),
-                    onLocationChanged: (value) =>
-                        setState(() => _destinationLocationId = value),
+                    onLocationChanged: (value) => setState(() {
+                      _destinationLocationId = value;
+                      _markDirty();
+                    }),
                   ),
                 ),
               ],
@@ -333,7 +396,7 @@ class _InventoryDocumentFormPageState
     required String locationLabel,
     required String? warehouseId,
     required String? locationId,
-    required List<Warehouse> warehouses,
+    required List<WarehouseDto> warehouses,
     required ValueChanged<String?> onWarehouseChanged,
     required ValueChanged<String?> onLocationChanged,
   }) {
@@ -366,20 +429,14 @@ class _InventoryDocumentFormPageState
     );
   }
 
-  Widget _adjustmentCard(
-    BuildContext context,
-    List<Warehouse> warehouses,
-  ) {
+  Widget _adjustmentCard(BuildContext context, List<WarehouseDto> warehouses) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Aplicar en',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('Aplicar en', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
             _warehouseField(
               warehouses,
@@ -387,8 +444,11 @@ class _InventoryDocumentFormPageState
               value: _destinationWarehouseId,
               onChanged: (value) => setState(() {
                 _destinationWarehouseId = value;
-                _destinationLocationId =
-                    _defaultLocation(warehouses, value)?.id;
+                _destinationLocationId = _defaultLocation(
+                  warehouses,
+                  value,
+                )?.id;
+                _markDirty();
               }),
             ),
             const SizedBox(height: 12),
@@ -397,8 +457,10 @@ class _InventoryDocumentFormPageState
               warehouseId: _destinationWarehouseId,
               value: _destinationLocationId,
               label: 'Ubicación',
-              onChanged: (value) =>
-                  setState(() => _destinationLocationId = value),
+              onChanged: (value) => setState(() {
+                _destinationLocationId = value;
+                _markDirty();
+              }),
             ),
             const SizedBox(height: 8),
             Text(
@@ -463,10 +525,7 @@ class _InventoryDocumentFormPageState
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 3,
-                  child: _productField(products, line),
-                ),
+                Expanded(flex: 3, child: _productField(products, line)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Focus(
@@ -489,13 +548,12 @@ class _InventoryDocumentFormPageState
                       ),
                       decoration: InputDecoration(
                         labelText: 'Cantidad',
-                        helperText:
-                            _type == InventoryDocumentType.adjustment
+                        helperText: _type == InventoryDocumentType.adjustment
                             ? '+ suma / − resta'
                             : 'Cantidad a trasladar',
                         errorText: lineError,
                       ),
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) => setState(_markDirty),
                     ),
                   ),
                 ),
@@ -510,6 +568,7 @@ class _InventoryDocumentFormPageState
                       ? null
                       : () => setState(() {
                           _lines.removeAt(index).dispose();
+                          _markDirty();
                         }),
                   icon: const Icon(Icons.delete_outline),
                 ),
@@ -525,8 +584,7 @@ class _InventoryDocumentFormPageState
                         ? 'Disponible en origen: 0'
                         : 'Disponible en origen: $available',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color:
-                          available == null || available == 0
+                      color: available == null || available == 0
                           ? Theme.of(context).colorScheme.error
                           : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -540,7 +598,7 @@ class _InventoryDocumentFormPageState
   }
 
   Widget _warehouseField(
-    List<Warehouse> warehouses, {
+    List<WarehouseDto> warehouses, {
     required String label,
     required String? value,
     required ValueChanged<String?> onChanged,
@@ -558,7 +616,7 @@ class _InventoryDocumentFormPageState
   );
 
   Widget _locationField(
-    List<Warehouse> warehouses, {
+    List<WarehouseDto> warehouses, {
     required String? warehouseId,
     required String? value,
     required String label,
@@ -585,68 +643,76 @@ class _InventoryDocumentFormPageState
     );
   }
 
-  Widget _productField(List<ProductSummaryDto> products, _DocumentLineDraft line) =>
-      RawAutocomplete<ProductSummaryDto>(
-        textEditingController: line.productSearch,
-        focusNode: line.productFocus,
-        displayStringForOption: (product) => '${product.sku} · ${product.name}',
-        optionsBuilder: (value) {
-          final query = value.text.trim().toLowerCase();
-          if (query.isEmpty) return const Iterable<ProductSummaryDto>.empty();
-          return products.where(
-            (product) =>
-                product.sku.toLowerCase().contains(query) ||
-                product.name.toLowerCase().contains(query) ||
-                product.description.toLowerCase().contains(query),
-          );
-        },
-        onSelected: (product) {
-          setState(() => line.productId = product.id);
-          line.quantityFocus.requestFocus();
-        },
-        fieldViewBuilder: (context, controller, focusNode, onSubmitted) =>
-            TextField(
-              controller: controller,
-              focusNode: focusNode,
-              onChanged: (_) => setState(() => line.productId = null),
-              onSubmitted: (_) => onSubmitted(),
-              decoration: const InputDecoration(
-                labelText: 'Producto',
-                hintText: 'Código, nombre o descripción',
-                prefixIcon: Icon(Icons.search),
-              ),
-            ),
-        optionsViewBuilder: (context, onSelected, options) => Align(
-          alignment: Alignment.topLeft,
-          child: Material(
-            elevation: 8,
-            borderRadius: BorderRadius.circular(8),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720, maxHeight: 320),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final product = options.elementAt(index);
-                  return ListTile(
-                    title: Text('${product.sku} · ${product.name}'),
-                    subtitle: Text(
-                      product.description.isEmpty
-                          ? 'Sin descripción'
-                          : product.description,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: Text('Stock ${product.currentStock}'),
-                    onTap: () => onSelected(product),
-                  );
-                },
-              ),
-            ),
+  Widget _productField(
+    List<ProductSummaryDto> products,
+    _DocumentLineDraft line,
+  ) => RawAutocomplete<ProductSummaryDto>(
+    textEditingController: line.productSearch,
+    focusNode: line.productFocus,
+    displayStringForOption: (product) => '${product.sku} · ${product.name}',
+    optionsBuilder: (value) {
+      final query = value.text.trim().toLowerCase();
+      if (query.isEmpty) return const Iterable<ProductSummaryDto>.empty();
+      return products.where(
+        (product) =>
+            product.sku.toLowerCase().contains(query) ||
+            product.name.toLowerCase().contains(query) ||
+            product.description.toLowerCase().contains(query),
+      );
+    },
+    onSelected: (product) {
+      setState(() {
+        line.productId = product.id;
+        _markDirty();
+      });
+      line.quantityFocus.requestFocus();
+    },
+    fieldViewBuilder: (context, controller, focusNode, onSubmitted) =>
+        TextField(
+          controller: controller,
+          focusNode: focusNode,
+          onChanged: (_) => setState(() {
+            line.productId = null;
+            _markDirty();
+          }),
+          onSubmitted: (_) => onSubmitted(),
+          decoration: const InputDecoration(
+            labelText: 'Producto',
+            hintText: 'Código, nombre o descripción',
+            prefixIcon: Icon(Icons.search),
           ),
         ),
-      );
+    optionsViewBuilder: (context, onSelected, options) => Align(
+      alignment: Alignment.topLeft,
+      child: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720, maxHeight: 320),
+          child: ListView.builder(
+            padding: EdgeInsets.zero,
+            shrinkWrap: true,
+            itemCount: options.length,
+            itemBuilder: (context, index) {
+              final product = options.elementAt(index);
+              return ListTile(
+                title: Text('${product.sku} · ${product.name}'),
+                subtitle: Text(
+                  product.description.isEmpty
+                      ? 'Sin descripción'
+                      : product.description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: Text('Stock ${product.currentStock}'),
+                onTap: () => onSelected(product),
+              );
+            },
+          ),
+        ),
+      ),
+    ),
+  );
 
   void _addLine({int? afterIndex}) {
     final line = _DocumentLineDraft();
@@ -656,13 +722,14 @@ class _InventoryDocumentFormPageState
       } else {
         _lines.insert(afterIndex + 1, line);
       }
+      _markDirty();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) line.productFocus.requestFocus();
     });
   }
 
-  Warehouse? _defaultWarehouse(List<Warehouse> warehouses) {
+  WarehouseDto? _defaultWarehouse(List<WarehouseDto> warehouses) {
     if (warehouses.isEmpty) return null;
     return warehouses.firstWhere(
       (warehouse) => warehouse.isDefault,
@@ -670,8 +737,8 @@ class _InventoryDocumentFormPageState
     );
   }
 
-  InventoryLocation? _defaultLocation(
-    List<Warehouse> warehouses,
+  InventoryLocationDto? _defaultLocation(
+    List<WarehouseDto> warehouses,
     String? warehouseId,
   ) {
     final matching = warehouses.where(
@@ -688,7 +755,7 @@ class _InventoryDocumentFormPageState
     );
   }
 
-  Future<void> _save(BuildContext context) async {
+  Future<void> _save(BuildContext context, {bool draft = false}) async {
     if (_destinationWarehouseId == null || _destinationLocationId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -700,9 +767,8 @@ class _InventoryDocumentFormPageState
     if (_type == InventoryDocumentType.transfer) {
       final movementError = _movementError();
       if (movementError != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(movementError)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(movementError)));
         return;
       }
       if (_originWarehouseId == null || _originLocationId == null) {
@@ -755,15 +821,19 @@ class _InventoryDocumentFormPageState
               destinationLocationId: _destinationLocationId,
               externalReference: _reference.text.trim(),
               notes: _notes.text.trim(),
+              draft: _type == InventoryDocumentType.transfer ? draft : false,
             ),
           );
       ref.read(inventoryDataRevisionProvider.notifier).notifyChanged();
       ref.read(productDataRevisionProvider.notifier).notifyChanged();
-      if (context.mounted) context.go('/inventory/documents/${document.id}');
+      if (context.mounted) {
+        _markClean();
+        context.go('/inventory/documents/${document.id}');
+      }
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No fue posible confirmar: $error')),
+          SnackBar(content: Text('No fue posible guardar: $error')),
         );
       }
     } finally {

@@ -1,7 +1,7 @@
-import '../domain/entities/inventory_transaction.dart';
+import 'inventory_dtos.dart';
 
 /// Lugar legible de un movimiento: "Bodega · Ubicación".
-String transactionPlace(InventoryTransaction item) {
+String transactionPlace(InventoryTransactionDto item) {
   final warehouse = item.warehouseName?.trim();
   final location = item.locationName?.trim();
   final hasWarehouse = warehouse != null && warehouse.isNotEmpty;
@@ -15,9 +15,9 @@ String transactionPlace(InventoryTransaction item) {
 /// Pata complementaria de un traslado dentro del mismo documento.
 /// Cada traslado genera dos movimientos (salida y entrada) con el mismo
 /// documentId; esta función encuentra el otro para describir la ruta.
-InventoryTransaction? transferCounterpart(
-  InventoryTransaction item,
-  List<InventoryTransaction> siblings,
+InventoryTransactionDto? transferCounterpart(
+  InventoryTransactionDto item,
+  List<InventoryTransactionDto> siblings,
 ) {
   if (item.documentId == null || item.documentId!.isEmpty) return null;
   final wanted = switch (item.reason) {
@@ -39,8 +39,8 @@ InventoryTransaction? transferCounterpart(
 /// Descripción humana de un movimiento. Cuando ambas patas de un traslado
 /// están presentes muestra la ruta completa: "Traslado de A → B".
 String describeInventoryTransaction(
-  InventoryTransaction item, [
-  List<InventoryTransaction> siblings = const [],
+  InventoryTransactionDto item, [
+  List<InventoryTransactionDto> siblings = const [],
 ]) {
   switch (item.reason) {
     case InventoryReason.initialStock:
@@ -80,7 +80,7 @@ String describeInventoryTransaction(
 
 /// Orden del historial: lo más reciente primero; dentro del mismo
 /// documento la salida va antes que la entrada.
-int compareInventoryHistory(InventoryTransaction a, InventoryTransaction b) {
+int compareInventoryHistory(InventoryTransactionDto a, InventoryTransactionDto b) {
   final byDate = b.createdAt.compareTo(a.createdAt);
   if (byDate != 0) return byDate;
   final byDocument = (a.documentId ?? '').compareTo(b.documentId ?? '');

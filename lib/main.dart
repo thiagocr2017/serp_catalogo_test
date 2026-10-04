@@ -22,6 +22,7 @@ import 'modules/product/services/product_image_service.dart';
 import 'modules/product/data/repositories/supabase_promotion_repository.dart';
 import 'modules/product/di/promotion_providers.dart';
 import 'modules/inventory/data/data_sources/supabase_inventory_data_source.dart';
+import 'modules/inventory/data/repositories/supabase_inventory_api.dart';
 import 'modules/inventory/data/repositories/supabase_inventory_repository.dart';
 // Raíz de composición: puede ver implementaciones y registros de di/ de cada
 // módulo. El resto de módulos no puede.
@@ -126,7 +127,9 @@ Future<void> main() async {
         productRepositoryProvider.overrideWithValue(repository),
         productApiProvider.overrideWithValue(repository),
         inventoryRepositoryProvider.overrideWithValue(inventoryRepository),
-        inventoryApiProvider.overrideWithValue(inventoryRepository),
+        inventoryApiProvider.overrideWithValue(
+          SupabaseInventoryApi(inventoryRepository),
+        ),
         promotionRepositoryProvider.overrideWithValue(promotionRepository),
         configurationRepositoryProvider.overrideWithValue(
           configurationRepository,

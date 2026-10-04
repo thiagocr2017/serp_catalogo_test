@@ -1,6 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../domain/entities/inventory_document.dart';
+
 class SupabaseInventoryDataSource {
   const SupabaseInventoryDataSource(this._client);
   final SupabaseClient _client;
@@ -85,6 +87,36 @@ class SupabaseInventoryDataSource {
       .select(_documentSelect)
       .eq('id', id)
       .maybeSingle();
+
+  InventoryDocument _document(Map<String, dynamic> row) => InventoryDocument(
+    id: row['id'] as String,
+    number: row['document_number'] as String,
+    type: InventoryDocumentType.values.byName(
+      (row['document_type'] as String).toLowerCase(),
+    ),
+    status: row['status'] as String,
+    lines: (row['inventory_document_lines'] as List<dynamic>).map((line) {
+      final l = line as Map<String, dynamic>;
+      return InventoryDocumentLine(
+        id: l['id'] as String,
+        productId: l['product_id'] as String,
+        quantity: l['quantity'] as int,
+        productSku: l['product_sku'] as String?,
+        productName: l['product_name'] as String?,
+        notes: l['notes'] as String?,
+      );
+    }).toList(),
+    originWarehouseName: row['origin_warehouse']?['name'] as String?,
+    originLocationName: row['origin_location']?['name'] as String?,
+    destinationWarehouseName: row['destination_warehouse']?['name'] as String?,
+    destinationLocationName: row['destination_location']?['name'] as String?,
+    externalReference: row['external_reference'] as String?,
+    notes: row['notes'] as String?,
+    createdAt: DateTime.parse(row['created_at'] as String),
+    updatedAt: row['updated_at'] == null
+        ? null
+        : DateTime.parse(row['updated_at'] as String),
+  );
 
   Future<Map<String, dynamic>> createAndConfirmDocument(
     Map<String, dynamic> parameters,
@@ -321,6 +353,39 @@ class SupabaseInventoryDataSource {
     required String deviceIdentifier,
   }) => _client.rpc<void>(
     'receive_transfer',
+    params: {
+      'p_document_id': documentId,
+      'p_actor_name': actorName,
+      'p_device_name': deviceName,
+      'p_device_identifier': deviceIdentifier,
+    },
+  );
+
+  Future<InventoryDocument> confirmDocument(
+    String documentId, {
+    required String actorName,
+    required String deviceName,
+    required String deviceIdentifier,
+  }) async {
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'confirm_inventory_document',
+      params: {
+        'p_document_id': documentId,
+        'p_actor_name': actorName,
+        'p_device_name': deviceName,
+        'p_device_identifier': deviceIdentifier,
+      },
+    );
+    return _document(row);
+  }
+
+  Future<void> dispatchDocument(
+    String documentId, {
+    required String actorName,
+    required String deviceName,
+    required String deviceIdentifier,
+  }) => _client.rpc<void>(
+    'dispatch_transfer',
     params: {
       'p_document_id': documentId,
       'p_actor_name': actorName,

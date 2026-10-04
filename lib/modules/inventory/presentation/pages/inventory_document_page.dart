@@ -3,6 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../api/inventory_api.dart';
+import 'package:serp/modules/inventory/domain/entities/audit_entry.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_balance.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_count.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_document.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_reservation.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_transaction.dart';
+import 'package:serp/modules/inventory/domain/entities/warehouse.dart';
 
 class InventoryDocumentPage extends ConsumerWidget {
   const InventoryDocumentPage({required this.documentId, super.key});
@@ -12,7 +19,7 @@ class InventoryDocumentPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => Scaffold(
     appBar: AppBar(title: const Text('Documento de inventario')),
-    body: FutureBuilder<InventoryDocument?>(
+    body: FutureBuilder<InventoryDocumentDto?>(
       future: ref.read(inventoryApiProvider).getDocument(documentId),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {

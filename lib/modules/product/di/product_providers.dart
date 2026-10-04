@@ -65,7 +65,7 @@ class SelectedProductIds extends Notifier<Set<String>> {
 }
 
 final productTransactionsProvider =
-    FutureProvider.family<List<InventoryTransaction>, String>((ref, productId) {
+    FutureProvider.family<List<InventoryTransactionDto>, String>((ref, productId) {
       ref.watch(inventoryDataRevisionProvider);
       return ref
           .watch(inventoryApiProvider)
@@ -73,14 +73,14 @@ final productTransactionsProvider =
     });
 
 final productLocationBalancesProvider =
-    FutureProvider.family<List<InventoryBalance>, String>((ref, productId) {
+    FutureProvider.family<List<InventoryBalanceDto>, String>((ref, productId) {
       ref.watch(inventoryDataRevisionProvider);
       return ref
           .watch(inventoryApiProvider)
           .getLocationBalances(productId: productId);
     });
 
-final productAuditProvider = FutureProvider.family<List<AuditEntry>, String>((
+final productAuditProvider = FutureProvider.family<List<AuditEntryDto>, String>((
   ref,
   productId,
 ) {

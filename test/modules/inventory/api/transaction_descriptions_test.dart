@@ -1,15 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:serp/modules/inventory/api/inventory_dtos.dart';
 import 'package:serp/modules/inventory/api/transaction_descriptions.dart';
 import 'package:serp/modules/inventory/domain/entities/inventory_transaction.dart';
+import 'package:serp/modules/inventory/domain/entities/audit_entry.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_balance.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_count.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_document.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_reservation.dart';
+import 'package:serp/modules/inventory/domain/entities/warehouse.dart';
 
-InventoryTransaction movement({
+InventoryTransactionDto movement({
   required String id,
   required InventoryReason reason,
   required int quantity,
   String? documentId,
   String? warehouseName,
   String? locationName,
-}) => InventoryTransaction(
+}) => InventoryTransactionDto(
   id: id,
   productId: 'product-1',
   quantity: quantity,
@@ -17,7 +24,6 @@ InventoryTransaction movement({
   createdAt: DateTime.utc(2026, 1, 1),
   warehouseId: 'warehouse-1',
   locationId: 'location-1',
-  commandId: 'command-1',
   warehouseName: warehouseName,
   locationName: locationName,
   documentId: documentId,
@@ -83,7 +89,11 @@ void main() {
   });
 
   test('missing names degrade gracefully', () {
-    final bare = movement(id: 'x', reason: InventoryReason.adjustment, quantity: 1);
+    final bare = movement(
+      id: 'x',
+      reason: InventoryReason.adjustment,
+      quantity: 1,
+    );
     expect(
       describeInventoryTransaction(bare, [bare]),
       'Ajuste en Ubicación no disponible',

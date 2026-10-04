@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:serp/modules/inventory/api/inventory_dtos.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -164,8 +166,8 @@ class _AuditPageState extends ConsumerState<AuditPage> {
     }
   }
 
-  List<_AuditEvent> _group(List<AuditEntry> items) {
-    final groups = <String, List<AuditEntry>>{};
+  List<_AuditEvent> _group(List<AuditEntryDto> items) {
+    final groups = <String, List<AuditEntryDto>>{};
     for (final item in items) {
       final second = item.createdAt.millisecondsSinceEpoch ~/ 1000;
       final key = '${item.tableName}|${item.recordId}|$second';
@@ -235,7 +237,7 @@ class _AuditPageState extends ConsumerState<AuditPage> {
 class _AuditEvent {
   _AuditEvent(this.details);
 
-  final List<AuditEntry> details;
+  final List<AuditEntryDto> details;
   static const _technicalFields = {
     'id',
     'created_at',
@@ -249,7 +251,7 @@ class _AuditEvent {
     'updated_device_name',
     'updated_device_identifier',
   };
-  AuditEntry get first => details.first;
+  AuditEntryDto get first => details.first;
   String get tableName => first.tableName;
   String get operation => details.any((detail) => detail.operation == 'INSERT')
       ? 'INSERT'
@@ -262,7 +264,7 @@ class _AuditEvent {
   String? get resourcePath => first.resourcePath;
   DateTime get createdAt => first.createdAt;
   List<_AuditChange> get changes {
-    final grouped = <String, List<AuditEntry>>{};
+    final grouped = <String, List<AuditEntryDto>>{};
     for (final detail in details) {
       if (_technicalFields.contains(detail.fieldName)) continue;
       grouped.putIfAbsent(detail.fieldName, () => []).add(detail);
@@ -279,7 +281,7 @@ class _AuditEvent {
     ];
   }
 
-  static String? _finalValue(List<AuditEntry> details) {
+  static String? _finalValue(List<AuditEntryDto> details) {
     final intermediateValues = details
         .map((detail) => detail.oldValue)
         .whereType<String>()

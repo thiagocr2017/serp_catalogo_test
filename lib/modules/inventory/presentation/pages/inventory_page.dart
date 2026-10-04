@@ -5,6 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../api/inventory_api.dart';
 import '../../di/inventory_providers.dart';
 import '../../../../shared/widgets/status_chip.dart';
+import 'package:serp/modules/inventory/domain/entities/audit_entry.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_balance.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_count.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_document.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_reservation.dart';
+import 'package:serp/modules/inventory/domain/entities/inventory_transaction.dart';
+import 'package:serp/modules/inventory/domain/entities/warehouse.dart';
 
 class InventoryPage extends ConsumerStatefulWidget {
   const InventoryPage({super.key, this.productId, this.productSku});
@@ -187,5 +194,4 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
       ),
     );
   }
-
 }

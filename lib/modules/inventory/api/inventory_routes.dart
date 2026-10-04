@@ -5,6 +5,7 @@ import '../presentation/pages/audit_page.dart';
 import '../presentation/pages/inventory_page.dart';
 import '../presentation/pages/inventory_document_form_page.dart';
 import '../presentation/pages/inventory_document_page.dart';
+import '../presentation/pages/inventory_documents_page.dart';
 import '../presentation/pages/warehouses_page.dart';
 
 final List<RouteBase> inventoryRoutes = [
@@ -22,6 +23,10 @@ final List<RouteBase> inventoryRoutes = [
   GoRoute(
     path: '/inventory/warehouses',
     builder: (context, state) => const WarehousesPage(),
+  ),
+  GoRoute(
+    path: '/inventory/documents',
+    builder: (context, state) => const InventoryDocumentsPage(),
   ),
   GoRoute(
     path: '/inventory/documents/new',

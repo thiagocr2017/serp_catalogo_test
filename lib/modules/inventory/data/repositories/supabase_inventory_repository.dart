@@ -2,10 +2,21 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/device/device_identity.dart';
 import '../../api/inventory_api.dart';
+import '../../domain/entities/audit_entry.dart';
+import '../../domain/entities/inventory_balance.dart';
+import '../../domain/entities/inventory_count.dart';
+import '../../domain/entities/inventory_document.dart';
+import '../../domain/entities/inventory_reservation.dart';
+import '../../domain/entities/inventory_transaction.dart';
+import '../../domain/entities/warehouse.dart';
 import '../../domain/repositories/inventory_repository.dart';
 import '../data_sources/supabase_inventory_data_source.dart';
 
-class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
+// Implementa SOLO el repositorio de dominio, que trabaja con entidades. El
+// contrato publico (`InventoryApi`) vive en `supabase_inventory_api.dart`, que
+// envuelve este repositorio y traduce a DTO. Dart no permite que una misma clase
+// implemente dos `getTransactions` con distinto tipo de retorno.
+class SupabaseInventoryRepository implements InventoryRepository {
   const SupabaseInventoryRepository(this._source, this._device);
 
   final SupabaseInventoryDataSource _source;
@@ -94,6 +105,7 @@ class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
       'p_destination_location_id': command.destinationLocationId,
       'p_external_reference': command.externalReference,
       'p_notes': command.notes,
+      'p_draft': command.draft,
       'p_actor_name': _device.actorName,
       'p_device_name': _device.name,
       'p_device_identifier': _device.identifier,
@@ -441,6 +453,23 @@ class SupabaseInventoryRepository implements InventoryRepository, InventoryApi {
 
   @override
   Future<void> receiveTransfer(String documentId) => _source.receiveTransfer(
+    documentId,
+    actorName: _device.actorName,
+    deviceName: _device.name,
+    deviceIdentifier: _device.identifier,
+  );
+
+  @override
+  Future<InventoryDocument> confirmDocument(String documentId) =>
+      _source.confirmDocument(
+        documentId,
+        actorName: _device.actorName,
+        deviceName: _device.name,
+        deviceIdentifier: _device.identifier,
+      );
+
+  @override
+  Future<void> dispatchDocument(String documentId) => _source.dispatchDocument(
     documentId,
     actorName: _device.actorName,
     deviceName: _device.name,

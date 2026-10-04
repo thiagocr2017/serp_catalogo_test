@@ -23,6 +23,7 @@ class InventoryDocument {
     this.destinationLocationName,
     this.externalReference,
     this.notes,
+    this.updatedAt,
   });
 
   final String id;
@@ -30,6 +31,7 @@ class InventoryDocument {
   final InventoryDocumentType type;
   final String status;
   final DateTime createdAt;
+  final DateTime? updatedAt;
   final String? originWarehouseName;
   final String? originLocationName;
   final String? destinationWarehouseName;

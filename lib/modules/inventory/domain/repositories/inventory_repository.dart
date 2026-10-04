@@ -58,4 +58,8 @@ abstract interface class InventoryRepository {
   Future<void> dispatchTransfer(String documentId);
   Future<void> markTransferInTransit(String documentId);
   Future<void> receiveTransfer(String documentId);
+
+  // Draft documents
+  Future<InventoryDocument> confirmDocument(String documentId);
+  Future<void> dispatchDocument(String documentId);
 }

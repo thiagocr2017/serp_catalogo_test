@@ -11,6 +11,7 @@ class InventoryDocumentCommand {
     this.destinationLocationId,
     this.externalReference,
     this.notes,
+    this.draft = false,
   });
 
   final String commandId;
@@ -22,6 +23,7 @@ class InventoryDocumentCommand {
   final String? destinationLocationId;
   final String? externalReference;
   final String? notes;
+  final bool draft;
 }
 
 class InventoryDocumentLineCommand {

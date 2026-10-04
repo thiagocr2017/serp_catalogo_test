@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:serp/modules/inventory/api/inventory_api.dart';
+import 'package:serp/modules/inventory/data/repositories/supabase_inventory_api.dart';
 import 'package:serp/modules/inventory/di/inventory_providers.dart';
 import 'package:serp/modules/inventory/domain/entities/audit_entry.dart';
 import 'package:serp/modules/inventory/domain/entities/inventory_balance.dart';
@@ -19,7 +21,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [inventoryRepositoryProvider.overrideWithValue(repository)],
+        overrides: [inventoryRepositoryProvider.overrideWithValue(repository),
+          inventoryApiProvider.overrideWithValue(
+            SupabaseInventoryApi(repository),
+          )],
         child: const MaterialApp(home: WarehousesPage()),
       ),
     );
@@ -60,7 +65,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [inventoryRepositoryProvider.overrideWithValue(repository)],
+        overrides: [inventoryRepositoryProvider.overrideWithValue(repository),
+          inventoryApiProvider.overrideWithValue(
+            SupabaseInventoryApi(repository),
+          )],
         child: const MaterialApp(home: WarehousesPage()),
       ),
     );

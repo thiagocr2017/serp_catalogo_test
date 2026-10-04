@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/utilities/phone_number.dart';
+import '../../../../shared/navigation/unsaved_changes_guard.dart';
 import '../../../inventory/inventory_module.dart';
 import '../../../sales/sales_module.dart';
 import '../../di/product_providers.dart';
@@ -48,10 +50,10 @@ class _Profile extends ConsumerWidget {
         product.packagingPresentationName ?? 'Presentación no disponible';
     final marginPercent = product.unitPriceInCents > 0
         ? (product.unitPriceInCents -
-                      product.factoryCostInCents -
-                      product.extraCostsInCents) /
-                  product.unitPriceInCents *
-                  100
+                  product.factoryCostInCents -
+                  product.extraCostsInCents) /
+              product.unitPriceInCents *
+              100
         : null;
     return Scaffold(
       appBar: AppBar(
@@ -302,7 +304,7 @@ class _Profile extends ConsumerWidget {
             child: transactions.when(
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('$e'),
-              data: (items) => _SearchableHistory<InventoryTransaction>(
+              data: (items) => _SearchableHistory<InventoryTransactionDto>(
                 searchLabel: 'Buscar en historial de inventario',
                 emptyText: 'Sin movimientos de inventario.',
                 items: [...items]..sort(compareInventoryHistory),
@@ -314,10 +316,7 @@ class _Profile extends ConsumerWidget {
                   item.createdAt.toLocal(),
                 ].join(' '),
                 itemBuilder: (context, item) {
-                  final description = describeInventoryTransaction(
-                    item,
-                    items,
-                  );
+                  final description = describeInventoryTransaction(item, items);
                   final notes = item.notes?.trim();
                   return ListTile(
                     dense: true,
@@ -353,7 +352,7 @@ class _Profile extends ConsumerWidget {
                   ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
                 return filtered.isEmpty
                     ? const Text('Sin cambios de costos o precios registrados.')
-                    : _SearchableHistory<AuditEntry>(
+                    : _SearchableHistory<AuditEntryDto>(
                         searchLabel: 'Buscar en historial de costos y precios',
                         emptyText: 'No hay cambios que coincidan.',
                         items: filtered,
@@ -384,7 +383,7 @@ class _Profile extends ConsumerWidget {
 
   /// Solo se muestra el histórico de costo de fábrica y precios
   /// (unitario y por empaque) del producto.
-  bool _isCostOrPriceChange(AuditEntry entry) =>
+  bool _isCostOrPriceChange(AuditEntryDto entry) =>
       (entry.oldValue != null || entry.newValue != null) &&
       const {
         'factory_cost',
@@ -448,57 +447,93 @@ class _Profile extends ConsumerWidget {
           : (product.promotionPriceInCents! / 100).toStringAsFixed(2),
     );
     final promoText = TextEditingController(text: product.promotionText ?? '');
+    var dirty = false;
     final accepted = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar producto'),
-        content: SizedBox(
-          width: 520,
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              TextField(
-                controller: name,
-                decoration: const InputDecoration(labelText: 'Nombre'),
-              ),
-              TextField(
-                controller: description,
-                maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Descripción'),
-              ),
-              TextField(
-                controller: price,
-                decoration: const InputDecoration(labelText: 'Precio unitario'),
-              ),
-              TextField(
-                controller: factory,
-                decoration: const InputDecoration(labelText: 'Costo fábrica'),
-              ),
-              TextField(
-                controller: promo,
-                decoration: const InputDecoration(
-                  labelText: 'Precio promoción individual',
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          void markDirty() {
+            if (dirty) return;
+            setDialogState(() => dirty = true);
+          }
+
+          Future<void> cancel() async {
+            final navigator = Navigator.of(context);
+            final discard = await UnsavedChangesGuard.instance.confirmDiscard(
+              context,
+              hasUnsavedChanges: dirty,
+            );
+            if (discard && context.mounted) navigator.pop(false);
+          }
+
+          return PopScope(
+            canPop: !dirty,
+            onPopInvokedWithResult: (didPop, _) async {
+              if (didPop) return;
+              await cancel();
+            },
+            child: AlertDialog(
+              title: const Text('Editar producto'),
+              content: SizedBox(
+                width: 520,
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    TextField(
+                      controller: name,
+                      decoration: const InputDecoration(labelText: 'Nombre'),
+                      onChanged: (_) => markDirty(),
+                    ),
+                    TextField(
+                      controller: description,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Descripción',
+                      ),
+                      onChanged: (_) => markDirty(),
+                    ),
+                    TextField(
+                      controller: price,
+                      decoration: const InputDecoration(
+                        labelText: 'Precio unitario',
+                      ),
+                      onChanged: (_) => markDirty(),
+                    ),
+                    TextField(
+                      controller: factory,
+                      decoration: const InputDecoration(
+                        labelText: 'Costo fábrica',
+                      ),
+                      onChanged: (_) => markDirty(),
+                    ),
+                    TextField(
+                      controller: promo,
+                      decoration: const InputDecoration(
+                        labelText: 'Precio promoción individual',
+                      ),
+                      onChanged: (_) => markDirty(),
+                    ),
+                    TextField(
+                      controller: promoText,
+                      decoration: const InputDecoration(
+                        labelText: 'Condiciones promoción',
+                      ),
+                      onChanged: (_) => markDirty(),
+                    ),
+                  ],
                 ),
               ),
-              TextField(
-                controller: promoText,
-                decoration: const InputDecoration(
-                  labelText: 'Condiciones promoción',
+              actions: [
+                TextButton(onPressed: cancel, child: const Text('Cancelar')),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Guardar'),
                 ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Guardar'),
-          ),
-        ],
+              ],
+            ),
+          );
+        },
       ),
     );
     if (accepted == true) {
@@ -626,7 +661,7 @@ class _Profile extends ConsumerWidget {
 class _LocationBalances extends StatelessWidget {
   const _LocationBalances({required this.balances, required this.productStock});
 
-  final AsyncValue<List<InventoryBalance>> balances;
+  final AsyncValue<List<InventoryBalanceDto>> balances;
   final int productStock;
 
   @override
@@ -842,18 +877,17 @@ class _BuyerTile extends StatelessWidget {
         .map(
           (contact) => [
             contact.name,
-            if (contact.role?.trim().isNotEmpty == true) '(${contact.role!.trim()})',
+            if (contact.role?.trim().isNotEmpty == true)
+              '(${contact.role!.trim()})',
             if (contact.phone?.trim().isNotEmpty == true)
-              contact.phone!.trim(),
+              displayPhone(contact.phone),
           ].join(' '),
         )
         .join(' · ');
     return ListTile(
       dense: true,
       contentPadding: EdgeInsets.zero,
-      title: Text(
-        buyer.isActive ? buyer.name : '${buyer.name} (Inactivo)',
-      ),
+      title: Text(buyer.isActive ? buyer.name : '${buyer.name} (Inactivo)'),
       subtitle: Text(
         [
           if (place.isNotEmpty) place,
@@ -1112,7 +1146,7 @@ class _DistributionPainter extends CustomPainter {
 class _LocationBalanceTile extends StatelessWidget {
   const _LocationBalanceTile({required this.balance, required this.share});
 
-  final InventoryBalance balance;
+  final InventoryBalanceDto balance;
   final double share;
 
   @override
