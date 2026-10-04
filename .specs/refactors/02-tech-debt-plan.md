@@ -199,11 +199,18 @@ Orden sugerido: `product` primero, `inventory` despues.
 
 Objetivo: tener pruebas que fallen si el endurecimiento no se aplica.
 
+**Avance 2026-10-03:** cerrado el punto 3 (inmutabilidad) y, con el, el hueco de
+escritura directa. Ver `inventory_ledger_hardening_test.sql`, 20 pruebas que
+fallaban antes del endurecimiento y pasan ahora.
+
+- [x] pgTAP: inmutabilidad de `inventory_transactions` (`UPDATE` y `DELETE`
+      bloqueados) y ausencia de privilegios de escritura sobre el libro y sobre
+      `inventory_balances`. Incluye `TRUNCATE`, que es un vector que la prueba
+      original no contemplaba: RLS no lo cubre y los triggers `BEFORE DELETE`
+      tampoco.
 - [ ] pgTAP: atomicidad de `create_and_confirm_inventory_document` ante fallo
       intermedio.
 - [ ] pgTAP: idempotencia ante reintentos y doble envio concurrente real.
-- [ ] pgTAP: inmutabilidad de `inventory_transactions` (UPDATE y DELETE
-      bloqueados).
 - [ ] pgTAP: reversión y su limite de una reversión directa por movimiento.
 - [ ] pgTAP: atomicidad de ventas y facturas contra su documento de inventario.
 
@@ -216,6 +223,13 @@ silenciosas en inventario, que es el libro inmutable del negocio.
 
 Objetivo: cerrar los permisos amplios.
 
+- [x] **Cerrado 2026-10-03**: revocar la escritura directa sobre
+      `inventory_transactions` e `inventory_balances`, retirar la politica
+      `inventory_local_insert` y blindar el `TRUNCATE` con triggers
+      `BEFORE TRUNCATE`. Migracion
+      `20261003100000_harden_inventory_ledger.sql`, pruebas en
+      `inventory_ledger_hardening_test.sql`. Verificado que las RPC
+      `SECURITY DEFINER` siguen escribiendo.
 - [ ] Revocar escritura directa restante segun `docs/block_1b_contract_cleanup.md`
       (1B.3), migrando antes todos los consumidores a fachadas y RPC.
 - [ ] Endurecer `product-images` y `catalog-assets` con politica por rol y

@@ -256,8 +256,11 @@ el código y forman parte del árbol real.
   prohibición de exponer providers internos de Riverpod.
 - La preferencia de tema y la configuración técnica de conexión permanecen en
   `core/configuration`; no son datos comerciales del módulo Configuración.
-- `inventory_transactions` todavía acepta `INSERT` directo de `anon` y
-  `authenticated`; esquivar el flujo documental es posible hasta el bloque 1D.
+- `inventory_transactions` ya no acepta `INSERT` ni `TRUNCATE` de `anon` ni
+  `authenticated`; el hueco que permitia inventario sin documento quedo
+  **cerrado el 2026-10-03** por
+  `20261003100000_harden_inventory_ledger.sql`, con pruebas en
+  `supabase/tests/database/inventory_ledger_hardening_test.sql`.
 
 Estas diferencias se corregirán de manera incremental, conservando pruebas y
 puntos de restauración en Git antes de cada cambio estructural.

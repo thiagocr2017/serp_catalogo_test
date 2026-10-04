@@ -17,18 +17,41 @@ Ejemplo confirmado:
 
 ### Excepciones verificadas (2026-10-03)
 
-La regla **no** se cumple todavía en todos los objetos. Comprobado con
+La regla **no** se cumplia en todos los objetos. Comprobado con
 `set local role authenticated` dentro de `rollback`:
 
 | Objeto | Situacion | Prueba |
 |---|---|---|
-| `inventory_transactions` | Concede `INSERT` y su politica RLS `inventory_local_insert` tiene `with_check true` | `INSERT 0 1`: se inserta un movimiento sin documento y el trigger `apply_inventory_transaction()` aplica el stock |
+| ~~`inventory_transactions`~~ | **Cerrado el 2026-10-03** por `20261003100000_harden_inventory_ledger.sql`. Aceptaba `INSERT` directo y `TRUNCATE` | Ver abajo |
 | `audit_logs` | Concede `INSERT,UPDATE,DELETE,TRUNCATE`, pero su unica politica RLS es de `SELECT` | `new row violates row-level security policy` |
-| `inventory_balances` | Concede `TRUNCATE,REFERENCES,TRIGGER` | sin escritura directa de filas |
+| `inventory_balances` | **Cerrado el 2026-10-03**: concedia `TRUNCATE,REFERENCES,TRIGGER` | `permission denied` tras el endurecimiento |
+| `catalog_logo_operations` | Revisar privilegios | pendiente |
 
-El hueco de `inventory_transactions` esta asignado al bloque 1D en
-`docs/block_1a_baseline.md` («Retirar camino directo»). Hasta entonces, insertar
-movimientos sin documento de inventario es posible para cualquier cliente local.
+#### Hueco de `inventory_transactions`, cerrado
+
+Antes del endurecimiento, cualquier cliente local podia:
+
+- `INSERT` movimientos sin documento de inventario; el trigger
+  `apply_inventory_transaction()` aplicaba el stock, esquivando todo el flujo
+  documental;
+- `TRUNCATE` el libro inmutable completo. **RLS no aplica a TRUNCATE** y el
+  trigger `BEFORE DELETE` tampoco lo frena;
+- `TRUNCATE` `inventory_balances` y borrar todos los saldos fisicos.
+
+`UPDATE` y `DELETE` ya quedaban fuera por RLS, pero el privilegio seguia
+concedido.
+
+Cerrado con `20261003100000_harden_inventory_ledger.sql`: revoca escritura en
+ambas tablas, retira la politica `inventory_local_insert`, deja solo lectura y
+anade triggers `BEFORE TRUNCATE` porque los triggers `BEFORE DELETE` no cubren
+TRUNCATE. Las escrituras legitimas pasan por RPC `SECURITY DEFINER`, que no
+necesitan estos privilegios.
+
+Verificado: los cinco vectores (`insert`, `update`, `delete`, `truncate` en el
+libro y `truncate` en saldos) devuelven `permission denied`, y
+`record_inventory_transaction` sigue funcionando. Las 20 pruebas de
+`supabase/tests/database/inventory_ledger_hardening_test.sql` fallaban antes y
+pasan ahora.
 
 ### Patron correcto ya aplicado
 
