@@ -199,20 +199,31 @@ Orden sugerido: `product` primero, `inventory` despues.
 
 Objetivo: tener pruebas que fallen si el endurecimiento no se aplica.
 
-**Avance 2026-10-03:** cerrado el punto 3 (inmutabilidad) y, con el, el hueco de
-escritura directa. Ver `inventory_ledger_hardening_test.sql`, 20 pruebas que
-fallaban antes del endurecimiento y pasan ahora.
+**Avance 2026-10-03:** Fase 4 **completada**.
 
 - [x] pgTAP: inmutabilidad de `inventory_transactions` (`UPDATE` y `DELETE`
       bloqueados) y ausencia de privilegios de escritura sobre el libro y sobre
       `inventory_balances`. Incluye `TRUNCATE`, que es un vector que la prueba
       original no contemplaba: RLS no lo cubre y los triggers `BEFORE DELETE`
-      tampoco.
-- [ ] pgTAP: atomicidad de `create_and_confirm_inventory_document` ante fallo
-      intermedio.
-- [ ] pgTAP: idempotencia ante reintentos y doble envio concurrente real.
-- [ ] pgTAP: reversión y su limite de una reversión directa por movimiento.
-- [ ] pgTAP: atomicidad de ventas y facturas contra su documento de inventario.
+      tampoco. Ver `inventory_ledger_hardening_test.sql`.
+- [x] pgTAP: atomicidad de `create_and_confirm_inventory_document` ante fallo
+      intermedio. Ver `inventory_document_integrity_test.sql` A1-A4.
+- [x] pgTAP: idempotencia ante reintentos con la misma `command_id`.
+      Ver B1-B4.
+- [x] pgTAP: reversión y su limite de una reversión directa por movimiento.
+      Ver C1-C6.
+- [x] pgTAP: atomicidad de la factura de venta contra su documento de
+      inventario. Ver D1-D3.
+
+17 aserciones de caracterizacion en `inventory_document_integrity_test.sql`.
+Comprobado que no son vacias: dos lineas validas si crean documento (2 lineas
+persistidas), asi que el rechazo del caso A1 se debe al producto inexistente y
+no a un fallo del fixture.
+
+Nota de metodo: los fixtures de esas pruebas exigen `begin;`/`rollback;`
+explicitos. Un `psql -c` sin `begin` envuelve todo en una transaccion implicita
+y el `rollback` final la deshace, lo que hace parecer que nada persiste y
+convierte un sondeo en algo enganoso.
 
 Razon: es el prerequisito de Fase 5. Sin estas pruebas, revocar permisos puede
 romper flujos sin que la suite lo detecte.
