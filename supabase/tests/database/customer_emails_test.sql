@@ -46,8 +46,8 @@ select ok(
 -- Fixture: un cliente para los correos
 select is(
   (public.create_customer(
-    'pgTAP Customer', null, null, null, null, null, null,
-    null, null, null::uuid, 'CASH', null, 'E_INVOICE',
+    'pgTAP Customer', 'pgTAP Fantasia', '88881234', 'test@test.com', 'San José', null, 0,
+    'CR', 'San José', null, 'Gira Norte', null::uuid, 'CASH', null, 'E_INVOICE',
     false::boolean, null::uuid, null,
     'actor','device','device'
   )).name,

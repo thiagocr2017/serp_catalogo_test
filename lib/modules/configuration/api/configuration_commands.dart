@@ -212,3 +212,45 @@ class CatalogDesignPreferencesInput {
   final String promotionDescriptionColor;
   final String imageFit;
 }
+
+class CreateCustomerCategoryCommand {
+  const CreateCustomerCategoryCommand({
+    required this.name,
+    this.description,
+    this.color,
+    this.identity,
+  });
+
+  final String name;
+  final String? description;
+  final String? color;
+  final IdentityContext? identity;
+}
+
+class UpdateCustomerCategoryCommand {
+  const UpdateCustomerCategoryCommand({
+    required this.id,
+    required this.name,
+    this.description,
+    this.color,
+    this.isActive = true,
+    this.identity,
+  });
+
+  final String id;
+  final String name;
+  final String? description;
+  final String? color;
+  final bool isActive;
+  final IdentityContext? identity;
+}
+
+class DeleteCustomerCategoryCommand {
+  const DeleteCustomerCategoryCommand({
+    required this.id,
+    this.identity,
+  });
+
+  final String id;
+  final IdentityContext? identity;
+}

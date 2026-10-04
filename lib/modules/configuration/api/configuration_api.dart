@@ -62,6 +62,19 @@ abstract interface class ConfigurationApi {
   );
 
   Future<Uint8List?> downloadCatalogLogo();
+
+  Future<List<CustomerCategoryDto>> getCustomerCategories({
+    bool includeInactive = false,
+  });
+  Future<CustomerCategoryDto> createCustomerCategory(
+    CreateCustomerCategoryCommand command,
+  );
+  Future<CustomerCategoryDto> updateCustomerCategory(
+    UpdateCustomerCategoryCommand command,
+  );
+  Future<void> deleteCustomerCategory(
+    DeleteCustomerCategoryCommand command,
+  );
 }
 
 final configurationApiProvider = Provider<ConfigurationApi>(
@@ -96,6 +109,18 @@ final identificationTypesAdminDtosProvider =
       (ref) => ref
           .watch(configurationApiProvider)
           .getIdentificationTypes(includeInactive: true),
+    );
+
+final customerCategoriesDtosProvider =
+    FutureProvider<List<CustomerCategoryDto>>(
+      (ref) => ref.watch(configurationApiProvider).getCustomerCategories(),
+    );
+
+final customerCategoriesAdminDtosProvider =
+    FutureProvider<List<CustomerCategoryDto>>(
+      (ref) => ref
+          .watch(configurationApiProvider)
+          .getCustomerCategories(includeInactive: true),
     );
 
 final countriesDtoProvider = FutureProvider<List<CountryDto>>(

@@ -9,7 +9,7 @@ select ok(has_function_privilege('authenticated', 'public.customer_commercial_su
 -- 2. Crear cliente de prueba
 select public.create_customer(
   p_name := 'Cliente Resumen Test',
-  p_display_name := null,
+  p_display_name := 'Resumen Test',
   p_phone := '88887777',
   p_email := 'resumen@example.com',
   p_address := 'San José',

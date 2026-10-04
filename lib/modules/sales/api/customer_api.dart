@@ -83,6 +83,19 @@ abstract interface class CustomerApi {
   Future<List<ProductBuyerDto>> getProductBuyers(String productId);
   Future<CustomerCommercialSummaryDto> getCustomerCommercialSummary(String customerId);
   Future<List<CustomerCategoryDto>> getCustomerCategories();
+  Future<CustomerCategoryDto> createCustomerCategory({
+    required String name,
+    String? description,
+    String? color,
+  });
+  Future<CustomerCategoryDto> updateCustomerCategory({
+    required String id,
+    required String name,
+    String? description,
+    String? color,
+    bool isActive = true,
+  });
+  Future<void> deleteCustomerCategory(String id);
 }
 
 final customerApiProvider = Provider<CustomerApi>(

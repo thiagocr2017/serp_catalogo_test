@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(27);
 
 -- 1. Tablas y columnas
 select has_table('public', 'countries', 'countries table exists');
@@ -90,7 +90,7 @@ select lives_ok(
   $$
     select public.create_customer(
       p_name := 'Cliente San José Test',
-      p_display_name := null,
+      p_display_name := 'San José Fantasia',
       p_phone := '50622223333',
       p_email := 'sanjose@test.cr',
       p_address := 'De la rotonda 100 norte',
@@ -138,7 +138,7 @@ select lives_ok(
   $$
     select public.create_customer(
       p_name := 'Cliente Ciudad Nueva Test',
-      p_display_name := null,
+      p_display_name := 'Ciudad Nueva Fantasia',
       p_phone := '50688889999',
       p_email := 'nueva@test.cr',
       p_address := 'Frente al lago',
@@ -175,12 +175,49 @@ select is(
   'customer persisted auto-learned city'
 );
 
+select public.update_customer(
+  p_customer_id := (select id from public.customers where name = 'Cliente Ciudad Nueva Test'),
+  p_name := 'Cliente Ciudad Nueva Test',
+  p_display_name := 'Ciudad Nueva Fantasia',
+  p_phone := '50688889999',
+  p_email := 'nueva@test.cr',
+  p_address := 'Frente al lago',
+  p_tax_id := '3101777666',
+  p_credit_limit := 0,
+  p_country_code := 'CR',
+  p_province := 'Alajuela',
+  p_city := ' valle escondido ',
+  p_gira := 'Ruta Norte',
+  p_preferred_carrier_id := null,
+  p_customer_type := 'CASH',
+  p_credit_days := null,
+  p_document_preference := 'E_INVOICE',
+  p_requires_e_invoice := false,
+  p_identification_type_id := null,
+  p_economic_activity := null,
+  p_actor_name := 'test_actor',
+  p_device_name := 'test_mac',
+  p_device_identifier := 'mac-001'
+);
+
+select is(
+  (select count(*)::integer from public.cities where country_code = 'CR' and lower(btrim(province_name)) = 'alajuela' and lower(btrim(name)) = 'valle escondido'),
+  1,
+  'update de una ciudad existente con otro casing no duplica el catalogo'
+);
+
+select is(
+  (select city from public.customers where name = 'Cliente Ciudad Nueva Test'),
+  'valle escondido',
+  'update normaliza espacios exteriores sin forzar casing'
+);
+
 -- 7. Rechazo por pais inactivo o invalido
 select throws_matching(
   $$
     select public.create_customer(
       p_name := 'Cliente Pais Invalido',
-      p_display_name := null,
+      p_display_name := 'Pais Invalido Fantasia',
       p_phone := '50600000000',
       p_email := 'invalido@test.cr',
       p_address := 'Sin direccion',
@@ -189,7 +226,7 @@ select throws_matching(
       p_country_code := 'XX',
       p_province := 'Provincia X',
       p_city := 'Ciudad X',
-      p_gira := null,
+      p_gira := 'Ruta Invalida',
       p_preferred_carrier_id := null,
       p_customer_type := 'CASH',
       p_credit_days := null,
@@ -204,6 +241,12 @@ select throws_matching(
   $$,
   'COUNTRY_INACTIVE_OR_INVALID',
   'create_customer rejects invalid or inactive country'
+);
+
+select is(
+  (select count(*)::integer from public.cities where country_code = 'XX' and province_name = 'Provincia X' and name = 'Ciudad X'),
+  0,
+  'error por pais invalido no deja ciudad aprendida parcialmente'
 );
 
 select * from finish();

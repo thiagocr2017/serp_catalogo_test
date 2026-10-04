@@ -134,6 +134,26 @@ class _FakeConfigurationApi implements ConfigurationApi {
   Future<CatalogPreferencesDto> selectCatalogAgent(
     SelectCatalogAgentCommand command,
   ) async => _preferences;
+
+  @override
+  Future<List<CustomerCategoryDto>> getCustomerCategories({
+    bool includeInactive = false,
+  }) async => const [];
+
+  @override
+  Future<CustomerCategoryDto> createCustomerCategory(
+    CreateCustomerCategoryCommand command,
+  ) async => throw UnimplementedError();
+
+  @override
+  Future<CustomerCategoryDto> updateCustomerCategory(
+    UpdateCustomerCategoryCommand command,
+  ) async => throw UnimplementedError();
+
+  @override
+  Future<void> deleteCustomerCategory(
+    DeleteCustomerCategoryCommand command,
+  ) async {}
 }
 
 const _settings = BusinessSettingsDto(

@@ -13,22 +13,32 @@ class CustomerProfilePage extends ConsumerWidget {
   final String customerId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => FutureBuilder<CustomerDto?>(
-    future: ref.read(customerApiProvider).getCustomerById(customerId),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState != ConnectionState.done) {
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
-      }
-      final customer = snapshot.data;
-      if (customer == null) {
-        return Scaffold(
-          appBar: AppBar(title: const Text('Cliente')),
-          body: const Center(child: Text('El cliente no existe.')),
-        );
-      }
-      return _CustomerProfileView(customer: customer);
-    },
-  );
+  Widget build(BuildContext context, WidgetRef ref) =>
+      FutureBuilder<CustomerDto?>(
+        future: ref.read(customerApiProvider).getCustomerById(customerId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('Perfil de cliente'),
+                actions: const [_BackToCustomersAction()],
+              ),
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          final customer = snapshot.data;
+          if (customer == null) {
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('Perfil de cliente'),
+                actions: const [_BackToCustomersAction()],
+              ),
+              body: const Center(child: Text('El cliente no existe.')),
+            );
+          }
+          return _CustomerProfileView(customer: customer);
+        },
+      );
 }
 
 class _CustomerProfileView extends ConsumerWidget {
@@ -49,10 +59,17 @@ class _CustomerProfileView extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Perfil de cliente'),
         actions: [
-          FilledButton.icon(
-            onPressed: () => context.go('/sales/customers/${customer.id}/edit'),
-            icon: const Icon(Icons.edit_outlined),
-            label: const Text('Editar'),
+          const _BackToCustomersAction(),
+          const SizedBox(width: 8),
+          Semantics(
+            button: true,
+            label: 'Editar cliente ${customer.name}',
+            child: FilledButton.icon(
+              onPressed: () =>
+                  context.go('/sales/customers/${customer.id}/edit'),
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Editar'),
+            ),
           ),
           const SizedBox(width: 16),
         ],
@@ -91,6 +108,17 @@ class _CustomerProfileView extends ConsumerWidget {
   }
 }
 
+class _BackToCustomersAction extends StatelessWidget {
+  const _BackToCustomersAction();
+
+  @override
+  Widget build(BuildContext context) => TextButton.icon(
+    onPressed: () => context.go('/sales/customers'),
+    icon: const Icon(Icons.arrow_back),
+    label: const Text('Volver a clientes'),
+  );
+}
+
 class _Header extends ConsumerWidget {
   const _Header({
     required this.customer,
@@ -104,82 +132,90 @@ class _Header extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summary =
-        ref.watch(customerCommercialSummaryProvider(customer.id)).value;
+    final summary = ref
+        .watch(customerCommercialSummaryProvider(customer.id))
+        .value;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
+    return Semantics(
+      label: 'Encabezado del perfil de cliente $title',
+      container: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 18),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              radius: 30,
-              child: Text(title.characters.first.toUpperCase()),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.headlineMedium),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 4),
-                    Text(subtitle!, style: Theme.of(context).textTheme.bodyLarge),
-                  ],
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      StatusChip(
-                        label: customer.isActive ? 'Activo' : 'Inactivo',
-                        tone: customer.isActive
-                            ? StatusTone.success
-                            : StatusTone.danger,
-                      ),
-                      StatusChip(
-                        label: customer.customerType == 'CREDIT'
-                            ? 'Cliente credito'
-                            : 'Cliente contado',
-                        tone: customer.customerType == 'CREDIT'
-                            ? StatusTone.warning
-                            : StatusTone.neutral,
-                      ),
-                      StatusChip(
-                        label: _documentPreferenceLabel(
-                          customer.documentPreference,
-                        ),
-                        tone: StatusTone.neutral,
-                      ),
-                      for (final name in {
-                        ...customer.categoryNames,
-                        if (summary != null)
-                          ...summary.categories.map((c) => c.name),
-                      })
-                        StatusChip(
-                          label: name,
-                          tone: StatusTone.info,
-                        ),
-                      if (summary != null)
-                        for (final ranking in summary.commercialRankings)
-                          StatusChip(
-                            label: ranking,
-                            tone: StatusTone.success,
-                          ),
-                    ],
-                  ),
-                ],
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 30,
+                child: Text(title.characters.first.toUpperCase()),
               ),
-            ),
-          ],
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle!,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        StatusChip(
+                          label: customer.isActive ? 'Activo' : 'Inactivo',
+                          tone: customer.isActive
+                              ? StatusTone.success
+                              : StatusTone.danger,
+                        ),
+                        StatusChip(
+                          label: customer.customerType == 'CREDIT'
+                              ? 'Cliente credito'
+                              : 'Cliente contado',
+                          tone: customer.customerType == 'CREDIT'
+                              ? StatusTone.warning
+                              : StatusTone.neutral,
+                        ),
+                        StatusChip(
+                          label: _documentPreferenceLabel(
+                            customer.documentPreference,
+                          ),
+                          tone: StatusTone.neutral,
+                        ),
+                        for (final name in {
+                          ...customer.categoryNames,
+                          if (summary != null)
+                            ...summary.categories.map((c) => c.name),
+                        })
+                          StatusChip(label: name, tone: StatusTone.info),
+                        if (summary != null)
+                          for (final ranking in summary.commercialRankings)
+                            StatusChip(
+                              label: ranking,
+                              tone: StatusTone.success,
+                            ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -193,17 +229,18 @@ class _Alerts extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summaryAsync = ref.watch(customerCommercialSummaryProvider(customer.id));
+    final summaryAsync = ref.watch(
+      customerCommercialSummaryProvider(customer.id),
+    );
     final summary = summaryAsync.value;
 
     final alerts = <_ProfileAlert>[
-      if (!customer.isActive)
+      if (summary != null && summary.overdueInvoicesCount > 0)
         _ProfileAlert(
-          icon: Icons.block,
-          title: 'Cliente inactivo',
-          message: customer.deactivationReason?.trim().isNotEmpty == true
-              ? customer.deactivationReason!.trim()
-              : 'No debe usarse para ventas nuevas sin reactivarlo.',
+          icon: Icons.warning_amber_rounded,
+          title: 'Credito vencido',
+          message:
+              '${summary.overdueInvoicesCount} factura(s) vencida(s) por un total de ${_money(summary.overdueInvoicesAmount)}.',
           color: Theme.of(context).colorScheme.errorContainer,
         ),
       if (customer.customerType == 'CREDIT' &&
@@ -216,12 +253,13 @@ class _Alerts extends ConsumerWidget {
               'Saldo ${_money(customer.currentBalance)} de limite ${_money(customer.creditLimit)}.',
           color: Theme.of(context).colorScheme.errorContainer,
         ),
-      if (summary != null && summary.overdueInvoicesCount > 0)
+      if (!customer.isActive)
         _ProfileAlert(
-          icon: Icons.warning_amber_rounded,
-          title: 'Credito vencido',
-          message:
-              '${summary.overdueInvoicesCount} factura(s) vencida(s) por un total de ${_money(summary.overdueInvoicesAmount)}.',
+          icon: Icons.block,
+          title: 'Cliente inactivo',
+          message: customer.deactivationReason?.trim().isNotEmpty == true
+              ? customer.deactivationReason!.trim()
+              : 'No debe usarse para ventas nuevas sin reactivarlo.',
           color: Theme.of(context).colorScheme.errorContainer,
         ),
       if (summary != null && summary.totalPendingDocuments > 0)
@@ -244,15 +282,19 @@ class _Alerts extends ConsumerWidget {
         for (final alert in alerts)
           SizedBox(
             width: 360,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: alert.color,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ListTile(
-                leading: Icon(alert.icon),
-                title: Text(alert.title),
-                subtitle: Text(alert.message),
+            child: Semantics(
+              label: 'Alerta: ${alert.title}. ${alert.message}',
+              container: true,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: alert.color,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ListTile(
+                  leading: Icon(alert.icon),
+                  title: Text(alert.title),
+                  subtitle: Text(alert.message),
+                ),
               ),
             ),
           ),
@@ -395,7 +437,9 @@ class _SummaryColumn extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summaryAsync = ref.watch(customerCommercialSummaryProvider(customer.id));
+    final summaryAsync = ref.watch(
+      customerCommercialSummaryProvider(customer.id),
+    );
     final summary = summaryAsync.value;
 
     final lastPurchaseText = summary?.lastPurchaseAt != null
@@ -442,11 +486,11 @@ class _SummaryColumn extends ConsumerWidget {
           icon: Icons.insights_outlined,
           children: [
             if (summary == null ||
-                (summary.lastPurchaseAt == null && summary.frequentProducts.isEmpty))
+                (summary.lastPurchaseAt == null &&
+                    summary.frequentProducts.isEmpty))
               const _EmptyState(
                 title: 'Sin resumen de compras todavia',
-                message:
-                    'Cuando existan documentos de venta, aqui apareceran ultima compra, productos frecuentes y actividad reciente.',
+                message: 'Cuando existan documentos de venta, aqui apareceran ultima compra, productos frecuentes y actividad reciente.',
               )
             else ...[
               if (summary.lastPurchaseAt != null)
@@ -479,46 +523,65 @@ class _SummaryColumn extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         _ProfileSection(
-        title: 'Documentos',
-        icon: Icons.folder_copy_outlined,
-        children: const [
-          DefaultTabController(
-            length: 6,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TabBar(
-                  isScrollable: true,
-                  tabs: [
-                    Tab(text: 'Pedidos'),
-                    Tab(text: 'Facturas'),
-                    Tab(text: 'Pagos'),
-                    Tab(text: 'Devoluciones'),
-                    Tab(text: 'Cotizaciones'),
-                    Tab(text: 'Consignaciones'),
-                  ],
-                ),
-                SizedBox(
-                  height: 130,
-                  child: TabBarView(
-                    children: [
-                      _DocumentEmpty(),
-                      _DocumentEmpty(),
-                      _DocumentEmpty(),
-                      _DocumentEmpty(),
-                      _DocumentEmpty(),
-                      _DocumentEmpty(),
+          title: 'Documentos',
+          icon: Icons.folder_copy_outlined,
+          children: const [
+            DefaultTabController(
+              length: 6,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TabBar(
+                    isScrollable: true,
+                    tabs: [
+                      Tab(text: 'Pedidos'),
+                      Tab(text: 'Facturas'),
+                      Tab(text: 'Pagos'),
+                      Tab(text: 'Devoluciones'),
+                      Tab(text: 'Cotizaciones'),
+                      Tab(text: 'Consignaciones'),
                     ],
                   ),
-                ),
-              ],
+                  SizedBox(
+                    height: 148,
+                    child: TabBarView(
+                      children: [
+                        _DocumentEmpty(
+                          title: 'Sin pedidos abiertos',
+                          message: 'Cuando existan pedidos del cliente apareceran aqui.',
+                        ),
+                        _DocumentEmpty(
+                          title: 'Sin facturas',
+                          message: 'Las facturas emitidas para este cliente se listaran aqui.',
+                        ),
+                        _DocumentEmpty(
+                          title: 'Sin pagos registrados',
+                          message:
+                              'Los pagos aplicados al cliente apareceran aqui.',
+                        ),
+                        _DocumentEmpty(
+                          title: 'Sin devoluciones',
+                          message: 'Las devoluciones del cliente se consultaran aqui.',
+                        ),
+                        _DocumentEmpty(
+                          title: 'Sin cotizaciones activas',
+                          message: 'Las cotizaciones pendientes del cliente apareceran aqui.',
+                        ),
+                        _DocumentEmpty(
+                          title: 'Sin consignaciones',
+                          message: 'Las consignaciones del cliente se mostraran aqui.',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    ],
-  );
-}
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 class _ProfileSection extends StatelessWidget {
@@ -533,22 +596,26 @@ class _ProfileSection extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 20),
-              const SizedBox(width: 8),
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ...children,
-        ],
+  Widget build(BuildContext context) => Semantics(
+    label: 'Seccion $title',
+    container: true,
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 20),
+                const SizedBox(width: 8),
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...children,
+          ],
+        ),
       ),
     ),
   );
@@ -592,20 +659,24 @@ class _MetricCard extends StatelessWidget {
   final IconData icon;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 220,
-    child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon),
-            const SizedBox(height: 12),
-            Text(title, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 4),
-            Text(value, style: Theme.of(context).textTheme.titleLarge),
-          ],
+  Widget build(BuildContext context) => Semantics(
+    label: '$title: $value',
+    container: true,
+    child: SizedBox(
+      width: 220,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon),
+              const SizedBox(height: 12),
+              Text(title, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 4),
+              Text(value, style: Theme.of(context).textTheme.titleLarge),
+            ],
+          ),
         ),
       ),
     ),
@@ -633,11 +704,34 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _DocumentEmpty extends StatelessWidget {
-  const _DocumentEmpty();
+  const _DocumentEmpty({required this.title, required this.message});
+
+  final String title;
+  final String message;
 
   @override
-  Widget build(BuildContext context) =>
-      const Center(child: Text('Sin documentos para mostrar.'));
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.inbox_outlined,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 8),
+          Text(title, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _ProfileAlert {

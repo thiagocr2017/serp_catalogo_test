@@ -282,6 +282,129 @@ void main() {
     expect(api.lastUpdateIdentificationType?.expectedVersion, 3);
     expect(find.byType(AlertDialog), findsNothing);
   });
+
+  testWidgets('categoria comercial vacia exige nombre antes de guardar', (
+    tester,
+  ) async {
+    final api = _RecordingConfigurationApi();
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Categorías comerciales de clientes'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Nueva categoría'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Escriba el nombre de la categoría.'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre *'),
+      'Mayorista',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Descripción'),
+      'Ventas por mayor',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.lastCreateCustomerCategory?.name, 'Mayorista');
+    expect(api.lastCreateCustomerCategory?.description, 'Ventas por mayor');
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('categoria comercial existente edita y desactiva', (
+    tester,
+  ) async {
+    final api = _RecordingConfigurationApi(
+      customerCategories: const [
+        CustomerCategoryDto(
+          id: 'cat-1',
+          name: 'Mayorista',
+          description: 'Desc',
+          isActive: true,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Mayorista'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Mayorista'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar categoría comercial'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Mayorista'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre *'),
+      'Mayorista VIP',
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(Switch),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.lastUpdateCustomerCategory?.id, 'cat-1');
+    expect(api.lastUpdateCustomerCategory?.name, 'Mayorista VIP');
+    expect(api.lastUpdateCustomerCategory?.isActive, false);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('categoria comercial existente se puede eliminar', (
+    tester,
+  ) async {
+    final api = _RecordingConfigurationApi(
+      customerCategories: const [
+        CustomerCategoryDto(
+          id: 'cat-1',
+          name: 'Mayorista',
+          description: 'Desc',
+          isActive: true,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Mayorista'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Mayorista'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(TextButton, 'Eliminar categoría'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Eliminar categoría comercial'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Eliminar'));
+    await tester.pumpAndSettle();
+
+    expect(api.lastDeleteCustomerCategory?.id, 'cat-1');
+    expect(find.byType(AlertDialog), findsNothing);
+  });
 }
 
 Widget _app(_RecordingConfigurationApi api) => ProviderScope(
@@ -305,6 +428,7 @@ class _RecordingConfigurationApi implements ConfigurationApi {
   _RecordingConfigurationApi({
     this.presentations = const [],
     this.identificationTypes = const [],
+    this.customerCategories = const [],
   });
 
   final List<PackagingPresentationDto> presentations;
@@ -517,6 +641,51 @@ class _RecordingConfigurationApi implements ConfigurationApi {
     String countryCode = 'CR',
     String? provinceName,
   }) async => const [];
+
+  List<CustomerCategoryDto> customerCategories = const [];
+  CreateCustomerCategoryCommand? lastCreateCustomerCategory;
+  UpdateCustomerCategoryCommand? lastUpdateCustomerCategory;
+  DeleteCustomerCategoryCommand? lastDeleteCustomerCategory;
+
+  @override
+  Future<List<CustomerCategoryDto>> getCustomerCategories({
+    bool includeInactive = false,
+  }) async => customerCategories;
+
+  @override
+  Future<CustomerCategoryDto> createCustomerCategory(
+    CreateCustomerCategoryCommand command,
+  ) async {
+    lastCreateCustomerCategory = command;
+    return CustomerCategoryDto(
+      id: 'cat-new',
+      name: command.name,
+      description: command.description,
+      color: command.color,
+      isActive: true,
+    );
+  }
+
+  @override
+  Future<CustomerCategoryDto> updateCustomerCategory(
+    UpdateCustomerCategoryCommand command,
+  ) async {
+    lastUpdateCustomerCategory = command;
+    return CustomerCategoryDto(
+      id: command.id,
+      name: command.name,
+      description: command.description,
+      color: command.color,
+      isActive: command.isActive,
+    );
+  }
+
+  @override
+  Future<void> deleteCustomerCategory(
+    DeleteCustomerCategoryCommand command,
+  ) async {
+    lastDeleteCustomerCategory = command;
+  }
 }
 
 class _LegacySettingsRepository implements ConfigurationRepository {

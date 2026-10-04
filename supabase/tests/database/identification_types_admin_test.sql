@@ -157,8 +157,8 @@ select is(
 
 select throws_ok(
   $$select public.create_customer(
-    'Cliente Tipo Inactivo', null, null, null, null, '0',
-    null, null, null, null::uuid, 'CASH', null, 'E_INVOICE',
+    'Cliente Tipo Inactivo', 'Fantasia Inactivo', '88887777', null, 'San José', '0',
+    null, 'CR', 'San José', null, 'Gira Central', null::uuid, 'CASH', null, 'E_INVOICE',
     false::boolean,
     (select id from public.identification_types where code = 'TEST_TYPE'),
     'Actividad',

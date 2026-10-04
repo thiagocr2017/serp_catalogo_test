@@ -157,7 +157,7 @@ class DesktopShellWidget extends StatelessWidget {
     leading: Icon(icon),
     title: Text(label),
     onTap: () async {
-      if (exact ? currentLocation == path : _selected(path)) return;
+      if (currentLocation == path) return;
       if (!await UnsavedChangesGuard.instance.confirmNavigation(context)) {
         return;
       }

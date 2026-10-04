@@ -24,7 +24,7 @@ select array_agg(id) as ids from public.customer_categories where name in ('Mayo
 
 select public.create_customer(
   p_name := 'Cliente Shipping Policy Test',
-  p_display_name := null,
+  p_display_name := 'Shipping Test',
   p_phone := '88881234',
   p_email := 'shipping@example.com',
   p_address := 'San José',
@@ -33,7 +33,7 @@ select public.create_customer(
   p_country_code := 'CR',
   p_province := 'San José',
   p_city := null,
-  p_gira := null,
+  p_gira := 'Gira Central',
   p_preferred_carrier_id := null,
   p_customer_type := 'CASH',
   p_credit_days := null,
@@ -67,7 +67,7 @@ select is(
 select public.update_customer(
   p_customer_id := (select id from _created_cust),
   p_name := 'Cliente Shipping Policy Modificado',
-  p_display_name := null,
+  p_display_name := 'Shipping Modificado',
   p_phone := '88881234',
   p_email := 'shipping@example.com',
   p_address := 'San José',
@@ -76,7 +76,7 @@ select public.update_customer(
   p_country_code := 'CR',
   p_province := 'San José',
   p_city := null,
-  p_gira := null,
+  p_gira := 'Gira Modificada',
   p_preferred_carrier_id := null,
   p_customer_type := 'CASH',
   p_credit_days := null,

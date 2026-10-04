@@ -25,13 +25,21 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Escriba el nombre del negocio.'), findsOneWidget);
+    expect(find.text('Escriba el nombre fiscal del negocio.'), findsOneWidget);
+    expect(find.text('Escriba el nombre de fantasía.'), findsOneWidget);
+    expect(find.text('Ingrese el teléfono de contacto.'), findsOneWidget);
+    expect(find.text('Escriba la gira o agrupación comercial.'), findsOneWidget);
+    expect(find.text('Escriba la dirección.'), findsOneWidget);
     expect(find.byType(CustomerFormPage), findsOneWidget);
     expect(api.createdCustomers, 0);
 
     await tester.enterText(
       find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
       'Cliente Test',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre fantasía'),
+      'Fantasia Test',
     );
     await tester.enterText(
       find.widgetWithText(TextField, 'Teléfono'),
@@ -68,6 +76,7 @@ void main() {
 
     expect(api.createdCustomers, 1);
     expect(api.createdCustomerName, 'Cliente Test');
+    expect(api.createdDisplayName, 'Fantasia Test');
     expect(api.createdPhone, '+506 8888-7777');
     expect(api.createdEmail, 'cliente@example.com');
     expect(api.createdAddress, 'San José');
@@ -96,8 +105,16 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
       await tester.pumpAndSettle();
 
-      // Comprobar que aparece la advertencia requerida de nombre fiscal
-      expect(find.text('Escriba el nombre del negocio.'), findsOneWidget);
+      // Comprobar que aparecen las 5 advertencias mínimas requeridas a la vez
+      expect(find.text('Escriba el nombre fiscal del negocio.'), findsOneWidget);
+      expect(find.text('Escriba el nombre de fantasía.'), findsOneWidget);
+      expect(find.text('Ingrese el teléfono de contacto.'), findsOneWidget);
+      expect(
+        find.text('Escriba la gira o agrupación comercial.'),
+        findsOneWidget,
+      );
+      expect(find.text('Escriba la dirección.'), findsOneWidget);
+
       // Comprobar que aparece el SnackBar informativo
       expect(
         find.text('Por favor revise los campos requeridos marcados en rojo.'),
@@ -150,10 +167,16 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
       await tester.pumpAndSettle();
 
-      // 1. Advertencia de nombre fiscal requerida
-      expect(find.text('Escriba el nombre del negocio.'), findsOneWidget);
+      // 1. Advertencias mínimas requeridas
+      expect(find.text('Escriba el nombre fiscal del negocio.'), findsOneWidget);
+      expect(find.text('Escriba el nombre de fantasía.'), findsOneWidget);
+      expect(find.text('Ingrese el teléfono de contacto.'), findsOneWidget);
+      expect(
+        find.text('Escriba la gira o agrupación comercial.'),
+        findsOneWidget,
+      );
 
-      // 2. Advertencias de las nuevas reglas de factura electrónica (tipo, doc, actividad, dirección)
+      // 2. Advertencias de las reglas de factura electrónica (tipo, doc, actividad, dirección)
       expect(
         find.text('Requerido para factura electrónica.'),
         findsNWidgets(4),
@@ -177,19 +200,31 @@ void main() {
       expect(find.byType(CustomerFormPage), findsOneWidget);
       expect(api.createdCustomers, 0);
 
-      // Verificación reactiva: al escribir el nombre, su advertencia se remueve
+      // Verificación reactiva: al escribir el nombre fiscal, su advertencia se remueve
       await tester.enterText(
         find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
         'Corporación Global S.A.',
       );
       await tester.pumpAndSettle();
-      expect(find.text('Escriba el nombre del negocio.'), findsNothing);
+      expect(find.text('Escriba el nombre fiscal del negocio.'), findsNothing);
       expect(
         find.text('Requerido para factura electrónica.'),
         findsNWidgets(4),
       );
 
-      // Completar los campos requeridos por las reglas de factura electrónica
+      // Completar los campos requeridos por las reglas de factura electrónica y mínimos
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Nombre fantasía'),
+        'Global Corp',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Teléfono'),
+        '88887777',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Gira (agrupación comercial)'),
+        'Gira Central',
+      );
       await _selectIdentificationType(tester, 'Cédula jurídica');
       await tester.enterText(
         find.widgetWithText(TextField, 'Número de documento'),
@@ -216,6 +251,9 @@ void main() {
       // Se guardó exitosamente con las nuevas reglas
       expect(api.createdCustomers, 1);
       expect(api.createdCustomerName, 'Corporación Global S.A.');
+      expect(api.createdDisplayName, 'Global Corp');
+      expect(api.createdPhone, '+506 8888-7777');
+      expect(api.createdGira, 'Gira Central');
       expect(api.createdRequiresEInvoice, isTrue);
       expect(api.createdDocumentPreference, 'E_INVOICE');
       expect(api.createdIdentificationTypeId, 'type-1');
@@ -235,10 +273,7 @@ void main() {
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente Test',
-    );
+    await _fillMinimumCustomerFields(tester);
     await tester.ensureVisible(find.widgetWithText(TextButton, 'Agregar'));
     await tester.tap(find.widgetWithText(TextButton, 'Agregar'));
     await tester.pumpAndSettle();
@@ -266,10 +301,7 @@ void main() {
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente Test',
-    );
+    await _fillMinimumCustomerFields(tester);
     await tester.ensureVisible(find.widgetWithText(TextButton, 'Agregar'));
     await tester.tap(find.widgetWithText(TextButton, 'Agregar'));
     await tester.pumpAndSettle();
@@ -329,10 +361,7 @@ void main() {
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente Test',
-    );
+    await _fillMinimumCustomerFields(tester);
     await _selectCustomerType(tester, 'Crédito');
     await tester.enterText(
       find.widgetWithText(TextField, 'Días de crédito'),
@@ -359,11 +388,7 @@ void main() {
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente Test',
-    );
-    await tester.enterText(find.widgetWithText(TextField, 'Teléfono'), '1234');
+    await _fillMinimumCustomerFields(tester, phone: '1234');
     await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
     await tester.pumpAndSettle();
 
@@ -380,10 +405,7 @@ void main() {
 
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente Test',
-    );
+    await _fillMinimumCustomerFields(tester);
     await tester.enterText(
       find.widgetWithText(TextField, 'Correo principal'),
       'correo-invalido',
@@ -403,10 +425,7 @@ void main() {
 
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente Emails',
-    );
+    await _fillMinimumCustomerFields(tester, name: 'Cliente Emails');
     await tester.enterText(
       find.widgetWithText(TextField, 'Correo principal'),
       'principal@example.com',
@@ -457,6 +476,8 @@ void main() {
           phone: '+506 1111-2222',
           email: 'principal@example.com',
           documentPreference: 'TICKET',
+          address: 'San José',
+          gira: 'Gira Central',
           isActive: true,
         ),
       ],
@@ -507,10 +528,7 @@ void main() {
 
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente Emails',
-    );
+    await _fillMinimumCustomerFields(tester, name: 'Cliente Emails');
     await tester.ensureVisible(
       find.widgetWithText(TextButton, 'Agregar correo'),
     );
@@ -542,11 +560,12 @@ void main() {
 
       await tester.tap(find.text('Nuevo cliente'));
       await tester.pumpAndSettle();
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-        'Cliente FE',
-      );
+      await _fillMinimumCustomerFields(tester, name: 'Cliente FE');
       await _enableRequiresEInvoice(tester);
+      await tester.enterText(
+        find.byKey(const ValueKey('customerAddressField')),
+        '',
+      );
       await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar'));
       await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
       await tester.pumpAndSettle();
@@ -578,10 +597,7 @@ void main() {
 
       await tester.tap(find.text('Nuevo cliente'));
       await tester.pumpAndSettle();
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-        'Cliente FE',
-      );
+      await _fillMinimumCustomerFields(tester, name: 'Cliente FE');
       await _enableRequiresEInvoice(tester);
       await tester.enterText(
         find.widgetWithText(TextField, 'Número de documento'),
@@ -620,10 +636,7 @@ void main() {
 
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente FE',
-    );
+    await _fillMinimumCustomerFields(tester, name: 'Cliente FE');
     await _enableRequiresEInvoice(tester);
     await tester.enterText(
       find.widgetWithText(TextField, 'Número de documento'),
@@ -669,10 +682,7 @@ void main() {
 
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente Simple',
-    );
+    await _fillMinimumCustomerFields(tester, name: 'Cliente Simple');
     await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar'));
     await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
     await tester.pumpAndSettle();
@@ -727,10 +737,7 @@ void main() {
       await tester.tap(find.text('Nuevo cliente'));
       await tester.pumpAndSettle();
 
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-        'Cliente FE',
-      );
+      await _fillMinimumCustomerFields(tester, name: 'Cliente FE');
       await _enableRequiresEInvoice(tester);
       await tester.enterText(
         find.widgetWithText(TextField, 'Número de documento'),
@@ -782,10 +789,7 @@ void main() {
 
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente Crédito',
-    );
+    await _fillMinimumCustomerFields(tester, name: 'Cliente Crédito');
     await _selectCustomerType(tester, 'Crédito');
     await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
     await tester.pumpAndSettle();
@@ -816,10 +820,7 @@ void main() {
 
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente con transporte',
-    );
+    await _fillMinimumCustomerFields(tester, name: 'Cliente con transporte');
     await tester.ensureVisible(find.text('Sin transporte preferido'));
     await tester.tap(find.text('Sin transporte preferido'));
     await tester.pumpAndSettle();
@@ -841,9 +842,11 @@ void main() {
         CustomerDto(
           id: 'customer-1',
           name: 'Cliente Actual',
+          displayName: 'Actual',
           phone: '+506 1111-2222',
           email: 'actual@example.com',
           province: 'San José',
+          address: 'San José',
           gira: 'Gira Central',
           creditLimit: 25,
           documentPreference: 'TICKET',
@@ -871,7 +874,7 @@ void main() {
     await tester.pumpWidget(_app(api));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Cliente Actual'));
+    await tester.tap(find.text('Actual · Cliente Actual'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Editar'));
     await tester.pumpAndSettle();
@@ -905,8 +908,6 @@ void main() {
     expect(api.deletedContactIds, contains('contact-1'));
     expect(api.savedContactIds, contains('contact-2'));
 
-    await tester.tap(find.text('Cliente Actual'));
-    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Editar'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextButton, 'Desactivar'));
@@ -937,6 +938,8 @@ void main() {
           phone: '+506 1111-2222',
           email: 'actual@example.com',
           documentPreference: 'TICKET',
+          address: 'San José',
+          gira: 'Gira Central',
           isActive: true,
         ),
       ],
@@ -972,6 +975,8 @@ void main() {
             phone: '+506 1111-2222',
             email: 'actual@example.com',
             documentPreference: 'TICKET',
+            address: 'San José',
+            gira: 'Gira Central',
             isActive: true,
           ),
         ],
@@ -1008,9 +1013,12 @@ void main() {
         CustomerDto(
           id: 'customer-1',
           name: 'Cliente Actual',
+          displayName: 'Actual',
           phone: '+506 1111-2222',
           email: 'actual@example.com',
           documentPreference: 'TICKET',
+          address: 'San José',
+          gira: 'Gira Central',
           isActive: true,
         ),
       ],
@@ -1019,7 +1027,7 @@ void main() {
     await tester.pumpWidget(_app(api));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Cliente Actual'));
+    await tester.tap(find.text('Actual · Cliente Actual'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Editar'));
     await tester.pumpAndSettle();
@@ -1059,8 +1067,11 @@ void main() {
           CustomerDto(
             id: 'customer-1',
             name: 'Cliente Actual',
+            displayName: 'Actual',
             phone: '+506 1111-2222',
             email: 'actual@example.com',
+            address: 'San José',
+            gira: 'Gira Central',
             creditLimit: 250,
             documentPreference: 'TICKET',
             isActive: true,
@@ -1080,7 +1091,7 @@ void main() {
       await tester.pumpWidget(_app(api));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Cliente Actual'));
+      await tester.tap(find.text('Actual · Cliente Actual'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Editar'));
       await tester.pumpAndSettle();
@@ -1131,10 +1142,7 @@ void main() {
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente Geografía CR',
-    );
+    await _fillMinimumCustomerFields(tester, name: 'Cliente Geografía CR');
     await _selectProvince(tester, 'Cartago');
     final cityField = find.widgetWithText(TextField, 'Ciudad / Distrito');
     await tester.ensureVisible(cityField);
@@ -1160,10 +1168,7 @@ void main() {
     await tester.tap(find.text('Nuevo cliente'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
-      'Cliente Comercial Test',
-    );
+    await _fillMinimumCustomerFields(tester, name: 'Cliente Comercial Test');
 
     final policyDropdown = find.widgetWithText(
       DropdownButtonFormField<String>,
@@ -1189,6 +1194,54 @@ void main() {
     expect(api.createdCustomerName, 'Cliente Comercial Test');
     expect(api.createdShippingPaymentPolicy, 'CASH_ON_DELIVERY');
     expect(api.createdCategoryIds, contains('cat-1'));
+  });
+
+  testWidgets('crear categoria rapidamente desde el formulario de cliente', (
+    tester,
+  ) async {
+    final api = _RecordingCustomerApi();
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nuevo cliente'));
+    await tester.pumpAndSettle();
+
+    await _fillMinimumCustomerFields(tester);
+
+    final newCatButton = find.widgetWithText(TextButton, 'Nueva categoría');
+    await tester.ensureVisible(newCatButton);
+    await tester.tap(newCatButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nueva categoría comercial'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('quickCategoryNameField')),
+      'VIP Especial',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Descripción'),
+      'Clientes con atención prioritaria',
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Crear y seleccionar'));
+    await tester.pumpAndSettle();
+
+    expect(api.createdCustomerCategories, 1);
+    expect(api.createdCustomerCategoryName, 'VIP Especial');
+    expect(
+      api.createdCustomerCategoryDescription,
+      'Clientes con atención prioritaria',
+    );
+
+    expect(find.text('VIP Especial'), findsOneWidget);
+
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.createdCustomers, 1);
+    expect(api.createdCategoryIds, contains('cat-new-test'));
   });
 }
 
@@ -1280,6 +1333,37 @@ Future<void> _selectDocumentPreference(
   await tester.pumpAndSettle();
   await tester.tap(find.text(label).last);
   await tester.pumpAndSettle();
+}
+
+Future<void> _fillMinimumCustomerFields(
+  WidgetTester tester, {
+  String name = 'Cliente Test',
+  String displayName = 'Fantasia Test',
+  String phone = '88887777',
+  String address = 'San José',
+  String gira = 'Gira Central',
+}) async {
+  final nameField = find.byKey(const ValueKey('customerNameField'));
+  await tester.ensureVisible(nameField);
+  await tester.enterText(nameField, name);
+
+  final displayNameField = find.byKey(
+    const ValueKey('customerDisplayNameField'),
+  );
+  await tester.ensureVisible(displayNameField);
+  await tester.enterText(displayNameField, displayName);
+
+  final phoneField = find.byKey(const ValueKey('customerPhoneField'));
+  await tester.ensureVisible(phoneField);
+  await tester.enterText(phoneField, phone);
+
+  final addressField = find.byKey(const ValueKey('customerAddressField'));
+  await tester.ensureVisible(addressField);
+  await tester.enterText(addressField, address);
+
+  final giraField = find.byKey(const ValueKey('customerGiraField'));
+  await tester.ensureVisible(giraField);
+  await tester.enterText(giraField, gira);
 }
 
 class _RecordingCustomerApi implements CustomerApi {
@@ -1573,11 +1657,59 @@ class _RecordingCustomerApi implements CustomerApi {
   ) async =>
       CustomerCommercialSummaryDto.empty(customerId);
 
-  @override
-  Future<List<CustomerCategoryDto>> getCustomerCategories() async => [
+  int createdCustomerCategories = 0;
+  String? createdCustomerCategoryName;
+  String? createdCustomerCategoryDescription;
+  String? createdCustomerCategoryColor;
+
+  final List<CustomerCategoryDto> categories = [
     const CustomerCategoryDto(id: 'cat-1', name: 'Mayorista'),
     const CustomerCategoryDto(id: 'cat-2', name: 'Detallista'),
   ];
+
+  @override
+  Future<List<CustomerCategoryDto>> getCustomerCategories() async =>
+      List.unmodifiable(categories);
+
+  @override
+  Future<CustomerCategoryDto> createCustomerCategory({
+    required String name,
+    String? description,
+    String? color,
+  }) async {
+    createdCustomerCategories++;
+    createdCustomerCategoryName = name;
+    createdCustomerCategoryDescription = description;
+    createdCustomerCategoryColor = color;
+    final created = CustomerCategoryDto(
+      id: 'cat-new-test',
+      name: name,
+      description: description,
+      color: color,
+      isActive: true,
+    );
+    categories.add(created);
+    return created;
+  }
+
+  @override
+  Future<CustomerCategoryDto> updateCustomerCategory({
+    required String id,
+    required String name,
+    String? description,
+    String? color,
+    bool isActive = true,
+  }) async =>
+      CustomerCategoryDto(
+        id: id,
+        name: name,
+        description: description,
+        color: color,
+        isActive: isActive,
+      );
+
+  @override
+  Future<void> deleteCustomerCategory(String id) async {}
 }
 
 class _SavedContact {
@@ -1826,4 +1958,24 @@ class _RecordingConfigurationApi implements ConfigurationApi {
       name: 'Escazú',
     ),
   ];
+
+  @override
+  Future<List<CustomerCategoryDto>> getCustomerCategories({
+    bool includeInactive = false,
+  }) async => const [];
+
+  @override
+  Future<CustomerCategoryDto> createCustomerCategory(
+    CreateCustomerCategoryCommand command,
+  ) async => throw UnimplementedError();
+
+  @override
+  Future<CustomerCategoryDto> updateCustomerCategory(
+    UpdateCustomerCategoryCommand command,
+  ) async => throw UnimplementedError();
+
+  @override
+  Future<void> deleteCustomerCategory(
+    DeleteCustomerCategoryCommand command,
+  ) async {}
 }

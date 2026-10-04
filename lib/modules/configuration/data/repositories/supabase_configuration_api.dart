@@ -63,6 +63,19 @@ class SupabaseConfigurationApi implements ConfigurationApi {
   }
 
   @override
+  Future<List<CustomerCategoryDto>> getCustomerCategories({
+    bool includeInactive = false,
+  }) async {
+    final query = _client.from('customer_categories').select();
+    final rows = await (includeInactive
+        ? query.order('name')
+        : query.eq('is_active', true).order('name'));
+    return rows
+        .map((r) => _customerCategory(Map<String, dynamic>.from(r as Map)))
+        .toList();
+  }
+
+  @override
   Future<List<CountryDto>> getCountries() async {
     final response = await _client
         .from('countries')
@@ -349,6 +362,48 @@ class SupabaseConfigurationApi implements ConfigurationApi {
     return _client.storage.from('catalog-assets').download(objectName);
   }
 
+  @override
+  Future<CustomerCategoryDto> createCustomerCategory(
+    CreateCustomerCategoryCommand command,
+  ) async {
+    final row = await _client.rpc<dynamic>(
+      'create_customer_category',
+      params: {
+        'p_name': command.name,
+        'p_description': command.description,
+        'p_color': command.color,
+      },
+    );
+    return _customerCategory(Map<String, dynamic>.from(row as Map));
+  }
+
+  @override
+  Future<CustomerCategoryDto> updateCustomerCategory(
+    UpdateCustomerCategoryCommand command,
+  ) async {
+    final row = await _client.rpc<dynamic>(
+      'update_customer_category',
+      params: {
+        'p_id': command.id,
+        'p_name': command.name,
+        'p_description': command.description,
+        'p_color': command.color,
+        'p_is_active': command.isActive,
+      },
+    );
+    return _customerCategory(Map<String, dynamic>.from(row as Map));
+  }
+
+  @override
+  Future<void> deleteCustomerCategory(
+    DeleteCustomerCategoryCommand command,
+  ) async {
+    await _client.rpc<dynamic>(
+      'delete_customer_category',
+      params: {'p_id': command.id},
+    );
+  }
+
   Map<String, dynamic> _identity(IdentityContext identity) => {
     'p_actor_name': identity.actorName,
     'p_device_name': identity.deviceName,
@@ -469,4 +524,7 @@ class SupabaseConfigurationApi implements ConfigurationApi {
     name: row['name'] as String,
     isActive: row['is_active'] as bool? ?? true,
   );
+
+  CustomerCategoryDto _customerCategory(Map<String, dynamic> row) =>
+      CustomerCategoryDto.fromJson(row);
 }

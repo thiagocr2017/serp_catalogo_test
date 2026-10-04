@@ -196,4 +196,36 @@ class SupabaseCustomerApi implements CustomerApi {
   @override
   Future<List<CustomerCategoryDto>> getCustomerCategories() =>
       _source.getCustomerCategories();
+
+  @override
+  Future<CustomerCategoryDto> createCustomerCategory({
+    required String name,
+    String? description,
+    String? color,
+  }) =>
+      _source.createCustomerCategory(
+        name: name,
+        description: description,
+        color: color,
+      );
+
+  @override
+  Future<CustomerCategoryDto> updateCustomerCategory({
+    required String id,
+    required String name,
+    String? description,
+    String? color,
+    bool isActive = true,
+  }) =>
+      _source.updateCustomerCategory(
+        id: id,
+        name: name,
+        description: description,
+        color: color,
+        isActive: isActive,
+      );
+
+  @override
+  Future<void> deleteCustomerCategory(String id) =>
+      _source.deleteCustomerCategory(id);
 }

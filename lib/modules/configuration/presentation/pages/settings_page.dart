@@ -385,6 +385,68 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
               },
             ),
         const SizedBox(height: 28),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Categorías comerciales de clientes',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: () => _editCustomerCategory(),
+              icon: const Icon(Icons.add),
+              label: const Text('Nueva categoría'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Organiza los clientes por segmentos comerciales (ej. Mayorista, '
+          'Detallista, Distribuidor). Puedes asignarles un color para identificarlos fácilmente.',
+        ),
+        const SizedBox(height: 16),
+        ref
+            .watch(customerCategoriesAdminDtosProvider)
+            .when(
+              loading: () => const LinearProgressIndicator(),
+              error: (error, _) => Text('No se pudieron cargar: $error'),
+              data: (items) {
+                if (items.isEmpty) {
+                  return const Text(
+                    'No hay categorías comerciales registradas.',
+                  );
+                }
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final item in items)
+                      ActionChip(
+                        avatar:
+                            item.color != null &&
+                                    _tryParseColor(item.color) != null
+                                ? CircleAvatar(
+                                  radius: 8,
+                                  backgroundColor: _tryParseColor(item.color),
+                                )
+                                : Icon(
+                                  item.isActive
+                                      ? Icons.label_outline
+                                      : Icons.label_off_outlined,
+                                  size: 18,
+                                ),
+                        label: Text(
+                          item.isActive ? item.name : '${item.name} (inactiva)',
+                        ),
+                        tooltip: 'Editar categoría comercial',
+                        onPressed: () => _editCustomerCategory(item),
+                      ),
+                  ],
+                );
+              },
+            ),
+        const SizedBox(height: 28),
         Text(
           'Precios e impuestos',
           style: Theme.of(context).textTheme.headlineSmall,
@@ -1099,6 +1161,296 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     }
   }
 
+  Future<void> _editCustomerCategory([CustomerCategoryDto? existing]) async {
+    final name = TextEditingController(text: existing?.name ?? '');
+    final description = TextEditingController(
+      text: existing?.description ?? '',
+    );
+    String? selectedColor = existing?.color;
+    String? nameError;
+    var isActive = existing?.isActive ?? true;
+    var dirty = false;
+    final accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          void markDirty() {
+            if (dirty) return;
+            setDialogState(() => dirty = true);
+          }
+
+          Future<void> cancel() async {
+            final navigator = Navigator.of(context);
+            final discard = await UnsavedChangesGuard.instance.confirmDiscard(
+              context,
+              hasUnsavedChanges: dirty,
+            );
+            if (discard && context.mounted) navigator.pop(false);
+          }
+
+          Future<void> submit() async {
+            if (name.text.trim().isEmpty) {
+              setDialogState(
+                () => nameError = 'Escriba el nombre de la categoría.',
+              );
+              return;
+            }
+            final api = ref.read(configurationApiProvider);
+            try {
+              if (existing == null) {
+                await api.createCustomerCategory(
+                  CreateCustomerCategoryCommand(
+                    name: name.text.trim(),
+                    description: _optional(description.text),
+                    color: selectedColor,
+                  ),
+                );
+              } else {
+                await api.updateCustomerCategory(
+                  UpdateCustomerCategoryCommand(
+                    id: existing.id,
+                    name: name.text.trim(),
+                    description: _optional(description.text),
+                    color: selectedColor,
+                    isActive: isActive,
+                  ),
+                );
+              }
+              if (context.mounted) Navigator.pop(context, true);
+            } catch (error) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'No fue posible guardar: '
+                      '${_friendlyConfigurationError(error)}',
+                    ),
+                  ),
+                );
+              }
+            }
+          }
+
+          Future<void> deleteCategory() async {
+            if (existing == null) return;
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Eliminar categoría comercial'),
+                content: Text(
+                  '¿Desea eliminar la categoría "${existing.name}"? '
+                  'Si ya está asociada a clientes, deberá desactivarla en su lugar.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancelar'),
+                  ),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(ctx).colorScheme.error,
+                      foregroundColor: Theme.of(ctx).colorScheme.onError,
+                    ),
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => Navigator.pop(ctx, true),
+                    label: const Text('Eliminar'),
+                  ),
+                ],
+              ),
+            );
+            if (confirm != true || !context.mounted) return;
+            try {
+              await ref
+                  .read(configurationApiProvider)
+                  .deleteCustomerCategory(
+                    DeleteCustomerCategoryCommand(id: existing.id),
+                  );
+              if (context.mounted) Navigator.pop(context, true);
+            } catch (error) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'No fue posible eliminar la categoría: '
+                      '${_friendlyConfigurationError(error)}',
+                    ),
+                  ),
+                );
+              }
+            }
+          }
+
+          const colorPresets = [
+            '#1E88E5',
+            '#43A047',
+            '#FB8C00',
+            '#E53935',
+            '#8E24AA',
+            '#00ACC1',
+            '#3949AB',
+            '#D81B60',
+            '#546E7A',
+          ];
+
+          return PopScope(
+            canPop: !dirty,
+            onPopInvokedWithResult: (didPop, _) async {
+              if (didPop) return;
+              await cancel();
+            },
+            child: AlertDialog(
+              title: Text(
+                existing == null
+                    ? 'Nueva categoría comercial'
+                    : 'Editar categoría comercial',
+              ),
+              content: SizedBox(
+                width: 440,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: name,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          labelText: 'Nombre *',
+                          hintText: 'Mayorista, Detallista, etc.',
+                          errorText: nameError,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: (_) {
+                          markDirty();
+                          if (nameError != null) {
+                            setDialogState(() => nameError = null);
+                          }
+                        },
+                        onSubmitted: (_) => submit(),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: description,
+                        decoration: const InputDecoration(
+                          labelText: 'Descripción',
+                          hintText: 'Criterios de asignación o notas',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => markDirty(),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Color identificativo',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Ninguno'),
+                            selected: selectedColor == null,
+                            onSelected: (selected) {
+                              if (selected) {
+                                markDirty();
+                                setDialogState(() => selectedColor = null);
+                              }
+                            },
+                          ),
+                          for (final hex in colorPresets)
+                            GestureDetector(
+                              onTap: () {
+                                markDirty();
+                                setDialogState(() => selectedColor = hex);
+                              },
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: _tryParseColor(hex),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: selectedColor == hex
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Colors.transparent,
+                                    width: selectedColor == hex ? 3 : 1,
+                                  ),
+                                ),
+                                child: selectedColor == hex
+                                    ? const Icon(
+                                        Icons.check,
+                                        size: 18,
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (existing != null) ...[
+                        const SizedBox(height: 16),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Activa'),
+                          subtitle: const Text(
+                            'Las categorías inactivas no se muestran para seleccionar en clientes nuevos.',
+                          ),
+                          value: isActive,
+                          onChanged: (value) {
+                            markDirty();
+                            setDialogState(() => isActive = value);
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.error,
+                            ),
+                            icon: const Icon(Icons.delete_outline),
+                            label: const Text('Eliminar categoría'),
+                            onPressed: deleteCategory,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: cancel, child: const Text('Cancelar')),
+                FilledButton(onPressed: submit, child: const Text('Guardar')),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      name.dispose();
+      description.dispose();
+    });
+    if (accepted == true) {
+      ref.invalidate(customerCategoriesAdminDtosProvider);
+      ref.invalidate(customerCategoriesDtosProvider);
+    }
+  }
+
+  Color? _tryParseColor(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    final clean = hex.replaceAll('#', '');
+    if (clean.length == 6) {
+      final value = int.tryParse('FF$clean', radix: 16);
+      if (value != null) return Color(value);
+    }
+    return null;
+  }
+
   String? _optional(String value) {
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
@@ -1109,11 +1461,14 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     if (text.contains('PRESENTATION_IN_USE')) {
       return 'hay productos usando esta presentación. Cambia esos productos a otra presentación antes de desactivarla.';
     }
+    if (text.contains('CATEGORY_IN_USE')) {
+      return 'la categoría está asignada a uno o más clientes. Desactívala en su lugar para no afectar el historial.';
+    }
     if (text.contains('VERSION_CONFLICT')) {
-      return 'la presentación fue modificada en otra ventana. Recarga e intenta de nuevo.';
+      return 'el registro fue modificado en otra ventana. Recarga e intenta de nuevo.';
     }
     if (text.contains('NOT_FOUND')) {
-      return 'la presentación ya no existe o ya fue desactivada.';
+      return 'el registro ya no existe o ya fue desactivado.';
     }
     return text;
   }

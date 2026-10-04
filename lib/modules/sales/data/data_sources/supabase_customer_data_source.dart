@@ -365,6 +365,49 @@ class SupabaseCustomerDataSource {
     return rows.map((r) => CustomerCategoryDto.fromJson(r)).toList();
   }
 
+  Future<CustomerCategoryDto> createCustomerCategory({
+    required String name,
+    String? description,
+    String? color,
+  }) async {
+    final row = await _client.rpc<dynamic>(
+      'create_customer_category',
+      params: {
+        'p_name': name,
+        'p_description': description,
+        'p_color': color,
+      },
+    );
+    return CustomerCategoryDto.fromJson(Map<String, dynamic>.from(row as Map));
+  }
+
+  Future<CustomerCategoryDto> updateCustomerCategory({
+    required String id,
+    required String name,
+    String? description,
+    String? color,
+    bool isActive = true,
+  }) async {
+    final row = await _client.rpc<dynamic>(
+      'update_customer_category',
+      params: {
+        'p_id': id,
+        'p_name': name,
+        'p_description': description,
+        'p_color': color,
+        'p_is_active': isActive,
+      },
+    );
+    return CustomerCategoryDto.fromJson(Map<String, dynamic>.from(row as Map));
+  }
+
+  Future<void> deleteCustomerCategory(String id) async {
+    await _client.rpc<dynamic>(
+      'delete_customer_category',
+      params: {'p_id': id},
+    );
+  }
+
   Customer _customer(
     Map<String, dynamic> row, {
     List<String> categoryIds = const [],

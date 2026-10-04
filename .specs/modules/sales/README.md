@@ -18,6 +18,10 @@ El SDD historico vive en `sdd-historical.md`.
   para el perfil/display del cliente.
 - `customer-management/4.customer-rankings.spec.md`: rankings comerciales por
   monto, frecuencia y LTV.
+- `customer-management/5.ux-ui-roadmap.md`: hoja de ruta UX/UI transversal para
+  lista, formulario y perfil de clientes.
+- `customer-management/6.customer-business-db.spec.md`: reglas de negocio y
+  contrato DB de Clientes, con matriz de cobertura pgTAP.
 - `shipping/1.customer-shipping.spec.md`: borrador de envio, guias y rotulos.
 
 ## Regla para Clientes
@@ -29,6 +33,11 @@ canonico de las 44 decisiones esta en
 El rediseño de Clientes ya puede implementarse. Antes de hacerlo hay que leer
 ese registro: fija datos fiscales, identificacion, geografia, envio, rankings,
 alertas del perfil y la estructura de la guia de carga.
+
+La UX de lista, formulario y perfil se ejecuta como un solo cambio de pantallas.
+Las reglas persistentes y sus pruebas pgTAP se especifican por separado en
+`customer-management/6.customer-business-db.spec.md`; la UX debe consumir ese
+contrato y no mezclar cambios de migraciones/RPC en el cambio de pantallas.
 
 Quedan sueltas solo dos preguntas menores del PIN de aprobacion (longitud y
 modo de entrega), en

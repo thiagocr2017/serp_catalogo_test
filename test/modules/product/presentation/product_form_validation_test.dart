@@ -457,4 +457,24 @@ class _FakeConfigurationApi implements ConfigurationApi {
     String countryCode = 'CR',
     String? provinceName,
   }) async => const [];
+
+  @override
+  Future<List<CustomerCategoryDto>> getCustomerCategories({
+    bool includeInactive = false,
+  }) async => const [];
+
+  @override
+  Future<CustomerCategoryDto> createCustomerCategory(
+    CreateCustomerCategoryCommand command,
+  ) async => throw UnimplementedError();
+
+  @override
+  Future<CustomerCategoryDto> updateCustomerCategory(
+    UpdateCustomerCategoryCommand command,
+  ) async => throw UnimplementedError();
+
+  @override
+  Future<void> deleteCustomerCategory(
+    DeleteCustomerCategoryCommand command,
+  ) async {}
 }

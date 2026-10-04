@@ -175,3 +175,28 @@ class CityDto {
   final String name;
   final bool isActive;
 }
+
+class CustomerCategoryDto {
+  const CustomerCategoryDto({
+    required this.id,
+    required this.name,
+    this.description,
+    this.color,
+    this.isActive = true,
+  });
+
+  factory CustomerCategoryDto.fromJson(Map<String, dynamic> json) =>
+      CustomerCategoryDto(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        description: json['description'] as String?,
+        color: json['color'] as String?,
+        isActive: json['is_active'] as bool? ?? true,
+      );
+
+  final String id;
+  final String name;
+  final String? description;
+  final String? color;
+  final bool isActive;
+}

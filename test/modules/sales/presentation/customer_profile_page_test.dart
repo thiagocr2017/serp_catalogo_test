@@ -6,6 +6,7 @@ import 'package:serp/modules/configuration/configuration_module.dart';
 import 'package:serp/modules/sales/api/customer_api.dart';
 import 'package:serp/modules/sales/api/sales_routes.dart';
 import 'package:serp/modules/sales/presentation/pages/customer_profile_page.dart';
+import 'package:serp/shared/widgets/desktop_shell_widget.dart';
 
 void main() {
   testWidgets('perfil renderiza datos generales y contactos', (tester) async {
@@ -57,6 +58,45 @@ void main() {
     expect(find.text('Sin actividad'), findsOneWidget);
     expect(find.text('Factura electronica'), findsOneWidget);
     expect(find.text('No'), findsOneWidget);
+  });
+
+  testWidgets('perfil vuelve a la lista de clientes', (tester) async {
+    final api = _FakeCustomerApi(
+      customers: const [
+        CustomerDto(id: 'customer-1', name: 'Cliente de Prueba'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      _shellRoutesApp(api, '/sales/customers/customer-1'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Volver a clientes'), findsOneWidget);
+    await tester.tap(find.text('Volver a clientes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mostrando 1 de 1 clientes'), findsOneWidget);
+    expect(find.text('Cliente de Prueba'), findsOneWidget);
+  });
+
+  testWidgets('menu Clientes navega al indice desde el perfil', (tester) async {
+    final api = _FakeCustomerApi(
+      customers: const [
+        CustomerDto(id: 'customer-1', name: 'Cliente de Prueba'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      _shellRoutesApp(api, '/sales/customers/customer-1'),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Clientes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mostrando 1 de 1 clientes'), findsOneWidget);
+    expect(find.text('Perfil de cliente'), findsNothing);
   });
 
   testWidgets('perfil muestra los datos fiscales de factura electronica', (
@@ -144,15 +184,62 @@ void main() {
     },
   );
 
+  testWidgets('perfil ordena alertas financieras antes de otras alertas', (
+    tester,
+  ) async {
+    final api = _FakeCustomerApi(
+      customers: const [
+        CustomerDto(
+          id: 'customer-1',
+          name: 'Cliente Riesgoso',
+          isActive: false,
+          deactivationReason: 'Revision comercial',
+          customerType: 'CREDIT',
+          creditLimit: 500,
+          currentBalance: 500,
+        ),
+      ],
+      summary: const CustomerCommercialSummaryDto(
+        customerId: 'customer-1',
+        overdueInvoicesCount: 1,
+        overdueInvoicesAmount: 75.0,
+        totalPendingDocuments: 2,
+      ),
+    );
+
+    await tester.pumpWidget(_profileApp(api, 'customer-1'));
+    await tester.pumpAndSettle();
+
+    final alertTitles = tester
+        .widgetList<ListTile>(find.byType(ListTile))
+        .map((tile) => tile.title)
+        .whereType<Text>()
+        .map((title) => title.data)
+        .whereType<String>()
+        .where(
+          {
+            'Credito vencido',
+            'Sobre limite de credito',
+            'Cliente inactivo',
+            'Documentos pendientes',
+          }.contains,
+        )
+        .toList();
+
+    expect(alertTitles, [
+      'Credito vencido',
+      'Sobre limite de credito',
+      'Cliente inactivo',
+      'Documentos pendientes',
+    ]);
+  });
+
   testWidgets(
     'perfil muestra ultima compra y productos frecuentes cuando existen',
     (tester) async {
       final api = _FakeCustomerApi(
         customers: const [
-          CustomerDto(
-            id: 'customer-1',
-            name: 'Cliente Con Historial',
-          ),
+          CustomerDto(id: 'customer-1', name: 'Cliente Con Historial'),
         ],
         summary: CustomerCommercialSummaryDto(
           customerId: 'customer-1',
@@ -234,6 +321,79 @@ void main() {
       expect(find.text('Compra Recurrente'), findsOneWidget);
     },
   );
+
+  testWidgets('perfil muestra vacios especificos por pestana de documentos', (
+    tester,
+  ) async {
+    final api = _FakeCustomerApi(
+      customers: const [
+        CustomerDto(id: 'customer-1', name: 'Cliente Sin Documentos'),
+      ],
+    );
+
+    await tester.pumpWidget(_profileApp(api, 'customer-1'));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -1200));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sin pedidos abiertos'), findsOneWidget);
+
+    await tester.tap(find.text('Facturas'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sin facturas'), findsOneWidget);
+
+    await tester.tap(find.text('Pagos'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sin pagos registrados'), findsOneWidget);
+  });
+
+  testWidgets('lista muestra resultados, filtros activos y limpiar filtros', (
+    tester,
+  ) async {
+    final api = _FakeCustomerApi(
+      customers: const [
+        CustomerDto(id: 'customer-1', name: 'Distribuidora Legal S.A.'),
+        CustomerDto(
+          id: 'customer-2',
+          name: 'Cliente Norte',
+          province: 'Heredia',
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_routesApp(api));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mostrando 2 de 2 clientes'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'zzzz');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mostrando 0 de 2 clientes'), findsOneWidget);
+    expect(find.text('Sin resultados'), findsOneWidget);
+    expect(
+      find.widgetWithText(OutlinedButton, 'Limpiar filtros'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Limpiar filtros'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mostrando 2 de 2 clientes'), findsOneWidget);
+    expect(find.text('Distribuidora Legal S.A.'), findsOneWidget);
+    expect(find.text('Cliente Norte'), findsOneWidget);
+  });
+
+  testWidgets('lista sin clientes muestra CTA para crear el primero', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_routesApp(const _FakeCustomerApi()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No hay clientes registrados'), findsOneWidget);
+    expect(find.text('Crear primer cliente'), findsOneWidget);
+  });
 }
 
 Widget _profileApp(_FakeCustomerApi api, String customerId) => ProviderScope(
@@ -264,6 +424,38 @@ Widget _routesApp(_FakeCustomerApi api) => ProviderScope(
   ),
 );
 
+Widget _shellRoutesApp(_FakeCustomerApi api, String initialLocation) =>
+    ProviderScope(
+      overrides: [
+        customerApiProvider.overrideWithValue(api),
+        identificationTypeDtosProvider.overrideWith(
+          (ref) async => const [
+            IdentificationTypeDto(
+              id: 'type-1',
+              code: 'JURIDICAL_ID',
+              name: 'Cedula juridica',
+              isActive: true,
+              version: 1,
+            ),
+          ],
+        ),
+      ],
+      child: MaterialApp.router(
+        routerConfig: GoRouter(
+          initialLocation: initialLocation,
+          routes: [
+            ShellRoute(
+              builder: (context, state, child) => DesktopShellWidget(
+                currentLocation: state.uri.path,
+                child: child,
+              ),
+              routes: salesRoutes,
+            ),
+          ],
+        ),
+      ),
+    );
+
 class _FakeCustomerApi implements CustomerApi {
   const _FakeCustomerApi({
     this.customers = const [],
@@ -282,7 +474,9 @@ class _FakeCustomerApi implements CustomerApi {
       customers.where((customer) => customer.id == id).firstOrNull;
 
   @override
-  Future<List<CustomerContactDto>> getCustomerContacts(String customerId) async =>
+  Future<List<CustomerContactDto>> getCustomerContacts(
+    String customerId,
+  ) async =>
       contacts.where((contact) => contact.customerId == customerId).toList();
 
   @override
@@ -374,11 +568,29 @@ class _FakeCustomerApi implements CustomerApi {
   @override
   Future<CustomerCommercialSummaryDto> getCustomerCommercialSummary(
     String customerId,
-  ) async =>
-      summary ?? CustomerCommercialSummaryDto.empty(customerId);
+  ) async => summary ?? CustomerCommercialSummaryDto.empty(customerId);
 
   @override
   Future<List<CustomerCategoryDto>> getCustomerCategories() async => const [];
+
+  @override
+  Future<CustomerCategoryDto> createCustomerCategory({
+    required String name,
+    String? description,
+    String? color,
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<CustomerCategoryDto> updateCustomerCategory({
+    required String id,
+    required String name,
+    String? description,
+    String? color,
+    bool isActive = true,
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<void> deleteCustomerCategory(String id) async {}
 
   final CustomerCommercialSummaryDto? summary;
 }

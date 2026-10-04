@@ -42,8 +42,8 @@ select has_column('public','customers','economic_activity','customers tiene econ
 -- Crear cliente con datos fiscales
 select is(
   (public.create_customer(
-    'Cliente Fiscal', null, null, null, null, '123456789',
-    null, null, null, null::uuid, 'CASH', null, 'E_INVOICE',
+    'Cliente Fiscal', 'Fantasia Fiscal', '88887777', null, 'San José', '123456789',
+    null, 'CR', 'San José', null, 'Gira Central', null::uuid, 'CASH', null, 'E_INVOICE',
     false::boolean,
     (select id from public.identification_types where code = 'JURIDICAL_ID'),
     'Venta al por mayor',
@@ -69,8 +69,8 @@ select is(
 select is(
   (public.update_customer(
     (select id from public.customers where name = 'Cliente Fiscal'),
-    'Cliente Fiscal'::text, null::text, null::text, null::text, null::text, '123456789'::text,
-    null::numeric, null::text, null::text, null::uuid, 'CASH'::text, null::int, 'E_INVOICE'::text,
+    'Cliente Fiscal'::text, 'Fantasia Fiscal'::text, '88887777'::text, null::text, 'San José'::text, '123456789'::text,
+    null::numeric, 'CR'::text, 'San José'::text, null::text, 'Gira Central'::text, null::uuid, 'CASH'::text, null::int, 'E_INVOICE'::text,
     false::boolean,
     (select id from public.identification_types where code = 'PHYSICAL_ID'),
     'Venta al por menor'::text,
@@ -83,8 +83,8 @@ select is(
 -- Tipo de identificacion inactivo o inexistente debe fallar
 select throws_ok(
   $$select public.create_customer(
-    'Cliente Mal', null, null, null, null, '0',
-    null, null, null, null::uuid, 'CASH', null, 'E_INVOICE',
+    'Cliente Mal', 'Fantasia Mal', '88887777', null, 'San José', '0',
+    null, 'CR', 'San José', null, 'Gira Central', null::uuid, 'CASH', null, 'E_INVOICE',
     false::boolean,
     '00000000-0000-0000-0000-000000000000'::uuid,
     'Actividad',
@@ -108,8 +108,8 @@ select is(
 
 select is(
   (public.create_customer(
-    'Cliente FE', null, null, 'fe@example.com', 'Av. Central 1', '333444555',
-    null, null, null, null::uuid, 'CASH', null, 'E_INVOICE',
+    'Cliente FE', 'Fantasia FE', '88887777', 'fe@example.com', 'Av. Central 1', '333444555',
+    null, 'CR', 'San José', null, 'Gira Central', null::uuid, 'CASH', null, 'E_INVOICE',
     true::boolean,
     (select id from public.identification_types where code = 'NITE'),
     'Servicios',
@@ -121,8 +121,8 @@ select is(
 
 select throws_ok(
   $$select public.create_customer(
-    'Cliente FE Incompleto', null, null, null, null, null,
-    null, null, null, null::uuid, 'CASH', null, 'E_INVOICE',
+    'Cliente FE Incompleto', 'Fantasia FE', '88887777', 'fe@example.com', 'Av. Central 1', '',
+    null, 'CR', 'San José', null, 'Gira Central', null::uuid, 'CASH', null, 'E_INVOICE',
     true::boolean,
     null::uuid,
     'Servicios',
@@ -134,14 +134,14 @@ select throws_ok(
 
 select throws_ok(
   $$select public.create_customer(
-    'Cliente FE Sin Direccion', null, null, 'fe2@example.com', null, '111222333',
-    null, null, null, null::uuid, 'CASH', null, 'E_INVOICE',
+    'Cliente FE Sin Direccion', 'Fantasia FE', '88887777', 'fe2@example.com', '', '111222333',
+    null, 'CR', 'San José', null, 'Gira Central', null::uuid, 'CASH', null, 'E_INVOICE',
     true::boolean,
     (select id from public.identification_types where code = 'NITE'),
     'Servicios',
     'actor','device','device'
   )$$,
-  'P0001','E_INVOICE_ADDRESS_REQUIRED',
+  'P0001','ADDRESS_REQUIRED',
   'factura electronica exige direccion'
 );
 

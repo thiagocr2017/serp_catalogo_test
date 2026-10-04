@@ -21,6 +21,19 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
   String _statusFilter = 'ALL';
   String _typeFilter = 'ALL';
 
+  bool get _hasActiveFilters =>
+      _search.text.trim().isNotEmpty ||
+      _statusFilter != 'ALL' ||
+      _typeFilter != 'ALL';
+
+  void _clearFilters() {
+    setState(() {
+      _search.clear();
+      _statusFilter = 'ALL';
+      _typeFilter = 'ALL';
+    });
+  }
+
   @override
   void dispose() {
     _search.dispose();
@@ -35,6 +48,7 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
       appBar: AppBar(title: const Text('Clientes')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.go('/sales/customers/new'),
+        tooltip: 'Crear nuevo cliente',
         icon: const Icon(Icons.add),
         label: const Text('Nuevo cliente'),
       ),
@@ -43,7 +57,13 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (customers) {
           if (customers.isEmpty) {
-            return const Center(child: Text('No hay clientes registrados.'));
+            return _CustomerListEmptyState(
+              title: 'No hay clientes registrados',
+              message: 'Crea el primer cliente para empezar a vender, facturar y consultar su perfil.',
+              actionLabel: 'Crear primer cliente',
+              icon: Icons.person_add_alt_1_outlined,
+              onPressed: () => context.go('/sales/customers/new'),
+            );
           }
           final query = _search.text.trim().toLowerCase();
           final filtered = customers.where((customer) {
@@ -80,71 +100,100 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
                 children: [
                   SizedBox(
                     width: 360,
-                    child: TextField(
-                      controller: _search,
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.search),
-                        labelText: 'Buscar cliente',
-                        hintText: 'Nombre, fantasía, teléfono, correo, gira...',
-                        border: OutlineInputBorder(),
+                    child: Semantics(
+                      label: 'Buscar cliente por nombre, fantasia, telefono, correo o gira',
+                      textField: true,
+                      child: TextField(
+                        controller: _search,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search),
+                          labelText: 'Buscar cliente',
+                          hintText:
+                              'Nombre, fantasía, teléfono, correo, gira...',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => setState(() {}),
                       ),
-                      onChanged: (_) => setState(() {}),
                     ),
                   ),
                   SizedBox(
                     width: 180,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _statusFilter,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Estado',
-                        border: OutlineInputBorder(),
+                    child: Semantics(
+                      label: 'Filtrar clientes por estado',
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _statusFilter,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Estado',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'ALL', child: Text('Todos')),
+                          DropdownMenuItem(
+                            value: 'ACTIVE',
+                            child: Text('Activos'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'INACTIVE',
+                            child: Text('Inactivos'),
+                          ),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => _statusFilter = value ?? 'ALL'),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'ALL', child: Text('Todos')),
-                        DropdownMenuItem(
-                          value: 'ACTIVE',
-                          child: Text('Activos'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'INACTIVE',
-                          child: Text('Inactivos'),
-                        ),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => _statusFilter = value ?? 'ALL'),
                     ),
                   ),
                   SizedBox(
                     width: 180,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _typeFilter,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Tipo',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'ALL', child: Text('Todos')),
-                        DropdownMenuItem(value: 'CASH', child: Text('Contado')),
-                        DropdownMenuItem(
-                          value: 'CREDIT',
-                          child: Text('Crédito'),
+                    child: Semantics(
+                      label: 'Filtrar clientes por tipo',
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _typeFilter,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Tipo',
+                          border: OutlineInputBorder(),
                         ),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => _typeFilter = value ?? 'ALL'),
+                        items: const [
+                          DropdownMenuItem(value: 'ALL', child: Text('Todos')),
+                          DropdownMenuItem(
+                            value: 'CASH',
+                            child: Text('Contado'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'CREDIT',
+                            child: Text('Crédito'),
+                          ),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => _typeFilter = value ?? 'ALL'),
+                      ),
                     ),
                   ),
+                  Text(
+                    'Mostrando ${filtered.length} de ${customers.length} clientes',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  if (_hasActiveFilters)
+                    Semantics(
+                      button: true,
+                      label: 'Limpiar busqueda y filtros de clientes',
+                      child: OutlinedButton.icon(
+                        onPressed: _clearFilters,
+                        icon: const Icon(Icons.filter_alt_off_outlined),
+                        label: const Text('Limpiar filtros'),
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 16),
               if (filtered.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(32),
-                  child: Center(
-                    child: Text('No hay clientes para ese filtro.'),
-                  ),
+                _CustomerListEmptyState(
+                  title: 'Sin resultados',
+                  message: 'No encontramos clientes con esa busqueda o filtros. Ajusta los criterios o vuelve a ver todos.',
+                  actionLabel: 'Limpiar filtros',
+                  icon: Icons.manage_search_outlined,
+                  onPressed: _clearFilters,
                 ),
               for (final customer in filtered) ...[
                 Builder(
@@ -155,39 +204,43 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
                       if (customer.province?.trim().isNotEmpty == true)
                         customer.province!.trim(),
                     ].join(' · ');
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          child: Text(
-                            customer.name.characters.first.toUpperCase(),
+                    final visibleName =
+                        customer.displayName?.trim().isNotEmpty == true
+                        ? '${customer.displayName} · ${customer.name}'
+                        : customer.name;
+                    return Semantics(
+                      button: true,
+                      label: 'Abrir perfil de cliente $visibleName',
+                      child: Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            child: Text(
+                              customer.name.characters.first.toUpperCase(),
+                            ),
                           ),
+                          title: Text(visibleName),
+                          subtitle: Text(
+                            [
+                              customer.customerType == 'CREDIT'
+                                  ? 'Crédito${customer.creditDays == null ? '' : ' · ${customer.creditDays} días'}'
+                                  : 'Contado',
+                              if (place.isNotEmpty) place,
+                              displayPhone(customer.phone).isNotEmpty
+                                  ? displayPhone(customer.phone)
+                                  : customer.email ?? '',
+                            ].where((part) => part.isNotEmpty).join('\n'),
+                          ),
+                          isThreeLine: place.isNotEmpty,
+                          trailing: StatusChip(
+                            label: customer.isActive ? 'Activo' : 'Inactivo',
+                            tone: customer.isActive
+                                ? StatusTone.success
+                                : StatusTone.danger,
+                          ),
+                          onTap: () =>
+                              context.go('/sales/customers/${customer.id}'),
                         ),
-                        title: Text(
-                          customer.displayName?.trim().isNotEmpty == true
-                              ? '${customer.displayName} · ${customer.name}'
-                              : customer.name,
-                        ),
-                        subtitle: Text(
-                          [
-                            customer.customerType == 'CREDIT'
-                                ? 'Crédito${customer.creditDays == null ? '' : ' · ${customer.creditDays} días'}'
-                                : 'Contado',
-                            if (place.isNotEmpty) place,
-                            displayPhone(customer.phone).isNotEmpty
-                                ? displayPhone(customer.phone)
-                                : customer.email ?? '',
-                          ].where((part) => part.isNotEmpty).join('\n'),
-                        ),
-                        isThreeLine: place.isNotEmpty,
-                        trailing: StatusChip(
-                          label: customer.isActive ? 'Activo' : 'Inactivo',
-                          tone: customer.isActive
-                              ? StatusTone.success
-                              : StatusTone.danger,
-                        ),
-                        onTap: () =>
-                            context.go('/sales/customers/${customer.id}'),
                       ),
                     );
                   },
@@ -199,6 +252,52 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
       ),
     );
   }
+}
+
+class _CustomerListEmptyState extends StatelessWidget {
+  const _CustomerListEmptyState({
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String title;
+  final String message;
+  final String actionLabel;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 44, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 16),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: onPressed,
+              icon: const Icon(Icons.arrow_forward),
+              label: Text(actionLabel),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _ContactDraft {
@@ -307,6 +406,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
 
   bool _hydrating = false;
   String? _nameError;
+  String? _displayNameError;
   String? _phoneError;
   String? _emailError;
   String? _creditLimitError;
@@ -315,6 +415,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   String? _taxIdError;
   String? _identificationTypeError;
   String? _addressError;
+  String? _giraError;
   String? _economicActivityError;
   late final ScrollController _scrollController;
 
@@ -350,7 +451,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     );
     _customerType = existing?.customerType ?? 'CASH';
     _documentPreference = existing?.documentPreference ?? 'TICKET';
-    _requiresEInvoice = _documentPreference == 'E_INVOICE' || (existing?.requiresEInvoice ?? false);
+    _requiresEInvoice =
+        _documentPreference == 'E_INVOICE' ||
+        (existing?.requiresEInvoice ?? false);
     _shippingPaymentPolicy = existing?.shippingPaymentPolicy ?? 'INCLUDED';
     if (existing != null) _selectedCategoryIds.addAll(existing.categoryIds);
     for (final controller in [
@@ -576,6 +679,10 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       _customerType,
       _documentPreference,
       _requiresEInvoice.toString(),
+      _nameError ?? '',
+      _displayNameError ?? '',
+      _phoneError ?? '',
+      _giraError ?? '',
       _contactsError ?? '',
       _creditDaysError ?? '',
       _taxIdError ?? '',
@@ -628,7 +735,8 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   Widget build(BuildContext context) {
     final existing = _existing;
     final existingGiras = <String>{
-      for (final customer in ref.watch(customersProvider).value ?? <CustomerDto>[])
+      for (final customer
+          in ref.watch(customersProvider).value ?? <CustomerDto>[])
         if (customer.gira?.trim().isNotEmpty == true) customer.gira!.trim(),
     }.toList()..sort();
     return PopScope(
@@ -671,12 +779,18 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                             TextField(
                               key: const ValueKey('customerDisplayNameField'),
                               controller: _displayName,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Nombre fantasía',
                                 hintText:
                                     'Nombre comercial o conocido del negocio',
-                                border: OutlineInputBorder(),
+                                errorText: _displayNameError,
+                                border: const OutlineInputBorder(),
                               ),
+                              onChanged: (_) {
+                                if (_displayNameError != null) {
+                                  setState(() => _displayNameError = null);
+                                }
+                              },
                             ),
                             const SizedBox(height: 12),
                             TextField(
@@ -703,35 +817,34 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                   error: (error, _) => Text(
                                     'No fue posible cargar tipos de documento: $error',
                                   ),
-                                  data: (types) =>
-                                      DropdownButtonFormField<String?>(
-                                        key: ValueKey(
-                                          'customerIdentificationTypeDropdown_$_identificationTypeId',
-                                        ),
-                                        initialValue: _identificationTypeId,
-                                        isExpanded: true,
-                                        decoration: InputDecoration(
-                                          labelText: 'Tipo de documento',
-                                          errorText: _identificationTypeError,
-                                          border: const OutlineInputBorder(),
-                                        ),
-                                        items: [
-                                          const DropdownMenuItem<String?>(
-                                            value: null,
-                                            child: Text('Sin tipo'),
-                                          ),
-                                          for (final type in types)
-                                            DropdownMenuItem<String?>(
-                                              value: type.id,
-                                              child: Text(type.name),
-                                            ),
-                                        ],
-                                        onChanged: (value) => setState(() {
-                                          _identificationTypeId = value;
-                                          _identificationTypeError = null;
-                                          _markDirty();
-                                        }),
+                                  data: (types) => DropdownButtonFormField<String?>(
+                                    key: ValueKey(
+                                      'customerIdentificationTypeDropdown_$_identificationTypeId',
+                                    ),
+                                    initialValue: _identificationTypeId,
+                                    isExpanded: true,
+                                    decoration: InputDecoration(
+                                      labelText: 'Tipo de documento',
+                                      errorText: _identificationTypeError,
+                                      border: const OutlineInputBorder(),
+                                    ),
+                                    items: [
+                                      const DropdownMenuItem<String?>(
+                                        value: null,
+                                        child: Text('Sin tipo'),
                                       ),
+                                      for (final type in types)
+                                        DropdownMenuItem<String?>(
+                                          value: type.id,
+                                          child: Text(type.name),
+                                        ),
+                                    ],
+                                    onChanged: (value) => setState(() {
+                                      _identificationTypeId = value;
+                                      _identificationTypeError = null;
+                                      _markDirty();
+                                    }),
+                                  ),
                                 ),
                             const SizedBox(height: 12),
                             TextField(
@@ -768,8 +881,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                               decoration: InputDecoration(
                                 labelText: 'Actividad económica',
                                 hintText: 'Ej: 464900 o 464900.1 (CIIU)',
-                                helperText:
-                                    'Código CIIU registrado ante Hacienda (normalmente 6 dígitos o ######.#)',
+                                helperText: 'Código CIIU registrado ante Hacienda (normalmente 6 dígitos o ######.#)',
                                 errorText: _economicActivityError,
                                 border: const OutlineInputBorder(),
                               ),
@@ -802,6 +914,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: TextField(
+                                    key: const ValueKey('customerPhoneField'),
                                     controller: _phone,
                                     keyboardType: TextInputType.phone,
                                     inputFormatters: [
@@ -966,9 +1079,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                       .withValues(alpha: 0.25),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .primary
+                                    color: Theme.of(context).colorScheme.primary
                                         .withValues(alpha: 0.35),
                                     width: 1.5,
                                   ),
@@ -1019,32 +1130,35 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                   value: true,
                                   thumbColor:
                                       WidgetStateProperty.resolveWith<Color>(
-                                    (states) => Theme.of(context)
-                                        .colorScheme
-                                        .primary,
-                                  ),
+                                        (states) =>
+                                            Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                      ),
                                   trackColor:
                                       WidgetStateProperty.resolveWith<Color>(
-                                    (states) => Theme.of(context)
-                                        .colorScheme
-                                        .primaryContainer,
-                                  ),
+                                        (states) =>
+                                            Theme.of(context)
+                                                .colorScheme
+                                                .primaryContainer,
+                                      ),
                                   trackOutlineColor:
                                       WidgetStateProperty.resolveWith<Color>(
-                                    (states) => Theme.of(context)
-                                        .colorScheme
-                                        .primary,
-                                  ),
+                                        (states) =>
+                                            Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                      ),
                                   thumbIcon:
                                       WidgetStateProperty.resolveWith<Icon?>(
-                                    (states) => Icon(
-                                      Icons.check,
-                                      size: 14,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onPrimary,
-                                    ),
-                                  ),
+                                        (states) => Icon(
+                                          Icons.check,
+                                          size: 14,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onPrimary,
+                                        ),
+                                      ),
                                   onChanged: null,
                                 ),
                               ),
@@ -1057,6 +1171,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                           icon: Icons.local_shipping_outlined,
                           children: [
                             TextField(
+                              key: const ValueKey('customerAddressField'),
                               controller: _address,
                               decoration: InputDecoration(
                                 labelText: 'Dirección',
@@ -1267,6 +1382,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                               },
                               onSelected: (value) {
                                 _gira.text = value;
+                                if (_giraError != null) {
+                                  setState(() => _giraError = null);
+                                }
                                 _markDirty();
                               },
                               fieldViewBuilder:
@@ -1277,16 +1395,21 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                     onSubmitted,
                                   ) {
                                     return TextField(
+                                      key: const ValueKey('customerGiraField'),
                                       controller: controller,
                                       focusNode: focusNode,
-                                      decoration: const InputDecoration(
+                                      decoration: InputDecoration(
                                         labelText:
                                             'Gira (agrupación comercial)',
                                         hintText: 'P. ej. Gira Sur',
-                                        border: OutlineInputBorder(),
+                                        errorText: _giraError,
+                                        border: const OutlineInputBorder(),
                                       ),
                                       onChanged: (value) {
                                         _gira.text = value;
+                                        if (_giraError != null) {
+                                          setState(() => _giraError = null);
+                                        }
                                         _markDirty();
                                       },
                                     );
@@ -1366,8 +1489,16 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                         _section(
                           title: 'Categorías comerciales',
                           icon: Icons.label_outline,
+                          trailing: TextButton.icon(
+                            key: const ValueKey('customerNewCategoryButton'),
+                            onPressed: _showQuickCreateCategoryDialog,
+                            icon: const Icon(Icons.add),
+                            label: const Text('Nueva categoría'),
+                          ),
                           children: [
-                            ref.watch(customerCategoriesProvider).when(
+                            ref
+                                .watch(customerCategoriesProvider)
+                                .when(
                                   loading: () =>
                                       const LinearProgressIndicator(),
                                   error: (err, _) => Text(
@@ -1375,8 +1506,21 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                   ),
                                   data: (categories) {
                                     if (categories.isEmpty) {
-                                      return const Text(
-                                        'No hay categorías comerciales registradas.',
+                                      return Row(
+                                        children: [
+                                          const Text(
+                                            'No hay categorías comerciales registradas.',
+                                          ),
+                                          const SizedBox(width: 8),
+                                          TextButton.icon(
+                                            onPressed:
+                                                _showQuickCreateCategoryDialog,
+                                            icon: const Icon(Icons.add, size: 16),
+                                            label: const Text(
+                                              'Crear primera categoría',
+                                            ),
+                                          ),
+                                        ],
                                       );
                                     }
                                     return Wrap(
@@ -1388,17 +1532,33 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                             key: ValueKey(
                                               'customerCategoryChip_${cat.name}',
                                             ),
+                                            avatar:
+                                                cat.color != null &&
+                                                        _tryParseColor(
+                                                              cat.color,
+                                                            ) !=
+                                                            null
+                                                    ? CircleAvatar(
+                                                      radius: 6,
+                                                      backgroundColor:
+                                                          _tryParseColor(
+                                                            cat.color,
+                                                          ),
+                                                    )
+                                                    : null,
                                             label: Text(cat.name),
                                             selected: _selectedCategoryIds
                                                 .contains(cat.id),
                                             onSelected: (selected) {
                                               setState(() {
                                                 if (selected) {
-                                                  _selectedCategoryIds
-                                                      .add(cat.id);
+                                                  _selectedCategoryIds.add(
+                                                    cat.id,
+                                                  );
                                                 } else {
-                                                  _selectedCategoryIds
-                                                      .remove(cat.id);
+                                                  _selectedCategoryIds.remove(
+                                                    cat.id,
+                                                  );
                                                 }
                                               });
                                               _markDirty();
@@ -1515,7 +1675,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
+                    color: theme.colorScheme.primaryContainer.withValues(
+                      alpha: 0.6,
+                    ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, size: 20, color: theme.colorScheme.primary),
@@ -1749,6 +1911,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
   Future<void> _save() async {
     bool hasError = false;
     String? newNameError;
+    String? newDisplayNameError;
     String? newPhoneError;
     String? newEmailError;
     String? newContactsError;
@@ -1757,28 +1920,52 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     String? newTaxIdError;
     String? newIdentificationTypeError;
     String? newAddressError;
+    String? newGiraError;
     String? newEconomicActivityError;
 
-    // 1. Nombre fiscal
+    // 1. Nombre fiscal (Mínimo obligatorio)
     if (_name.text.trim().isEmpty) {
-      newNameError = 'Escriba el nombre del negocio.';
+      newNameError = 'Escriba el nombre fiscal del negocio.';
       hasError = true;
     }
 
-    // 2. Teléfono
-    if (_phone.text.trim().isNotEmpty && !isValidLocalPhone(_phone.text)) {
+    // 2. Nombre fantasía (Mínimo obligatorio)
+    if (_displayName.text.trim().isEmpty) {
+      newDisplayNameError = 'Escriba el nombre de fantasía.';
+      hasError = true;
+    }
+
+    // 3. Teléfono de contacto (Mínimo obligatorio)
+    if (_phone.text.trim().isEmpty) {
+      newPhoneError = 'Ingrese el teléfono de contacto.';
+      hasError = true;
+    } else if (!isValidLocalPhone(_phone.text)) {
       newPhoneError = 'Ingrese al menos 8 dígitos.';
       hasError = true;
     }
 
-    // 3. Email principal
+    // 4. Gira / agrupación comercial (Mínimo obligatorio)
+    if (_gira.text.trim().isEmpty) {
+      newGiraError = 'Escriba la gira o agrupación comercial.';
+      hasError = true;
+    }
+
+    // 5. Dirección (Mínimo obligatorio)
+    if (_address.text.trim().isEmpty) {
+      newAddressError = _requiresEInvoice
+          ? 'Requerido para factura electrónica.'
+          : 'Escriba la dirección.';
+      hasError = true;
+    }
+
+    // 6. Email principal (opcional, pero si se ingresa debe ser válido)
     final email = _email.text.trim();
     if (email.isNotEmpty && !_isValidEmail(email)) {
       newEmailError = 'Ingrese un correo válido.';
       hasError = true;
     }
 
-    // 4. Correos en copia
+    // 7. Correos en copia
     bool hasInvalidCopyEmail = false;
     for (final draft in _copyEmails) {
       final copyText = draft.email.text.trim();
@@ -1791,7 +1978,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       }
     }
 
-    // 5. Contactos
+    // 8. Contactos
     if (_contacts.any(
       (draft) =>
           draft.name.text.trim().isEmpty ||
@@ -1804,7 +1991,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       hasError = true;
     }
 
-    // 6. Límite de crédito
+    // 9. Límite de crédito
     final creditLimitText = _creditLimit.text.trim();
     final creditLimit = creditLimitText.isEmpty
         ? null
@@ -1814,7 +2001,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       hasError = true;
     }
 
-    // 7. Días de crédito
+    // 10. Días de crédito
     final creditDaysText = _creditDays.text.trim();
     final creditDays = creditDaysText.isEmpty
         ? null
@@ -1824,7 +2011,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       hasError = true;
     }
 
-    // 8. Requisitos de Factura Electrónica (Alcance completo: Decisión 20)
+    // 11. Requisitos de Factura Electrónica (Alcance completo: Decisión 20)
     if (_requiresEInvoice) {
       if (_taxId.text.trim().isEmpty) {
         newTaxIdError = 'Requerido para factura electrónica.';
@@ -1839,17 +2026,13 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
             'Correo de documentación obligatorio para factura electrónica.';
         hasError = true;
       }
-      if (_address.text.trim().isEmpty) {
-        newAddressError = 'Requerido para factura electrónica.';
-        hasError = true;
-      }
       if (_economicActivity.text.trim().isEmpty) {
         newEconomicActivityError = 'Requerido para factura electrónica.';
         hasError = true;
       }
     }
 
-    // 9. Formato numérico de actividad económica (si se ingresó)
+    // 12. Formato numérico de actividad económica (si se ingresó)
     final activity = _economicActivity.text.trim();
     if (activity.isNotEmpty &&
         !RegExp(r'^\d{4,8}(\.\d+)?$').hasMatch(activity)) {
@@ -1861,6 +2044,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     if (hasError) {
       setState(() {
         _nameError = newNameError;
+        _displayNameError = newDisplayNameError;
         _phoneError = newPhoneError;
         _emailError = newEmailError;
         _contactsError = newContactsError;
@@ -1869,6 +2053,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
         _taxIdError = newTaxIdError;
         _identificationTypeError = newIdentificationTypeError;
         _addressError = newAddressError;
+        _giraError = newGiraError;
         _economicActivityError = newEconomicActivityError;
       });
       if (_scrollController.hasClients) {
@@ -2121,5 +2306,213 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<void> _showQuickCreateCategoryDialog() async {
+    final name = TextEditingController();
+    final description = TextEditingController();
+    String? selectedColor;
+    String? nameError;
+    var dirty = false;
+
+    final accepted = await showDialog<CustomerCategoryDto?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          void markDirty() {
+            if (dirty) return;
+            setDialogState(() => dirty = true);
+          }
+
+          Future<void> cancel() async {
+            final navigator = Navigator.of(context);
+            final discard = await UnsavedChangesGuard.instance.confirmDiscard(
+              context,
+              hasUnsavedChanges: dirty,
+            );
+            if (discard && context.mounted) navigator.pop(null);
+          }
+
+          Future<void> submit() async {
+            if (name.text.trim().isEmpty) {
+              setDialogState(
+                () => nameError = 'Escriba el nombre de la categoría.',
+              );
+              return;
+            }
+            try {
+              final newCat = await ref
+                  .read(customerApiProvider)
+                  .createCustomerCategory(
+                    name: name.text.trim(),
+                    description:
+                        description.text.trim().isEmpty
+                            ? null
+                            : description.text.trim(),
+                    color: selectedColor,
+                  );
+              if (context.mounted) Navigator.pop(context, newCat);
+            } catch (error) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('No fue posible crear la categoría: $error'),
+                  ),
+                );
+              }
+            }
+          }
+
+          const colorPresets = [
+            '#1E88E5',
+            '#43A047',
+            '#FB8C00',
+            '#E53935',
+            '#8E24AA',
+            '#00ACC1',
+            '#3949AB',
+            '#D81B60',
+            '#546E7A',
+          ];
+
+          return PopScope(
+            canPop: !dirty,
+            onPopInvokedWithResult: (didPop, _) async {
+              if (didPop) return;
+              await cancel();
+            },
+            child: AlertDialog(
+              title: const Text('Nueva categoría comercial'),
+              content: SizedBox(
+                width: 400,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        key: const ValueKey('quickCategoryNameField'),
+                        controller: name,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          labelText: 'Nombre *',
+                          hintText: 'Mayorista, Detallista, etc.',
+                          errorText: nameError,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: (_) {
+                          markDirty();
+                          if (nameError != null) {
+                            setDialogState(() => nameError = null);
+                          }
+                        },
+                        onSubmitted: (_) => submit(),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: description,
+                        decoration: const InputDecoration(
+                          labelText: 'Descripción',
+                          hintText: 'Criterios de asignación o notas',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => markDirty(),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Color identificativo',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Ninguno'),
+                            selected: selectedColor == null,
+                            onSelected: (selected) {
+                              if (selected) {
+                                markDirty();
+                                setDialogState(() => selectedColor = null);
+                              }
+                            },
+                          ),
+                          for (final hex in colorPresets)
+                            GestureDetector(
+                              onTap: () {
+                                markDirty();
+                                setDialogState(() => selectedColor = hex);
+                              },
+                              child: Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: _tryParseColor(hex),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color:
+                                        selectedColor == hex
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                            : Colors.transparent,
+                                    width: selectedColor == hex ? 3 : 1,
+                                  ),
+                                ),
+                                child:
+                                    selectedColor == hex
+                                        ? const Icon(
+                                          Icons.check,
+                                          size: 16,
+                                          color: Colors.white,
+                                        )
+                                        : null,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: cancel, child: const Text('Cancelar')),
+                FilledButton(
+                  key: const ValueKey('quickCategorySubmitButton'),
+                  onPressed: submit,
+                  child: const Text('Crear y seleccionar'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      name.dispose();
+      description.dispose();
+    });
+
+    if (accepted != null) {
+      ref.invalidate(customerCategoriesProvider);
+      setState(() {
+        _selectedCategoryIds.add(accepted.id);
+      });
+      _markDirty();
+    }
+  }
+
+  Color? _tryParseColor(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    final clean = hex.replaceAll('#', '');
+    if (clean.length == 6) {
+      final value = int.tryParse('FF$clean', radix: 16);
+      if (value != null) return Color(value);
+    }
+    return null;
   }
 }
