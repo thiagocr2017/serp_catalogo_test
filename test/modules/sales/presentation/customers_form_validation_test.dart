@@ -78,6 +78,154 @@ void main() {
     expect(api.createdPreferredCarrierId, isNull);
   });
 
+  testWidgets(
+    'formulario vacio al guardar muestra advertencias requeridas y no guarda',
+    (tester) async {
+      final api = _RecordingCustomerApi();
+
+      await tester.pumpWidget(
+        _app(api, identificationTypes: _identificationTypes),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Nuevo cliente'));
+      await tester.pumpAndSettle();
+
+      // No escribimos absolutamente nada en el formulario y presionamos Guardar
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      // Comprobar que aparece la advertencia requerida de nombre fiscal
+      expect(find.text('Escriba el nombre del negocio.'), findsOneWidget);
+      // Comprobar que aparece el SnackBar informativo
+      expect(
+        find.text('Por favor revise los campos requeridos marcados en rojo.'),
+        findsOneWidget,
+      );
+
+      // Comprobar que NO aparecen advertencias espurias en campos opcionales
+      expect(find.text('Ingrese al menos 8 dígitos.'), findsNothing);
+      expect(find.text('Ingrese un correo válido.'), findsNothing);
+      expect(find.text('Requerido para factura electrónica.'), findsNothing);
+      expect(
+        find.text(
+          'Correo de documentación obligatorio para factura electrónica.',
+        ),
+        findsNothing,
+      );
+      expect(find.text('Ingrese días de crédito.'), findsNothing);
+
+      // El formulario permanece abierto y no se persiste
+      expect(find.byType(CustomerFormPage), findsOneWidget);
+      expect(api.createdCustomers, 0);
+    },
+  );
+
+  testWidgets(
+    'formulario vacio con factura electronica activada verifica nuevas reglas y muestra todas las advertencias pertinentes a la vez',
+    (tester) async {
+      final api = _RecordingCustomerApi();
+
+      await tester.pumpWidget(
+        _app(api, identificationTypes: _identificationTypes),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Nuevo cliente'));
+      await tester.pumpAndSettle();
+
+      // Seleccionamos Factura electrónica en documento habitual (activa e-invoice y bloquea switch)
+      await _selectDocumentPreference(tester, 'Factura electrónica');
+      await tester.pumpAndSettle();
+
+      // Verificar que el switch de factura electrónica se activó, está destacado y bloqueado
+      expect(find.text('Requiere factura electrónica'), findsOneWidget);
+      final switchWidget = tester.widget<Switch>(find.byType(Switch));
+      expect(switchWidget.value, isTrue);
+      expect(switchWidget.onChanged, isNull);
+
+      // Sin escribir ningún dato en el formulario, presionamos Guardar
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      // 1. Advertencia de nombre fiscal requerida
+      expect(find.text('Escriba el nombre del negocio.'), findsOneWidget);
+
+      // 2. Advertencias de las nuevas reglas de factura electrónica (tipo, doc, actividad, dirección)
+      expect(
+        find.text('Requerido para factura electrónica.'),
+        findsNWidgets(4),
+      );
+
+      // 3. Advertencia de correo de documentación obligatorio
+      expect(
+        find.text(
+          'Correo de documentación obligatorio para factura electrónica.',
+        ),
+        findsOneWidget,
+      );
+
+      // 4. SnackBar informativo general
+      expect(
+        find.text('Por favor revise los campos requeridos marcados en rojo.'),
+        findsOneWidget,
+      );
+
+      // Formulario no guarda
+      expect(find.byType(CustomerFormPage), findsOneWidget);
+      expect(api.createdCustomers, 0);
+
+      // Verificación reactiva: al escribir el nombre, su advertencia se remueve
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Nombre fiscal / negocio'),
+        'Corporación Global S.A.',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Escriba el nombre del negocio.'), findsNothing);
+      expect(
+        find.text('Requerido para factura electrónica.'),
+        findsNWidgets(4),
+      );
+
+      // Completar los campos requeridos por las reglas de factura electrónica
+      await _selectIdentificationType(tester, 'Cédula jurídica');
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Número de documento'),
+        '3-101-987654',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Actividad económica'),
+        '464900',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Correo principal'),
+        'facturas@corporacion.com',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Dirección'),
+        'San José, Calle Central y Avenida 2',
+      );
+
+      // Guardar con datos completos y válidos
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      // Se guardó exitosamente con las nuevas reglas
+      expect(api.createdCustomers, 1);
+      expect(api.createdCustomerName, 'Corporación Global S.A.');
+      expect(api.createdRequiresEInvoice, isTrue);
+      expect(api.createdDocumentPreference, 'E_INVOICE');
+      expect(api.createdIdentificationTypeId, 'type-1');
+      expect(api.createdTaxId, '3-101-987654');
+      expect(api.createdEconomicActivity, '464900');
+      expect(api.createdEmail, 'facturas@corporacion.com');
+      expect(api.createdAddress, 'San José, Calle Central y Avenida 2');
+    },
+  );
+
   testWidgets('cliente con contacto incompleto muestra error', (tester) async {
     final api = _RecordingCustomerApi();
 
