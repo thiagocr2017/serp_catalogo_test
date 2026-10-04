@@ -12,7 +12,6 @@ import 'package:serp/modules/inventory/domain/entities/inventory_reservation.dar
 import 'package:serp/modules/inventory/domain/entities/inventory_transaction.dart';
 import 'package:serp/modules/inventory/domain/entities/warehouse.dart';
 import 'package:serp/modules/inventory/domain/repositories/inventory_repository.dart';
-import 'package:serp/modules/inventory/api/inventory_commands.dart';
 import 'package:serp/modules/inventory/presentation/pages/warehouses_page.dart';
 
 void main() {
@@ -21,10 +20,12 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [inventoryRepositoryProvider.overrideWithValue(repository),
+        overrides: [
+          inventoryRepositoryProvider.overrideWithValue(repository),
           inventoryApiProvider.overrideWithValue(
             SupabaseInventoryApi(repository),
-          )],
+          ),
+        ],
         child: const MaterialApp(home: WarehousesPage()),
       ),
     );
@@ -65,10 +66,12 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [inventoryRepositoryProvider.overrideWithValue(repository),
+        overrides: [
+          inventoryRepositoryProvider.overrideWithValue(repository),
           inventoryApiProvider.overrideWithValue(
             SupabaseInventoryApi(repository),
-          )],
+          ),
+        ],
         child: const MaterialApp(home: WarehousesPage()),
       ),
     );

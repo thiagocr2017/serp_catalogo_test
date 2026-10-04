@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../di/inventory_providers.dart';
-import '../../domain/entities/audit_entry.dart';
 
 class AuditPage extends ConsumerStatefulWidget {
   const AuditPage({super.key});

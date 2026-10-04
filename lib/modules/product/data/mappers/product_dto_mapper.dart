@@ -18,6 +18,9 @@ extension ProductPublicMapper on Product {
 
 /// La consulta publica solo traslada los filtros que el contrato expone.
 extension ProductListQueryMapper on ProductListQuery {
-  ProductQuery toDomainQuery() =>
-      ProductQuery(searchTerm: searchTerm, categoryId: categoryId, isActive: isActive);
+  ProductQuery toDomainQuery() => ProductQuery(
+    searchTerm: searchTerm,
+    categoryId: categoryId,
+    isActive: isActive,
+  );
 }

@@ -13,7 +13,9 @@ abstract interface class PaymentApi {
   Future<PaymentDto> confirmPayment(ConfirmPaymentCommand command);
   Future<PaymentDto> cancelPayment(CancelPaymentCommand command);
   Future<List<PaymentMethodDto>> getPaymentMethods();
-  Future<PaymentMethodDto> createPaymentMethod(CreatePaymentMethodCommand command);
+  Future<PaymentMethodDto> createPaymentMethod(
+    CreatePaymentMethodCommand command,
+  );
   Future<List<MoneyAccountDto>> getMoneyAccounts();
   Future<MoneyAccountDto> createMoneyAccount(CreateMoneyAccountCommand command);
   Future<ExpenseDto> createExpense(CreateExpenseCommand command);

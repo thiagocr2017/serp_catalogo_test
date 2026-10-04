@@ -97,6 +97,42 @@ class UpdatePackagingPresentationCommand {
   final IdentityContext identity;
 }
 
+class DeactivatePackagingPresentationCommand {
+  const DeactivatePackagingPresentationCommand({
+    required this.id,
+    required this.expectedVersion,
+    required this.identity,
+  });
+
+  final String id;
+  final int expectedVersion;
+  final IdentityContext identity;
+}
+
+class SaveCarrierCommand {
+  const SaveCarrierCommand({
+    this.id,
+    required this.commandId,
+    required this.name,
+    this.phone,
+    this.address,
+    this.contactName,
+    this.notes,
+    this.expectedVersion,
+    required this.identity,
+  });
+
+  final String? id;
+  final String commandId;
+  final String name;
+  final String? phone;
+  final String? address;
+  final String? contactName;
+  final String? notes;
+  final int? expectedVersion;
+  final IdentityContext identity;
+}
+
 class ReplaceCatalogLogoCommand {
   const ReplaceCatalogLogoCommand({
     required this.operationId,

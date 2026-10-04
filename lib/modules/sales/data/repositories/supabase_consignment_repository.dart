@@ -9,8 +9,7 @@ class SupabaseConsignmentRepository
   final SupabaseConsignmentDataSource _source;
 
   @override
-  Future<List<SalesConsignment>> getConsignments() =>
-      _source.getConsignments();
+  Future<List<SalesConsignment>> getConsignments() => _source.getConsignments();
 
   @override
   Future<SalesConsignment?> getConsignmentById(String id) =>

@@ -7,7 +7,9 @@ import 'dart:typed_data';
 
 import '../../../configuration/configuration_module.dart';
 import '../../../inventory/inventory_module.dart' as inventory;
+import '../../../../shared/navigation/unsaved_changes_guard.dart';
 import '../../di/product_providers.dart';
+import '../../domain/entities/category.dart';
 import '../../domain/entities/product.dart';
 import '../../services/product_image_service.dart';
 import '../controllers/product_list_controller.dart';
@@ -38,6 +40,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   final _reorderPoint = TextEditingController(text: '0');
   bool _packagePriceManual = false;
   String? _categoryId;
+  final _quickCategories = <Category>[];
   String? _packagingPresentationId;
   bool _saving = false;
   bool _dirty = false;
@@ -124,6 +127,12 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   /// los llamadores que necesitan refresco visual ya están en setState.
   void _markDirty() {
     _dirty = true;
+    UnsavedChangesGuard.instance.markDirty();
+  }
+
+  void _markClean() {
+    _dirty = false;
+    UnsavedChangesGuard.instance.markClean();
   }
 
   double _decimal(String value) => double.parse(value.replaceAll(',', '.'));
@@ -234,6 +243,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   Future<void> _cancel() async {
     if (_saving) return;
     if (_dirty && mounted && !await _confirmDiscard()) return;
+    _markClean();
     if (mounted) context.go('/products');
   }
 
@@ -324,6 +334,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       ref.invalidate(productTransactionsProvider(productId));
       ref.invalidate(productAuditProvider(productId));
       if (mounted) {
+        _markClean();
         context.go(_isEditing ? '/products/$productId' : '/products');
       }
     } catch (error) {
@@ -335,6 +346,93 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
     } finally {
       if (mounted) {
         setState(() => _saving = false);
+      }
+    }
+  }
+
+  Future<void> _createQuickCategory() async {
+    final controller = TextEditingController();
+    String? nameError;
+    var dirty = false;
+    final name = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          void markDirty() {
+            if (dirty) return;
+            setDialogState(() => dirty = true);
+          }
+
+          Future<void> cancel() async {
+            final navigator = Navigator.of(context);
+            final discard = await UnsavedChangesGuard.instance.confirmDiscard(
+              context,
+              hasUnsavedChanges: dirty,
+            );
+            if (discard && context.mounted) navigator.pop();
+          }
+
+          void submit() {
+            final value = controller.text.trim();
+            if (value.isEmpty) {
+              setDialogState(() => nameError = 'Escriba el nombre.');
+              return;
+            }
+            Navigator.pop(context, value);
+          }
+
+          return PopScope(
+            canPop: !dirty,
+            onPopInvokedWithResult: (didPop, _) async {
+              if (didPop) return;
+              await cancel();
+            },
+            child: AlertDialog(
+              title: const Text('Nueva categoría'),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: 'Nombre',
+                  errorText: nameError,
+                  border: const OutlineInputBorder(),
+                ),
+                onChanged: (_) {
+                  markDirty();
+                  if (nameError != null) {
+                    setDialogState(() => nameError = null);
+                  }
+                },
+                onSubmitted: (_) => submit(),
+              ),
+              actions: [
+                TextButton(onPressed: cancel, child: const Text('Cancelar')),
+                FilledButton(onPressed: submit, child: const Text('Crear')),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
+    if (name == null || !mounted) return;
+    try {
+      final category = await ref
+          .read(productRepositoryProvider)
+          .createCategory(name);
+      ref.invalidate(categoriesProvider);
+      setState(() {
+        _quickCategories.removeWhere((item) => item.id == category.id);
+        _quickCategories.add(category);
+        _categoryId = category.id;
+        _markDirty();
+      });
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No fue posible crear categoría: $error')),
+        );
       }
     }
   }
@@ -354,6 +452,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
         final navigator = Navigator.of(context);
         if (!mounted) return;
         if (await _confirmDiscard() && mounted) {
+          _markClean();
           navigator.pop();
         }
       },
@@ -409,35 +508,68 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                     ),
                                     SizedBox(
                                       width: halfWidth,
-                                      child: categories.when(
-                                        loading: () =>
-                                            const LinearProgressIndicator(),
-                                        error: (e, _) =>
-                                            Text('Error de categorías: $e'),
-                                        data: (items) =>
-                                            DropdownButtonFormField<String>(
-                                              initialValue: _categoryId,
-                                              decoration: const InputDecoration(
-                                                labelText: 'Categoría',
-                                                border: OutlineInputBorder(),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          categories.when(
+                                            loading: () =>
+                                                const LinearProgressIndicator(),
+                                            error: (e, _) =>
+                                                Text('Error de categorías: $e'),
+                                            data: (items) {
+                                              final categoryItems = [
+                                                ...items,
+                                                for (final item
+                                                    in _quickCategories)
+                                                  if (!items.any(
+                                                    (existing) =>
+                                                        existing.id == item.id,
+                                                  ))
+                                                    item,
+                                              ];
+                                              return DropdownButtonFormField<
+                                                String
+                                              >(
+                                                initialValue: _categoryId,
+                                                isExpanded: true,
+                                                decoration:
+                                                    const InputDecoration(
+                                                      labelText: 'Categoría',
+                                                      border:
+                                                          OutlineInputBorder(),
+                                                    ),
+                                                items: [
+                                                  for (final item
+                                                      in categoryItems)
+                                                    DropdownMenuItem(
+                                                      value: item.id,
+                                                      child: Text(item.name),
+                                                    ),
+                                                ],
+                                                validator: (value) =>
+                                                    value == null
+                                                    ? 'Seleccione una categoría'
+                                                    : null,
+                                                onChanged: (value) =>
+                                                    setState(() {
+                                                      _categoryId = value;
+                                                      _markDirty();
+                                                    }),
+                                              );
+                                            },
+                                          ),
+                                          Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: TextButton.icon(
+                                              onPressed: _createQuickCategory,
+                                              icon: const Icon(Icons.add),
+                                              label: const Text(
+                                                'Nueva categoría',
                                               ),
-                                              items: [
-                                                for (final item in items)
-                                                  DropdownMenuItem(
-                                                    value: item.id,
-                                                    child: Text(item.name),
-                                                  ),
-                                              ],
-                                              validator: (value) =>
-                                                  value == null
-                                                  ? 'Seleccione una categoría'
-                                                  : null,
-                                              onChanged: (value) =>
-                                                  setState(() {
-                                                    _categoryId = value;
-                                                    _dirty = true;
-                                                  }),
                                             ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                     SizedBox(
@@ -483,7 +615,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                               tooltip: 'Volver al cálculo automático',
                                               onPressed: () => setState(() {
                                                 _packagePriceManual = false;
-                                                _dirty = true;
+                                                _markDirty();
                                                 _maybeAutofillPackage();
                                               }),
                                               icon: const Icon(
@@ -527,7 +659,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                             : null,
                                         onChanged: (value) => setState(() {
                                           _packagingPresentationId = value;
-                                          _dirty = true;
+                                          _markDirty();
                                         }),
                                       ),
                                     ),
@@ -796,7 +928,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                             _imagePositionX = 0.5;
                             _imagePositionY = 0.5;
                             _imageScale = 1;
-                            _dirty = true;
+                            _markDirty();
                           });
                         }
                       } catch (error) {
@@ -884,7 +1016,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                               value: _imagePositionX,
                               onChanged: (value) => setState(() {
                                 _imagePositionX = value;
-                                _dirty = true;
+                                _markDirty();
                               }),
                             ),
                           ),
@@ -901,7 +1033,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                     _imageScale = (_imageScale - 0.1)
                                         .clamp(1, 3)
                                         .toDouble();
-                                    _dirty = true;
+                                    _markDirty();
                                   }),
                             icon: const Icon(Icons.zoom_out),
                           ),
@@ -914,7 +1046,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                               value: _imageScale,
                               onChanged: (value) => setState(() {
                                 _imageScale = value;
-                                _dirty = true;
+                                _markDirty();
                               }),
                             ),
                           ),
@@ -926,7 +1058,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                     _imageScale = (_imageScale + 0.1)
                                         .clamp(1, 3)
                                         .toDouble();
-                                    _dirty = true;
+                                    _markDirty();
                                   }),
                             icon: const Icon(Icons.zoom_in),
                           ),
@@ -940,7 +1072,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                               value: _imagePositionY,
                               onChanged: (value) => setState(() {
                                 _imagePositionY = value;
-                                _dirty = true;
+                                _markDirty();
                               }),
                             ),
                           ),
@@ -951,7 +1083,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                           _imagePositionX = 0.5;
                           _imagePositionY = 0.5;
                           _imageScale = 1;
-                          _dirty = true;
+                          _markDirty();
                         }),
                         icon: const Icon(Icons.center_focus_strong),
                         label: const Text('Centrar imagen'),
@@ -1022,7 +1154,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
           : validator,
       onChanged: (value) {
         onChanged?.call(value);
-        setState(() => _dirty = true);
+        setState(_markDirty);
       },
       decoration: InputDecoration(
         labelText: label,

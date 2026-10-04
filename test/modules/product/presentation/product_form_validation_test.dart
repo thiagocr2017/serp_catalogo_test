@@ -96,6 +96,46 @@ void main() {
     expect(repository.lastSavedProduct?.categoryId, 'category-1');
   });
 
+  testWidgets('producto puede crear categoria rapida y seleccionarla', (
+    tester,
+  ) async {
+    final repository = _RecordingProductRepository();
+
+    await tester.pumpWidget(_app(repository, const ProductFormPage()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nueva categoría'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Crear'));
+    await tester.pumpAndSettle();
+    expect(find.text('Escriba el nombre.'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).last, 'Retail');
+    await tester.tap(find.widgetWithText(FilledButton, 'Crear'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'SKU'), 'SKU-2');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nombre').last,
+      'Producto Retail',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Precio unitario USD'),
+      '12.00',
+    );
+    await tester.scrollUntilVisible(
+      find.text('Guardar producto'),
+      600,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Guardar producto'));
+    await tester.pumpAndSettle();
+
+    expect(repository.createdCategories, 1);
+    expect(repository.lastCategoryName, 'Retail');
+    expect(repository.lastSavedProduct?.categoryId, 'category-new');
+  });
+
   testWidgets('producto existente carga y actualiza', (tester) async {
     final repository = _RecordingProductRepository(
       existingProduct: Product(
@@ -157,6 +197,8 @@ class _RecordingProductRepository implements ProductRepository {
   final Product? existingProduct;
   int createdProducts = 0;
   int updatedProducts = 0;
+  int createdCategories = 0;
+  String? lastCategoryName;
   int? lastInitialStock;
   Product? lastSavedProduct;
 
@@ -177,8 +219,11 @@ class _RecordingProductRepository implements ProductRepository {
   ];
 
   @override
-  Future<Category> createCategory(String name) async =>
-      Category(id: 'category-new', name: name, isActive: true);
+  Future<Category> createCategory(String name) async {
+    createdCategories++;
+    lastCategoryName = name;
+    return Category(id: 'category-new', name: name, isActive: true);
+  }
 
   @override
   Future<Category> updateCategory(String id, String name) async =>
@@ -310,6 +355,9 @@ class _FakeConfigurationApi implements ConfigurationApi {
       ];
 
   @override
+  Future<List<CarrierDto>> getCarriers() async => const [];
+
+  @override
   Future<BusinessSettingsDto> saveBusinessSettings(
     SaveBusinessSettingsCommand command,
   ) async => getBusinessSettings();
@@ -345,6 +393,30 @@ class _FakeConfigurationApi implements ConfigurationApi {
     isActive: true,
     version: command.expectedVersion + 1,
   );
+
+  @override
+  Future<PackagingPresentationDto> deactivatePackagingPresentation(
+    DeactivatePackagingPresentationCommand command,
+  ) async => PackagingPresentationDto(
+    id: command.id,
+    name: 'Presentación',
+    sortOrder: 0,
+    isActive: false,
+    version: command.expectedVersion + 1,
+  );
+
+  @override
+  Future<CarrierDto> saveCarrier(SaveCarrierCommand command) async =>
+      CarrierDto(
+        id: command.id ?? command.commandId,
+        name: command.name,
+        phone: command.phone,
+        address: command.address,
+        contactName: command.contactName,
+        notes: command.notes,
+        isActive: true,
+        version: (command.expectedVersion ?? 0) + 1,
+      );
 
   @override
   Future<CatalogLogoReferenceDto> replaceCatalogLogo(

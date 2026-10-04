@@ -41,26 +41,32 @@ class PaymentsPage extends ConsumerWidget {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
-            ref.watch(moneyAccountsProvider).when(
-              loading: () => const CircularProgressIndicator(),
-              error: (e, _) => Text('Error: $e'),
-              data: (accounts) {
-                if (accounts.isEmpty) {
-                  return const Text('No hay cuentas monetarias configuradas.');
-                }
-                return Column(
-                  children: accounts
-                      .map(
-                        (a) => ListTile(
-                          leading: const Icon(Icons.account_balance),
-                          title: Text(a.name),
-                          subtitle: Text('${a.accountType} · ${a.currencyCode}'),
-                        ),
-                      )
-                      .toList(),
-                );
-              },
-            ),
+            ref
+                .watch(moneyAccountsProvider)
+                .when(
+                  loading: () => const CircularProgressIndicator(),
+                  error: (e, _) => Text('Error: $e'),
+                  data: (accounts) {
+                    if (accounts.isEmpty) {
+                      return const Text(
+                        'No hay cuentas monetarias configuradas.',
+                      );
+                    }
+                    return Column(
+                      children: accounts
+                          .map(
+                            (a) => ListTile(
+                              leading: const Icon(Icons.account_balance),
+                              title: Text(a.name),
+                              subtitle: Text(
+                                '${a.accountType} · ${a.currencyCode}',
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
+                ),
           ],
         ),
       ),

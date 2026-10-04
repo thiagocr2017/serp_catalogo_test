@@ -93,3 +93,25 @@ class CatalogLogoReferenceDto {
   final String objectName;
   final int version;
 }
+
+class CarrierDto {
+  const CarrierDto({
+    required this.id,
+    required this.name,
+    required this.isActive,
+    required this.version,
+    this.phone,
+    this.address,
+    this.contactName,
+    this.notes,
+  });
+
+  final String id;
+  final String name;
+  final String? phone;
+  final String? address;
+  final String? contactName;
+  final String? notes;
+  final bool isActive;
+  final int version;
+}

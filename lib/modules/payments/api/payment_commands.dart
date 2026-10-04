@@ -41,7 +41,10 @@ class PaymentComponentInput {
 }
 
 class ConfirmPaymentCommand {
-  const ConfirmPaymentCommand({required this.paymentId, required this.identity});
+  const ConfirmPaymentCommand({
+    required this.paymentId,
+    required this.identity,
+  });
 
   final String paymentId;
   final IdentityContext identity;
@@ -60,7 +63,10 @@ class CancelPaymentCommand {
 }
 
 class CreatePaymentMethodCommand {
-  const CreatePaymentMethodCommand({required this.name, required this.identity});
+  const CreatePaymentMethodCommand({
+    required this.name,
+    required this.identity,
+  });
 
   final String name;
   final IdentityContext identity;

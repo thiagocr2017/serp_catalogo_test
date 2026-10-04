@@ -51,8 +51,7 @@ class SupabasePaymentRepository implements PaymentRepository {
       _source.createPaymentMethod(name);
 
   @override
-  Future<List<MoneyAccount>> getMoneyAccounts() =>
-      _source.getMoneyAccounts();
+  Future<List<MoneyAccount>> getMoneyAccounts() => _source.getMoneyAccounts();
 
   @override
   Future<MoneyAccount> createMoneyAccount({

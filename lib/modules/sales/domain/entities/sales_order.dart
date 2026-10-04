@@ -1,4 +1,11 @@
-enum OrderStatus { draft, confirmed, reserved, dispatched, delivered, cancelled }
+enum OrderStatus {
+  draft,
+  confirmed,
+  reserved,
+  dispatched,
+  delivered,
+  cancelled,
+}
 
 class SalesOrder {
   const SalesOrder({

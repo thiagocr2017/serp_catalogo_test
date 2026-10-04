@@ -14,6 +14,7 @@ abstract interface class ConfigurationApi {
   Future<BusinessSettingsDto> getBusinessSettings();
   Future<CatalogPreferencesDto> getCatalogPreferences();
   Future<List<PackagingPresentationDto>> getPackagingPresentations();
+  Future<List<CarrierDto>> getCarriers();
 
   Future<BusinessSettingsDto> saveBusinessSettings(
     SaveBusinessSettingsCommand command,
@@ -30,6 +31,10 @@ abstract interface class ConfigurationApi {
   Future<PackagingPresentationDto> updatePackagingPresentation(
     UpdatePackagingPresentationCommand command,
   );
+  Future<PackagingPresentationDto> deactivatePackagingPresentation(
+    DeactivatePackagingPresentationCommand command,
+  );
+  Future<CarrierDto> saveCarrier(SaveCarrierCommand command);
   Future<CatalogLogoReferenceDto> replaceCatalogLogo(
     ReplaceCatalogLogoCommand command,
   );
@@ -53,3 +58,7 @@ final packagingPresentationDtosProvider =
     FutureProvider<List<PackagingPresentationDto>>(
       (ref) => ref.watch(configurationApiProvider).getPackagingPresentations(),
     );
+
+final carrierDtosProvider = FutureProvider<List<CarrierDto>>(
+  (ref) => ref.watch(configurationApiProvider).getCarriers(),
+);

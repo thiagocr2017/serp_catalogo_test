@@ -8,13 +8,6 @@ import 'package:serp/modules/inventory/api/inventory_api.dart';
 import 'package:serp/modules/inventory/di/inventory_providers.dart';
 
 import '../../../../shared/widgets/status_chip.dart';
-import 'package:serp/modules/inventory/domain/entities/audit_entry.dart';
-import 'package:serp/modules/inventory/domain/entities/inventory_balance.dart';
-import 'package:serp/modules/inventory/domain/entities/inventory_count.dart';
-import 'package:serp/modules/inventory/domain/entities/inventory_document.dart';
-import 'package:serp/modules/inventory/domain/entities/inventory_reservation.dart';
-import 'package:serp/modules/inventory/domain/entities/inventory_transaction.dart';
-import 'package:serp/modules/inventory/domain/entities/warehouse.dart';
 
 class InventoryDocumentsPage extends ConsumerWidget {
   const InventoryDocumentsPage({super.key});

@@ -42,6 +42,16 @@ class SupabaseConfigurationApi implements ConfigurationApi {
   }
 
   @override
+  Future<List<CarrierDto>> getCarriers() async {
+    final rows = await _client
+        .from('carriers')
+        .select()
+        .eq('is_active', true)
+        .order('name');
+    return rows.map(_carrier).toList();
+  }
+
+  @override
   Future<BusinessSettingsDto> saveBusinessSettings(
     SaveBusinessSettingsCommand command,
   ) async => _business(
@@ -144,6 +154,65 @@ class SupabaseConfigurationApi implements ConfigurationApi {
       ) as Map,
     ),
   );
+
+  @override
+  Future<PackagingPresentationDto> deactivatePackagingPresentation(
+    DeactivatePackagingPresentationCommand command,
+  ) async => _presentation(
+    Map<String, dynamic>.from(
+      await _client.rpc<dynamic>(
+        'deactivate_packaging_presentation',
+        params: {
+          'p_presentation_id': command.id,
+          'p_expected_version': command.expectedVersion,
+          ..._identity(command.identity),
+        },
+      ) as Map,
+    ),
+  );
+
+  @override
+  Future<CarrierDto> saveCarrier(SaveCarrierCommand command) async {
+    if (command.id == null) {
+      return _carrier(
+        Map<String, dynamic>.from(
+          await _client.rpc<dynamic>(
+            'create_carrier',
+            params: {
+              'p_command_id': command.commandId,
+              'p_name': command.name,
+              'p_phone': command.phone,
+              'p_address': command.address,
+              'p_contact_name': command.contactName,
+              'p_notes': command.notes,
+              ..._identity(command.identity),
+            },
+          ) as Map,
+        ),
+      );
+    }
+    final expectedVersion = command.expectedVersion;
+    if (expectedVersion == null) {
+      throw ArgumentError.notNull('expectedVersion');
+    }
+    return _carrier(
+      Map<String, dynamic>.from(
+        await _client.rpc<dynamic>(
+          'update_carrier',
+          params: {
+            'p_carrier_id': command.id,
+            'p_name': command.name,
+            'p_phone': command.phone,
+            'p_address': command.address,
+            'p_contact_name': command.contactName,
+            'p_notes': command.notes,
+            'p_expected_version': expectedVersion,
+            ..._identity(command.identity),
+          },
+        ) as Map,
+      ),
+    );
+  }
 
   @override
   Future<CatalogLogoReferenceDto> replaceCatalogLogo(
@@ -264,4 +333,15 @@ class SupabaseConfigurationApi implements ConfigurationApi {
         isActive: row['is_active'] as bool,
         version: row['version'] as int,
       );
+
+  CarrierDto _carrier(Map<String, dynamic> row) => CarrierDto(
+    id: row['id'] as String,
+    name: row['name'] as String,
+    phone: row['phone'] as String?,
+    address: row['address'] as String?,
+    contactName: row['contact_name'] as String?,
+    notes: row['notes'] as String?,
+    isActive: row['is_active'] as bool? ?? true,
+    version: row['version'] as int? ?? 1,
+  );
 }

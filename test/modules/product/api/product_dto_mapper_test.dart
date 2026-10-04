@@ -73,7 +73,13 @@ void main() {
         currentStock: 34,
       );
       final text = dto.toString();
-      for (final field in ['id', 'sku', 'name', 'description', 'currentStock']) {
+      for (final field in [
+        'id',
+        'sku',
+        'name',
+        'description',
+        'currentStock',
+      ]) {
         expect(text, contains(field), reason: 'falta el campo $field');
       }
     });
@@ -100,8 +106,16 @@ void main() {
 
   group('ProductListQuery', () {
     test('tiene igualdad por valor', () {
-      const a = ProductListQuery(searchTerm: 'x', categoryId: 'c', isActive: true);
-      const b = ProductListQuery(searchTerm: 'x', categoryId: 'c', isActive: true);
+      const a = ProductListQuery(
+        searchTerm: 'x',
+        categoryId: 'c',
+        isActive: true,
+      );
+      const b = ProductListQuery(
+        searchTerm: 'x',
+        categoryId: 'c',
+        isActive: true,
+      );
       expect(a, equals(b));
       expect(a.hashCode, b.hashCode);
     });

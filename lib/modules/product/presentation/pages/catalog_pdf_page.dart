@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 
+import '../../../../core/utilities/phone_number.dart';
 import '../../../configuration/configuration_module.dart';
 import '../../../../core/identity/identity_context_provider.dart';
 import '../../../sales/sales_module.dart';
@@ -428,7 +429,9 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                                   if (selectedAgentId != null)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 6),
-                                      child: Text('WhatsApp: ${phone.text}'),
+                                      child: Text(
+                                        'WhatsApp: ${displayPhone(phone.text)}',
+                                      ),
                                     ),
                                 ],
                               ),
@@ -974,7 +977,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
           companyName: companyName,
           paymentMethods: paymentMethods,
           agentName: agent.text,
-          agentPhone: phone.text,
+          agentPhone: displayPhone(phone.text),
           cardsPerPage: cards,
           categoryNames: categoryNames,
           logoBytes: logoBytes,

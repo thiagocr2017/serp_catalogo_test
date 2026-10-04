@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/identity/identity_context_provider.dart';
+import '../../../../core/utilities/phone_number.dart';
+import '../../../../shared/navigation/unsaved_changes_guard.dart';
 import '../../api/sales_api.dart';
 
 class AgentPage extends ConsumerWidget {
@@ -45,7 +48,9 @@ class AgentPage extends ConsumerWidget {
                     leading: const CircleAvatar(child: Icon(Icons.person)),
                     title: Text(agent.name),
                     subtitle: Text(
-                      agent.phone.isEmpty ? 'Sin teléfono' : agent.phone,
+                      displayPhone(agent.phone).isEmpty
+                          ? 'Sin teléfono'
+                          : displayPhone(agent.phone),
                     ),
                     trailing: Wrap(
                       spacing: 4,
@@ -82,12 +87,31 @@ class AgentPage extends ConsumerWidget {
     SalesAgentDto? existing,
   ]) async {
     final name = TextEditingController(text: existing?.name ?? '');
-    final phone = TextEditingController(text: existing?.phone ?? '+506');
+    final phone = splitPhoneNumber(existing?.phone);
+    final phoneCountryCode = TextEditingController(text: phone.countryCode);
+    final phoneLocal = TextEditingController(text: phone.localNumber);
     String? nameError;
+    String? phoneError;
+    var dirty = false;
     final accepted = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
+          void markDirty() {
+            if (dirty) return;
+            setDialogState(() => dirty = true);
+          }
+
+          Future<void> cancel() async {
+            final navigator = Navigator.of(context);
+            final discard = await UnsavedChangesGuard.instance.confirmDiscard(
+              context,
+              hasUnsavedChanges: dirty,
+            );
+            if (discard && context.mounted) navigator.pop(false);
+          }
+
           void submit() {
             if (name.text.trim().isEmpty) {
               setDialogState(() {
@@ -95,46 +119,95 @@ class AgentPage extends ConsumerWidget {
               });
               return;
             }
+            if (phoneLocal.text.trim().isNotEmpty &&
+                !isValidLocalPhone(phoneLocal.text)) {
+              setDialogState(() {
+                phoneError = 'Ingrese al menos 8 dígitos.';
+              });
+              return;
+            }
             Navigator.pop(context, true);
           }
 
-          return AlertDialog(
-            title: Text(existing == null ? 'Nuevo agente' : 'Editar agente'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: name,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: 'Nombre',
-                    errorText: nameError,
-                    border: const OutlineInputBorder(),
+          return PopScope(
+            canPop: !dirty,
+            onPopInvokedWithResult: (didPop, _) async {
+              if (didPop) return;
+              await cancel();
+            },
+            child: AlertDialog(
+              title: Text(existing == null ? 'Nuevo agente' : 'Editar agente'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: name,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Nombre',
+                      errorText: nameError,
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (_) {
+                      markDirty();
+                      if (nameError != null) {
+                        setDialogState(() => nameError = null);
+                      }
+                    },
+                    onSubmitted: (_) => submit(),
                   ),
-                  onChanged: (_) {
-                    if (nameError != null) {
-                      setDialogState(() => nameError = null);
-                    }
-                  },
-                  onSubmitted: (_) => submit(),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phone,
-                  decoration: const InputDecoration(
-                    labelText: 'WhatsApp',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 96,
+                        child: TextField(
+                          controller: phoneCountryCode,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9+]'),
+                            ),
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'País',
+                            hintText: '+506',
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: (_) => markDirty(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: phoneLocal,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          decoration: InputDecoration(
+                            labelText: 'WhatsApp',
+                            hintText: '24357658',
+                            errorText: phoneError,
+                            border: const OutlineInputBorder(),
+                          ),
+                          onChanged: (_) {
+                            markDirty();
+                            if (phoneError != null) {
+                              setDialogState(() => phoneError = null);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: cancel, child: const Text('Cancelar')),
+                FilledButton(onPressed: submit, child: const Text('Guardar')),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancelar'),
-              ),
-              FilledButton(onPressed: submit, child: const Text('Guardar')),
-            ],
           );
         },
       ),
@@ -142,12 +215,18 @@ class AgentPage extends ConsumerWidget {
     if (accepted == true) {
       final api = ref.read(salesApiProvider);
       final identity = ref.read(identityContextProvider);
+      final formattedPhone =
+          nullableFormattedPhone(
+            countryCode: phoneCountryCode.text,
+            localNumber: phoneLocal.text,
+          ) ??
+          '';
       if (existing == null) {
         await api.createAgent(
           CreateSalesAgentCommand(
             commandId: const Uuid().v4(),
             name: name.text,
-            phone: phone.text,
+            phone: formattedPhone,
             identity: identity,
           ),
         );
@@ -156,7 +235,7 @@ class AgentPage extends ConsumerWidget {
           UpdateSalesAgentCommand(
             id: existing.id,
             name: name.text,
-            phone: phone.text,
+            phone: formattedPhone,
             expectedVersion: existing.version,
             identity: identity,
           ),
@@ -166,7 +245,8 @@ class AgentPage extends ConsumerWidget {
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       name.dispose();
-      phone.dispose();
+      phoneCountryCode.dispose();
+      phoneLocal.dispose();
     });
   }
 

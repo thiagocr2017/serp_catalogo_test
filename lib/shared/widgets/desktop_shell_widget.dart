@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../navigation/unsaved_changes_guard.dart';
+
 class DesktopShellWidget extends StatelessWidget {
   const DesktopShellWidget({
     required this.currentLocation,
@@ -94,6 +96,12 @@ class DesktopShellWidget extends StatelessWidget {
                         'Agentes',
                         Icons.badge_outlined,
                       ),
+                      _item(
+                        context,
+                        '/sales/customers',
+                        'Clientes',
+                        Icons.groups_outlined,
+                      ),
                     ],
                   ),
                   ExpansionTile(
@@ -148,6 +156,12 @@ class DesktopShellWidget extends StatelessWidget {
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     leading: Icon(icon),
     title: Text(label),
-    onTap: () => context.go(path),
+    onTap: () async {
+      if (exact ? currentLocation == path : _selected(path)) return;
+      if (!await UnsavedChangesGuard.instance.confirmNavigation(context)) {
+        return;
+      }
+      if (context.mounted) context.go(path);
+    },
   );
 }

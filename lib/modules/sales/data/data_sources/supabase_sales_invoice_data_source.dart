@@ -66,7 +66,10 @@ class SupabaseSalesInvoiceDataSource {
     return _invoice(row);
   }
 
-  Future<SalesInvoice> cancelInvoice(String id, {required String reason}) async {
+  Future<SalesInvoice> cancelInvoice(
+    String id, {
+    required String reason,
+  }) async {
     final row = await _client.rpc<Map<String, dynamic>>(
       'cancel_sale_invoice',
       params: {
@@ -82,8 +85,8 @@ class SupabaseSalesInvoiceDataSource {
 
   SalesInvoice _invoice(Map<String, dynamic> row) {
     (row['sales_invoice_lines'] as List<dynamic>?)
-            ?.map((l) => _line(l as Map<String, dynamic>))
-            .toList();
+        ?.map((l) => _line(l as Map<String, dynamic>))
+        .toList();
     return SalesInvoice(
       id: row['id'] as String,
       invoiceNumber: row['invoice_number'] as String,

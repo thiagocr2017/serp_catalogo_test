@@ -59,7 +59,9 @@ class OfflineCommand {
     status: OfflineCommandStatus.values.byName(json['status'] as String),
     deviceIdentifier: json['deviceIdentifier'] as String,
     createdAt: DateTime.parse(json['createdAt'] as String),
-    syncedAt: json['syncedAt'] == null ? null : DateTime.parse(json['syncedAt'] as String),
+    syncedAt: json['syncedAt'] == null
+        ? null
+        : DateTime.parse(json['syncedAt'] as String),
     errorMessage: json['errorMessage'] as String?,
     retryCount: json['retryCount'] as int? ?? 0,
   );

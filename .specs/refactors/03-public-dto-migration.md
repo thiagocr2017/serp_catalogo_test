@@ -145,7 +145,13 @@ Notas de la decision:
   necesita la ficha, se define ese DTO entonces, con los campos que necesite.
 - `ProductSummaryDto` lleva igualdad por valor, como exige la regla del DTO
   publico.
-- [ ] T5. Repetir T1-T4 para las 7 entidades de `inventory`.
+- [x] T5. Repetir T1-T4 para las 7 entidades de `inventory`.
+      Resuelto en `442916e`: `InventoryApi` devuelve DTO públicos desde
+      `inventory_dtos.dart`; `SupabaseInventoryApi` envuelve
+      `SupabaseInventoryRepository` y traduce entidades de dominio a DTO con
+      `data/mappers/inventory_dto_mapper.dart`. Los enums se re-exportan con
+      `show` como tipos de valor compartidos; ninguna entidad de dominio se
+      exporta desde `inventory/api/`.
 - [ ] T6. Retirar los 6 `export '../domain/repositories/...'` de `sales` y
       sustituirlos por contratos de `api/`.
 - [ ] T7. Crear DTO de `sales` para las 6 entidades restantes.

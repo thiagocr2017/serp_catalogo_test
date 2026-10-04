@@ -1,4 +1,11 @@
-enum ConsignmentStatus { draft, sent, partialReturn, returned, settled, cancelled }
+enum ConsignmentStatus {
+  draft,
+  sent,
+  partialReturn,
+  returned,
+  settled,
+  cancelled,
+}
 
 class SalesConsignment {
   const SalesConsignment({

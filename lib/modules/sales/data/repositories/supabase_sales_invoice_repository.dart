@@ -12,8 +12,7 @@ class SupabaseSalesInvoiceRepository
   Future<List<SalesInvoice>> getInvoices() => _source.getInvoices();
 
   @override
-  Future<SalesInvoice?> getInvoiceById(String id) =>
-      _source.getInvoiceById(id);
+  Future<SalesInvoice?> getInvoiceById(String id) => _source.getInvoiceById(id);
 
   @override
   Future<SalesInvoice> createInvoice({

@@ -59,7 +59,8 @@ class OfflineSyncService extends Notifier<int> {
 
       await _repository.updateStatus(command.id, OfflineCommandStatus.synced);
     } on Exception catch (e) {
-      final isConflict = e.toString().contains('COMMAND_PAYLOAD_MISMATCH') ||
+      final isConflict =
+          e.toString().contains('COMMAND_PAYLOAD_MISMATCH') ||
           e.toString().contains('VERSION_CONFLICT');
 
       if (isConflict) {
@@ -103,7 +104,10 @@ class OfflineSyncService extends Notifier<int> {
       case 'consume_reservation':
         await client.rpc('consume_reservation', params: payload);
       case 'create_and_confirm_inventory_document':
-        await client.rpc('create_and_confirm_inventory_document', params: payload);
+        await client.rpc(
+          'create_and_confirm_inventory_document',
+          params: payload,
+        );
       default:
         throw Exception('Unknown command type: $commandType');
     }

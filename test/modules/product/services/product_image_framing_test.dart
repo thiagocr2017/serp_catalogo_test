@@ -17,10 +17,10 @@ Uint8List testJpg(int width, int height) {
 
 void main() {
   test('dimensionsOf reports the real size', () {
-    expect(
-      ProductImageService.dimensionsOf(testJpg(300, 200)),
-      (width: 300, height: 200),
-    );
+    expect(ProductImageService.dimensionsOf(testJpg(300, 200)), (
+      width: 300,
+      height: 200,
+    ));
   });
 
   test('zoom 1 keeps the full image', () {
@@ -45,23 +45,11 @@ void main() {
 
   test('focal corners clamp inside the image', () {
     expect(
-      ProductImageService.cropWindow(
-        300,
-        200,
-        focalX: 0,
-        focalY: 0,
-        zoom: 2,
-      ),
+      ProductImageService.cropWindow(300, 200, focalX: 0, focalY: 0, zoom: 2),
       (x: 0, y: 0, width: 150, height: 100),
     );
     expect(
-      ProductImageService.cropWindow(
-        300,
-        200,
-        focalX: 1,
-        focalY: 1,
-        zoom: 2,
-      ),
+      ProductImageService.cropWindow(300, 200, focalX: 1, focalY: 1, zoom: 2),
       (x: 150, y: 100, width: 150, height: 100),
     );
   });

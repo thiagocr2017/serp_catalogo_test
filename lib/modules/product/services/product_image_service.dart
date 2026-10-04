@@ -39,12 +39,14 @@ class ProductImageService {
     final z = zoom.clamp(1, 3).toDouble();
     final width = (imageWidth / z).round().clamp(1, imageWidth);
     final height = (imageHeight / z).round().clamp(1, imageHeight);
-    final x = (focalX * imageWidth - width / 2)
-        .round()
-        .clamp(0, imageWidth - width);
-    final y = (focalY * imageHeight - height / 2)
-        .round()
-        .clamp(0, imageHeight - height);
+    final x = (focalX * imageWidth - width / 2).round().clamp(
+      0,
+      imageWidth - width,
+    );
+    final y = (focalY * imageHeight - height / 2).round().clamp(
+      0,
+      imageHeight - height,
+    );
     return (x: x, y: y, width: width, height: height);
   }
 

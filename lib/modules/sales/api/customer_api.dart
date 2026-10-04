@@ -11,6 +11,7 @@ abstract interface class CustomerApi {
   Future<Customer?> getCustomerById(String id);
   Future<Customer> createCustomer({
     required String name,
+    String? displayName,
     String? phone,
     String? email,
     String? address,
@@ -18,10 +19,15 @@ abstract interface class CustomerApi {
     double? creditLimit,
     String? province,
     String? gira,
+    String? preferredCarrierId,
+    String customerType,
+    int? creditDays,
+    String documentPreference,
   });
   Future<Customer> updateCustomer({
     required String id,
     required String name,
+    String? displayName,
     String? phone,
     String? email,
     String? address,
@@ -29,8 +35,12 @@ abstract interface class CustomerApi {
     double? creditLimit,
     String? province,
     String? gira,
+    String? preferredCarrierId,
+    String customerType,
+    int? creditDays,
+    String documentPreference,
   });
-  Future<void> deactivateCustomer(String id);
+  Future<void> deactivateCustomer(String id, {String? reason});
 
   Future<List<CustomerContact>> getCustomerContacts(String customerId);
   Future<CustomerContact> saveCustomerContact({
@@ -39,6 +49,7 @@ abstract interface class CustomerApi {
     required String name,
     String? phone,
     String? role,
+    DateTime? birthday,
   });
   Future<void> deleteCustomerContact(String id);
 
@@ -53,8 +64,7 @@ final customersProvider = FutureProvider<List<Customer>>(
   (ref) => ref.watch(customerApiProvider).getCustomers(),
 );
 
-final productBuyersProvider =
-    FutureProvider.family<List<ProductBuyer>, String>(
-      (ref, productId) =>
-          ref.watch(customerApiProvider).getProductBuyers(productId),
-    );
+final productBuyersProvider = FutureProvider.family<List<ProductBuyer>, String>(
+  (ref, productId) =>
+      ref.watch(customerApiProvider).getProductBuyers(productId),
+);

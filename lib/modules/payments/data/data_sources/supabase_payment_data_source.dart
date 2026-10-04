@@ -81,7 +81,10 @@ class SupabasePaymentDataSource {
     return _payment(row);
   }
 
-  Future<Payment> cancelPayment(String paymentId, {required String reason}) async {
+  Future<Payment> cancelPayment(
+    String paymentId, {
+    required String reason,
+  }) async {
     final row = await _client.rpc<Map<String, dynamic>>(
       'cancel_payment',
       params: {
@@ -220,7 +223,8 @@ class SupabasePaymentDataSource {
   }
 
   Payment _payment(Map<String, dynamic> row) {
-    final components = (row['payment_components'] as List<dynamic>?)
+    final components =
+        (row['payment_components'] as List<dynamic>?)
             ?.map((c) => _component(c as Map<String, dynamic>))
             .toList() ??
         const [];

@@ -50,21 +50,17 @@ class OfflineQueueRepository {
 
   Future<void> enqueue(OfflineCommand command) async {
     final db = await database;
-    await db.insert(
-      'offline_commands',
-      {
-        'id': command.id,
-        'command_type': command.commandType,
-        'payload': jsonEncode(command.payload),
-        'status': command.status.name,
-        'device_identifier': command.deviceIdentifier,
-        'created_at': command.createdAt.toIso8601String(),
-        'synced_at': command.syncedAt?.toIso8601String(),
-        'error_message': command.errorMessage,
-        'retry_count': command.retryCount,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('offline_commands', {
+      'id': command.id,
+      'command_type': command.commandType,
+      'payload': jsonEncode(command.payload),
+      'status': command.status.name,
+      'device_identifier': command.deviceIdentifier,
+      'created_at': command.createdAt.toIso8601String(),
+      'synced_at': command.syncedAt?.toIso8601String(),
+      'error_message': command.errorMessage,
+      'retry_count': command.retryCount,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<OfflineCommand>> getPending() async {

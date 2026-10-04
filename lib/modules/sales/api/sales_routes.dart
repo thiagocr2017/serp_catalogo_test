@@ -22,6 +22,15 @@ final List<RouteBase> salesRoutes = [
     builder: (context, state) => const CustomersPage(),
   ),
   GoRoute(
+    path: '/sales/customers/new',
+    builder: (context, state) => const CustomerFormPage(),
+  ),
+  GoRoute(
+    path: '/sales/customers/:id/edit',
+    builder: (context, state) =>
+        CustomerFormPage(customerId: state.pathParameters['id']),
+  ),
+  GoRoute(
     path: '/sales/quotes',
     builder: (context, state) => const QuotesPage(),
   ),

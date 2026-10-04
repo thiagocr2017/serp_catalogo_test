@@ -17,7 +17,8 @@ equipo (`ThemeModeController`) son capacidades técnicas y permanecen en
 - logo corporativo usado por el catálogo;
 - preferencias persistentes del catálogo: tarjetas por página, colores,
   ajuste de imagen y agente seleccionado;
-- presentaciones dinámicas de producto, con creación y cambio de nombre;
+- presentaciones dinámicas de producto, con creación, cambio de nombre y
+  desactivación segura;
 - modo de operación `TEST` o `PRODUCTION`;
 - limpieza irreversible de datos de prueba, visible únicamente para el equipo
   registrado como superadministrador;
@@ -26,7 +27,9 @@ equipo (`ThemeModeController`) son capacidades técnicas y permanecen en
 ## 3. Persistencia
 
 - `app_settings` conserva una única configuración comercial compartida.
-- `packaging_presentations` conserva las presentaciones disponibles.
+- `packaging_presentations` conserva las presentaciones disponibles. Las
+  presentaciones se desactivan con `is_active = false`; no se eliminan
+  físicamente para proteger productos históricos y documentos relacionados.
 - el logo se almacena en el bucket `catalog-assets` y su URL en
   `app_settings.catalog_logo_url`.
 - los cambios registran fecha, actor, nombre del equipo e identificador del
@@ -55,12 +58,16 @@ la implementación Supabase porque es la raíz de composición de la aplicación
 - El modo oscuro es el valor local predeterminado; la preferencia se conserva
   por equipo y no se guarda en Supabase.
 - Las presentaciones son dinámicas y obligatorias para todo producto.
+- Una presentación activa puede desactivarse desde Configuración sólo si no hay
+  productos activos asociados. Si está en uso, el usuario debe cambiar primero
+  esos productos a otra presentación.
 - Los formularios de configuración deben tener pruebas de presentación que
   cubran la operación real y validaciones. La cobertura actual comprueba que
   configuración comercial guarda por la API pública, que decimales no
   normalizados no se guardan, que una presentación vacía mantiene el diálogo
-  abierto sin crear registros y que una presentación existente carga y actualiza
-  por la API pública.
+  abierto sin crear registros, que una presentación existente carga y actualiza
+  por la API pública, y que una presentación existente puede desactivarse por
+  la API pública.
 - Logo y purga de datos de prueba no se marcan como formularios completos hasta
   contar con pruebas UI de selección/reemplazo de imagen y confirmación
   destructiva respectivamente.

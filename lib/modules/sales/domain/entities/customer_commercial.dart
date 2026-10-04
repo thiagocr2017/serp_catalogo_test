@@ -6,12 +6,14 @@ class CustomerContact {
     required this.name,
     this.phone,
     this.role,
+    this.birthday,
   });
 
   final String id;
   final String customerId;
   final String name;
   final String? phone;
+  final DateTime? birthday;
 
   /// Rol en la empresa (p. ej. Compras, Gerencia).
   final String? role;
@@ -53,9 +55,10 @@ class ProductBuyer {
   /// verdadero si todos los términos aparecen en nombre, teléfono, email,
   /// provincia, gira o alguno de los contactos.
   bool matchesQuery(String query) {
-    final terms = query.toLowerCase().split(RegExp(r'\s+')).where(
-      (term) => term.isNotEmpty,
-    );
+    final terms = query
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((term) => term.isNotEmpty);
     if (terms.isEmpty) return true;
     final haystack = [
       name,

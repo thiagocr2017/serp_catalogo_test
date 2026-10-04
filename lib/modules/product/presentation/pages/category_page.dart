@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/navigation/unsaved_changes_guard.dart';
 import '../../di/product_providers.dart';
 import '../../domain/entities/category.dart';
 import '../../domain/entities/product.dart';
@@ -109,10 +110,26 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
   Future<void> _editCategory([Category? existing]) async {
     final controller = TextEditingController(text: existing?.name ?? '');
     String? errorText;
+    var dirty = false;
     final name = await showDialog<String>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
+          void markDirty() {
+            if (dirty) return;
+            setDialogState(() => dirty = true);
+          }
+
+          Future<void> cancel() async {
+            final navigator = Navigator.of(context);
+            final discard = await UnsavedChangesGuard.instance.confirmDiscard(
+              context,
+              hasUnsavedChanges: dirty,
+            );
+            if (discard && context.mounted) navigator.pop();
+          }
+
           void submit() {
             final value = controller.text.trim();
             if (value.isEmpty) {
@@ -124,32 +141,37 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
             Navigator.pop(context, value);
           }
 
-          return AlertDialog(
-            title: Text(
-              existing == null ? 'Nueva categoría' : 'Editar categoría',
-            ),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: 'Nombre',
-                errorText: errorText,
-                border: const OutlineInputBorder(),
+          return PopScope(
+            canPop: !dirty,
+            onPopInvokedWithResult: (didPop, _) async {
+              if (didPop) return;
+              await cancel();
+            },
+            child: AlertDialog(
+              title: Text(
+                existing == null ? 'Nueva categoría' : 'Editar categoría',
               ),
-              onChanged: (_) {
-                if (errorText != null) {
-                  setDialogState(() => errorText = null);
-                }
-              },
-              onSubmitted: (_) => submit(),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar'),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: 'Nombre',
+                  errorText: errorText,
+                  border: const OutlineInputBorder(),
+                ),
+                onChanged: (_) {
+                  markDirty();
+                  if (errorText != null) {
+                    setDialogState(() => errorText = null);
+                  }
+                },
+                onSubmitted: (_) => submit(),
               ),
-              FilledButton(onPressed: submit, child: const Text('Guardar')),
-            ],
+              actions: [
+                TextButton(onPressed: cancel, child: const Text('Cancelar')),
+                FilledButton(onPressed: submit, child: const Text('Guardar')),
+              ],
+            ),
           );
         },
       ),

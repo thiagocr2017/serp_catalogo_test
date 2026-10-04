@@ -40,6 +40,8 @@ Reglas:
 
 - Debe pedir solo lo estrictamente necesario.
 - No debe replicar toda la pantalla completa de esa entidad.
+- Si el usuario ya modifico algun campo, debe advertir antes de cerrar por
+  cancelar, retroceso, Escape o cierre accidental del dialogo.
 - Al guardar, debe cerrar el modal, refrescar el catalogo y seleccionar el dato
   nuevo cuando aplique.
 - Si la entidad necesita configuracion avanzada, esa configuracion queda en su

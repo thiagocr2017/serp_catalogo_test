@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/device/device_identity.dart';
 import '../../domain/entities/business_settings.dart';
+import '../../domain/entities/carrier.dart';
 import '../../domain/entities/catalog_preferences.dart';
 import '../../domain/entities/packaging_presentation.dart';
 import '../../domain/repositories/configuration_repository.dart';
@@ -215,6 +216,77 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
       );
     }
   }
+
+  @override
+  Future<List<Carrier>> getCarriers() async {
+    final rows = await _client
+        .from('carriers')
+        .select()
+        .eq('is_active', true)
+        .order('name');
+    return rows.map(_carrier).toList();
+  }
+
+  @override
+  Future<Carrier> saveCarrier({
+    String? id,
+    required String name,
+    String? phone,
+    String? address,
+    String? contactName,
+    String? notes,
+  }) async {
+    if (id == null) {
+      final row = await _client.rpc<Map<String, dynamic>>(
+        'create_carrier',
+        params: {
+          'p_command_id': _newUuid(),
+          'p_name': name,
+          'p_phone': phone,
+          'p_address': address,
+          'p_contact_name': contactName,
+          'p_notes': notes,
+          'p_actor_name': _device.actorName,
+          'p_device_name': _device.name,
+          'p_device_identifier': _device.identifier,
+        },
+      );
+      return _carrier(row);
+    }
+    final row = await _client
+        .from('carriers')
+        .select('version')
+        .eq('id', id)
+        .single();
+    final expectedVersion = row['version'] as int;
+    final result = await _client.rpc<Map<String, dynamic>>(
+      'update_carrier',
+      params: {
+        'p_carrier_id': id,
+        'p_name': name,
+        'p_phone': phone,
+        'p_address': address,
+        'p_contact_name': contactName,
+        'p_notes': notes,
+        'p_expected_version': expectedVersion,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
+    return _carrier(result);
+  }
+
+  Carrier _carrier(Map<String, dynamic> row) => Carrier(
+    id: row['id'] as String,
+    name: row['name'] as String,
+    phone: row['phone'] as String?,
+    address: row['address'] as String?,
+    contactName: row['contact_name'] as String?,
+    notes: row['notes'] as String?,
+    isActive: row['is_active'] as bool? ?? true,
+    version: row['version'] as int? ?? 1,
+  );
 
   String _newUuid() {
     return const Uuid().v4();

@@ -5,20 +5,34 @@ abstract interface class CustomerRepository {
   Future<Customer?> getCustomerById(String id);
   Future<Customer> createCustomer({
     required String name,
+    String? displayName,
     String? phone,
     String? email,
     String? address,
     String? taxId,
     double? creditLimit,
+    String? province,
+    String? gira,
+    String? preferredCarrierId,
+    String customerType,
+    int? creditDays,
+    String documentPreference,
   });
   Future<Customer> updateCustomer({
     required String id,
     required String name,
+    String? displayName,
     String? phone,
     String? email,
     String? address,
     String? taxId,
     double? creditLimit,
+    String? province,
+    String? gira,
+    String? preferredCarrierId,
+    String customerType,
+    int? creditDays,
+    String documentPreference,
   });
-  Future<void> deactivateCustomer(String id);
+  Future<void> deactivateCustomer(String id, {String? reason});
 }

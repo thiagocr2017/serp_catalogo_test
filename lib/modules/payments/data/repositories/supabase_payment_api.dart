@@ -65,7 +65,9 @@ class SupabasePaymentApi implements PaymentApi {
   Future<List<PaymentMethodDto>> getPaymentMethods() async {
     final methods = await _source.getPaymentMethods();
     return methods
-        .map((m) => PaymentMethodDto(id: m.id, name: m.name, isActive: m.isActive))
+        .map(
+          (m) => PaymentMethodDto(id: m.id, name: m.name, isActive: m.isActive),
+        )
         .toList();
   }
 
@@ -74,7 +76,11 @@ class SupabasePaymentApi implements PaymentApi {
     CreatePaymentMethodCommand command,
   ) async {
     final method = await _source.createPaymentMethod(command.name);
-    return PaymentMethodDto(id: method.id, name: method.name, isActive: method.isActive);
+    return PaymentMethodDto(
+      id: method.id,
+      name: method.name,
+      isActive: method.isActive,
+    );
   }
 
   @override

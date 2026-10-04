@@ -8,6 +8,7 @@ import 'package:serp/core/identity/identity_context_provider.dart';
 import 'package:serp/modules/configuration/api/configuration_api.dart';
 import 'package:serp/modules/configuration/di/configuration_providers.dart';
 import 'package:serp/modules/configuration/domain/entities/business_settings.dart';
+import 'package:serp/modules/configuration/domain/entities/carrier.dart';
 import 'package:serp/modules/configuration/domain/entities/catalog_preferences.dart';
 import 'package:serp/modules/configuration/domain/entities/packaging_presentation.dart';
 import 'package:serp/modules/configuration/domain/repositories/configuration_repository.dart';
@@ -113,11 +114,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.text('Caja'),
+      find.byTooltip('Editar presentación'),
       500,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Caja'));
+    await tester.tap(find.byTooltip('Editar presentación'));
     await tester.pumpAndSettle();
 
     expect(find.text('Editar presentación'), findsOneWidget);
@@ -130,6 +131,74 @@ void main() {
     expect(api.updatedPresentationId, 'presentation-1');
     expect(api.updatedPresentationName, 'Cartón');
     expect(api.updatedPresentationVersion, 7);
+  });
+
+  testWidgets('presentacion existente se puede desactivar por API publica', (
+    tester,
+  ) async {
+    final api = _RecordingConfigurationApi(
+      presentations: const [
+        PackagingPresentationDto(
+          id: 'presentation-1',
+          name: 'Caja',
+          sortOrder: 0,
+          isActive: true,
+          version: 7,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byTooltip('Desactivar presentación'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byTooltip('Desactivar presentación'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Desactivar'));
+    await tester.pumpAndSettle();
+
+    expect(api.deactivatedPresentationId, 'presentation-1');
+    expect(api.deactivatedPresentationVersion, 7);
+    expect(find.text('"Caja" fue desactivada.'), findsOneWidget);
+  });
+
+  testWidgets('transporte vacio exige correccion antes de guardar', (
+    tester,
+  ) async {
+    final api = _RecordingConfigurationApi();
+
+    await tester.pumpWidget(_app(api));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Nuevo transporte'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Nuevo transporte'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Escriba el nombre del transporte.'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(api.savedCarriers, 0);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Nombre'), 'Ruta A');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Teléfono'),
+      '+506 2222-1111',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(api.savedCarriers, 1);
+    expect(api.lastCarrierCommand?.name, 'Ruta A');
+    expect(api.lastCarrierCommand?.phone, '+506 2222-1111');
   });
 }
 
@@ -161,6 +230,10 @@ class _RecordingConfigurationApi implements ConfigurationApi {
   String? updatedPresentationId;
   String? updatedPresentationName;
   int? updatedPresentationVersion;
+  String? deactivatedPresentationId;
+  int? deactivatedPresentationVersion;
+  int savedCarriers = 0;
+  SaveCarrierCommand? lastCarrierCommand;
 
   @override
   Future<BusinessSettingsDto> getBusinessSettings() async =>
@@ -201,6 +274,9 @@ class _RecordingConfigurationApi implements ConfigurationApi {
   @override
   Future<List<PackagingPresentationDto>> getPackagingPresentations() async =>
       presentations;
+
+  @override
+  Future<List<CarrierDto>> getCarriers() async => const [];
 
   @override
   Future<BusinessSettingsDto> saveBusinessSettings(
@@ -263,6 +339,38 @@ class _RecordingConfigurationApi implements ConfigurationApi {
   }
 
   @override
+  Future<PackagingPresentationDto> deactivatePackagingPresentation(
+    DeactivatePackagingPresentationCommand command,
+  ) async {
+    deactivatedPresentationId = command.id;
+    deactivatedPresentationVersion = command.expectedVersion;
+    final existing = presentations.firstWhere((item) => item.id == command.id);
+    return PackagingPresentationDto(
+      id: existing.id,
+      name: existing.name,
+      sortOrder: existing.sortOrder,
+      isActive: false,
+      version: command.expectedVersion + 1,
+    );
+  }
+
+  @override
+  Future<CarrierDto> saveCarrier(SaveCarrierCommand command) async {
+    savedCarriers++;
+    lastCarrierCommand = command;
+    return CarrierDto(
+      id: command.id ?? command.commandId,
+      name: command.name,
+      phone: command.phone,
+      address: command.address,
+      contactName: command.contactName,
+      notes: command.notes,
+      isActive: true,
+      version: (command.expectedVersion ?? 0) + 1,
+    );
+  }
+
+  @override
   Future<CatalogLogoReferenceDto> replaceCatalogLogo(
     ReplaceCatalogLogoCommand command,
   ) async => CatalogLogoReferenceDto(
@@ -308,6 +416,9 @@ class _LegacySettingsRepository implements ConfigurationRepository {
       const [];
 
   @override
+  Future<List<Carrier>> getCarriers() async => const [];
+
+  @override
   Future<PackagingPresentation> savePackagingPresentation({
     String? id,
     required String name,
@@ -315,5 +426,22 @@ class _LegacySettingsRepository implements ConfigurationRepository {
     id: id ?? 'presentation-new',
     name: name,
     sortOrder: 0,
+  );
+
+  @override
+  Future<Carrier> saveCarrier({
+    String? id,
+    required String name,
+    String? phone,
+    String? address,
+    String? contactName,
+    String? notes,
+  }) async => Carrier(
+    id: id ?? 'carrier-new',
+    name: name,
+    phone: phone,
+    address: address,
+    contactName: contactName,
+    notes: notes,
   );
 }

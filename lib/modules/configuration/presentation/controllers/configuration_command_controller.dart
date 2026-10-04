@@ -26,4 +26,8 @@ class ConfigurationCommandController {
   Future<PackagingPresentationDto> updatePackagingPresentation(
     UpdatePackagingPresentationCommand command,
   ) => _api.updatePackagingPresentation(command);
+
+  Future<PackagingPresentationDto> deactivatePackagingPresentation(
+    DeactivatePackagingPresentationCommand command,
+  ) => _api.deactivatePackagingPresentation(command);
 }

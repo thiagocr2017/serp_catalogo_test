@@ -50,39 +50,36 @@ void main() {
     );
   });
 
-  test(
-    'api/ e <module>_module.dart solo exponen contrato, no implementacion',
-    () {
-      final violations = <String>[];
+  test('api/ e <module>_module.dart solo exponen contrato, no implementacion', () {
+    final violations = <String>[];
 
-      for (final file in _dartFilesUnder('lib')) {
-        final isModuleIndex = file.path.endsWith('_module.dart');
-        final isApiSurface = RegExp(r'^lib/modules/[a-z_]+/api/')
-            .hasMatch(file.path);
-        if (!isModuleIndex && !isApiSurface) continue;
+    for (final file in _dartFilesUnder('lib')) {
+      final isModuleIndex = file.path.endsWith('_module.dart');
+      final isApiSurface = RegExp(r'^lib/modules/[a-z_]+/api/')
+          .hasMatch(file.path);
+      if (!isModuleIndex && !isApiSurface) continue;
 
-        final lines = file.readAsLinesSync();
-        for (var i = 0; i < lines.length; i++) {
-          final uri = _exportUriOf(lines[i]);
-          if (uri == null) continue;
+      final lines = file.readAsLinesSync();
+      for (var i = 0; i < lines.length; i++) {
+        final uri = _exportUriOf(lines[i]);
+        if (uri == null) continue;
 
-          final target = _resolve(file.path, uri);
-          if (target == null) continue;
-          if (!_isForbiddenFromPublicSurface(target)) continue;
+        final target = _resolve(file.path, uri);
+        if (target == null) continue;
+        if (!_isForbiddenFromPublicSurface(target)) continue;
 
-          violations.add('${file.path}:${i + 1} -> $target');
-        }
+        violations.add('${file.path}:${i + 1} -> $target');
       }
+    }
 
-      expect(
-        violations,
-        isEmpty,
-        reason:
-            'Superficie publica que expone implementacion interna '
-            '(.specs/architecture/module-security-contract.md §3):\n${violations.join('\n')}',
-      );
-    },
-  );
+    expect(
+      violations,
+      isEmpty,
+      reason:
+          'Superficie publica que expone implementacion interna '
+          '(.specs/architecture/module-security-contract.md §3):\n${violations.join('\n')}',
+    );
+  });
 }
 
 Iterable<File> _dartFilesUnder(String dir) sync* {
@@ -107,8 +104,8 @@ bool _isInternalLayer(String path) {
 ///
 /// `domain/entities/` **tambien** deberia estar prohibido por
 /// `.specs/architecture/module-security-contract.md` §3 («entidades internas con campos que el
-/// consumidor no necesita»), pero todavia se expone en `product`, `inventory`
-/// y `sales`. Quitarlo es T5 y T7 de
+/// consumidor no necesita»), pero todavia se expone en `product`
+/// y `sales`. `inventory` ya fue migrado en T5. Quitarlo es T7 de
 /// `.specs/refactors/03-public-dto-migration.md`; cuando se completen, hay que
 /// ampliar esta lista y comprobar que el test sigue pasando.
 const _forbiddenFromPublicSurface = [

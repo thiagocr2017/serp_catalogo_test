@@ -39,10 +39,15 @@ void main() {
     expect(api.createdAgents, 0);
 
     await tester.enterText(find.widgetWithText(TextField, 'Nombre'), 'Thiago');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'WhatsApp'),
+      '88887777',
+    );
     await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
     await tester.pumpAndSettle();
 
     expect(api.createdAgents, 1);
+    expect(api.createdAgentPhone, '+506 8888-7777');
   });
 
   testWidgets('agente existente carga, actualiza, desactiva y activa', (
@@ -53,14 +58,14 @@ void main() {
         SalesAgentDto(
           id: 'agent-1',
           name: 'Thiago',
-          phone: '+506 1111',
+          phone: '+506 1111-2222',
           isActive: true,
           version: 3,
         ),
         SalesAgentDto(
           id: 'agent-2',
           name: 'Laura',
-          phone: '+506 2222',
+          phone: '+506 2222-3333',
           isActive: false,
           version: 4,
         ),
@@ -98,6 +103,7 @@ void main() {
 
     expect(api.updatedAgentId, 'agent-1');
     expect(api.updatedAgentName, 'Thiago L.');
+    expect(api.updatedAgentPhone, '+506 1111-2222');
     expect(api.updatedExpectedVersion, 3);
 
     await tester.tap(find.byTooltip('Desactivar agente'));
@@ -114,6 +120,38 @@ void main() {
     expect(api.activatedAgentId, 'agent-2');
     expect(api.activatedExpectedVersion, 4);
   });
+
+  testWidgets('agente rechaza telefono menor a 8 digitos', (tester) async {
+    final api = _RecordingSalesApi();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          salesApiProvider.overrideWithValue(api),
+          identityContextProvider.overrideWithValue(
+            const IdentityContext(
+              actorName: 'test',
+              deviceName: 'device',
+              deviceIdentifier: 'device-1',
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: AgentPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nuevo agente'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Nombre'), 'Thiago');
+    await tester.enterText(find.widgetWithText(TextField, 'WhatsApp'), '1234');
+    await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ingrese al menos 8 dígitos.'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(api.createdAgents, 0);
+  });
 }
 
 class _RecordingSalesApi implements SalesApi {
@@ -121,8 +159,10 @@ class _RecordingSalesApi implements SalesApi {
 
   final List<SalesAgentDto> initialAgents;
   int createdAgents = 0;
+  String? createdAgentPhone;
   String? updatedAgentId;
   String? updatedAgentName;
+  String? updatedAgentPhone;
   int? updatedExpectedVersion;
   String? deactivatedAgentId;
   int? deactivatedExpectedVersion;
@@ -136,6 +176,7 @@ class _RecordingSalesApi implements SalesApi {
   @override
   Future<SalesAgentDto> createAgent(CreateSalesAgentCommand command) async {
     createdAgents++;
+    createdAgentPhone = command.phone;
     return SalesAgentDto(
       id: command.commandId,
       name: command.name,
@@ -149,6 +190,7 @@ class _RecordingSalesApi implements SalesApi {
   Future<SalesAgentDto> updateAgent(UpdateSalesAgentCommand command) async {
     updatedAgentId = command.id;
     updatedAgentName = command.name;
+    updatedAgentPhone = command.phone;
     updatedExpectedVersion = command.expectedVersion;
     return SalesAgentDto(
       id: command.id,

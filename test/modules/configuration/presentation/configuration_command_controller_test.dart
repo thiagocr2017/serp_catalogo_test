@@ -9,6 +9,7 @@ class _FakeConfigurationApi implements ConfigurationApi {
   SaveBusinessSettingsCommand? savedCommand;
   CreatePackagingPresentationCommand? createPresentationCommand;
   UpdatePackagingPresentationCommand? updatePresentationCommand;
+  DeactivatePackagingPresentationCommand? deactivatePresentationCommand;
 
   @override
   Future<Uint8List?> downloadCatalogLogo() async => null;
@@ -19,6 +20,9 @@ class _FakeConfigurationApi implements ConfigurationApi {
   @override
   Future<List<PackagingPresentationDto>> getPackagingPresentations() async =>
       const [];
+
+  @override
+  Future<List<CarrierDto>> getCarriers() async => const [];
 
   @override
   Future<BusinessSettingsDto> getBusinessSettings() async => _settings;
@@ -69,6 +73,33 @@ class _FakeConfigurationApi implements ConfigurationApi {
       version: 4,
     );
   }
+
+  @override
+  Future<PackagingPresentationDto> deactivatePackagingPresentation(
+    DeactivatePackagingPresentationCommand command,
+  ) async {
+    deactivatePresentationCommand = command;
+    return const PackagingPresentationDto(
+      id: 'presentation-1',
+      name: 'Caja',
+      sortOrder: 0,
+      isActive: false,
+      version: 5,
+    );
+  }
+
+  @override
+  Future<CarrierDto> saveCarrier(SaveCarrierCommand command) async =>
+      CarrierDto(
+        id: command.id ?? command.commandId,
+        name: command.name,
+        phone: command.phone,
+        address: command.address,
+        contactName: command.contactName,
+        notes: command.notes,
+        isActive: true,
+        version: (command.expectedVersion ?? 0) + 1,
+      );
 
   @override
   Future<CatalogPreferencesDto> selectCatalogAgent(
@@ -159,15 +190,26 @@ void main() {
         expectedVersion: 3,
         identity: identity,
       );
+      const deactivate = DeactivatePackagingPresentationCommand(
+        id: 'presentation-1',
+        expectedVersion: 4,
+        identity: identity,
+      );
 
       final created = await controller.createPackagingPresentation(create);
       final updated = await controller.updatePackagingPresentation(update);
+      final deactivated = await controller.deactivatePackagingPresentation(
+        deactivate,
+      );
 
       expect(api.createPresentationCommand, same(create));
       expect(api.updatePresentationCommand, same(update));
+      expect(api.deactivatePresentationCommand, same(deactivate));
       expect(created.version, 3);
       expect(updated.version, 4);
+      expect(deactivated.isActive, false);
       expect(update.expectedVersion, 3);
+      expect(deactivate.expectedVersion, 4);
     },
   );
 
