@@ -31,6 +31,34 @@ quedaron cerradas el 2026-10-03.**
 `audit_actions` tenia politica `ALL` sin conceder privilegio; se selló tambien
 por defensa en profundidad.
 
+#### Storage: protegido, con un residuo que no se puede cerrar desde aqui
+
+`storage.objects` concede a `anon` y `authenticated` `TRUNCATE`, `REFERENCES` y
+`TRIGGER` ademas del CRUD. Sobre el papel es el mismo vector que vacio
+`inventory_transactions` y `audit_logs`. **No es explotable igual:**
+
+1. PostgREST **no expone** el schema `storage` (`supabase/config.toml`:
+   `schemas = ["public", "graphql_public"]`). La aplicacion usa el API de
+   Storage (`_client.storage.from(...)`), que es otro servicio.
+2. Quien otorga esos privilegios es `supabase_storage_admin`, y **`postgres`
+   no es superuser** en la base local de Supabase. Un `REVOKE` desde `postgres`
+   **no los quita**: PostgreSQL reporta `REVOKE` igual aunque no haya revocado
+   nada. Comprobado: `has_table_privilege` sigue en `true` justo despues.
+
+Riesgo residual: acceso SQL directo con credenciales de base, fuera del modelo
+de amenazas de la aplicacion de escritorio. **No se aplica un `REVOKE` que no
+hace nada**, para no dar una falsa sensacion de proteccion.
+
+Sobre `storage.objects` **no** se anade trigger `BEFORE TRUNCATE`: es una tabla
+gestionada por Supabase y tocar su esquema puede romperse en una actualizacion.
+Es una decision, no un olvido.
+
+Lo que si protege de verdad, y esta cubierto por `storage_hardening_test.sql`:
+politicas acotadas a su bucket y a un patron de nombre, `catalog-assets` sin
+politica de `DELETE` (el logo no se puede borrar), los dos buckets con limite de
+tamano y solo tipos de imagen, y el trigger `protect_objects_delete` que impide
+el borrado directo de objetos.
+
 #### Leccion comun de los dos huecos
 
 En ambos casos la capa que falto fue la misma: **`TRUNCATE` no lo cubre RLS**

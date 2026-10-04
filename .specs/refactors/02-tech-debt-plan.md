@@ -247,8 +247,16 @@ Objetivo: cerrar los permisos amplios.
       `audit_trail_immutability_test.sql` (25, 12 fallaban antes).
 - [ ] Revocar escritura directa restante segun `.specs/refactors/04-block-1b-contract-cleanup.md`
       (1B.3), migrando antes todos los consumidores a fachadas y RPC.
-- [ ] Endurecer `product-images` y `catalog-assets` con politica por rol y
-      prefijo, mas pgTAP negativa.
+- [x] **Revisado 2026-10-03**: `product-images` y `catalog-assets` estan mas
+      endurecidos de lo que decia `block-1a-baseline.md` — las politicas ya
+      acotan bucket, patron de nombre y MIME, y `catalog-assets` no permite
+      borrado. El `TRUNCATE` sobre `storage.objects` **no se puede revocar
+      desde `postgres`** (los otorga `supabase_storage_admin` y `postgres` no es
+      superuser) y **no es explotable** porque PostgREST no expone el schema
+      `storage`. Se documenta en vez de aplicar un `REVOKE` ineficaz. Ver
+      `database/schema-current.md` y `storage_hardening_test.sql`.
+- [ ] Sustituir identidad de dispositivo por `auth.uid()` cuando exista
+      Autenticacion.
 - [ ] Sustituir identidad de dispositivo por `auth.uid()` cuando exista
       Autenticacion.
 - [ ] Cumplir `.specs/modules/authorization/production-gate.md` antes de permitir
