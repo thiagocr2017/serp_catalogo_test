@@ -41,6 +41,7 @@ class _Profile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final compact = MediaQuery.sizeOf(context).width < 700;
     final transactions = ref.watch(productTransactionsProvider(product.id));
     final locationBalances = ref.watch(
       productLocationBalancesProvider(product.id),
@@ -57,48 +58,75 @@ class _Profile extends ConsumerWidget {
         : null;
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => context.go('/products'),
-          icon: const Icon(Icons.arrow_back),
+        leading: Tooltip(
+          message: 'Volver a productos',
+          child: IconButton(
+            onPressed: () => context.go('/products'),
+            icon: const Icon(Icons.arrow_back),
+          ),
         ),
-        title: Text('${product.sku} · ${product.name}'),
-        actions: [
-          TextButton.icon(
-            onPressed: () => context.go('/products/${product.id}/edit'),
-            icon: const Icon(Icons.edit),
-            label: const Text('Editar'),
-          ),
-          TextButton.icon(
-            onPressed: () => _changeStatus(context, ref),
-            icon: Icon(
-              product.isActive
-                  ? Icons.visibility_off_outlined
-                  : Icons.check_circle_outline,
-            ),
-            label: Text(product.isActive ? 'Desactivar' : 'Activar'),
-          ),
-          const SizedBox(width: 16),
-        ],
+        title: Text(
+          '${product.sku} · ${product.name}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: compact
+            ? [
+                PopupMenuButton<String>(
+                  tooltip: 'Acciones del producto',
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      context.go('/products/${product.id}/edit');
+                    } else {
+                      _changeStatus(context, ref);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'edit', child: Text('Editar')),
+                    PopupMenuItem(
+                      value: 'status',
+                      child: Text(product.isActive ? 'Desactivar' : 'Activar'),
+                    ),
+                  ],
+                ),
+              ]
+            : [
+                TextButton.icon(
+                  onPressed: () => context.go('/products/${product.id}/edit'),
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Editar'),
+                ),
+                TextButton.icon(
+                  onPressed: () => _changeStatus(context, ref),
+                  icon: Icon(
+                    product.isActive
+                        ? Icons.visibility_off_outlined
+                        : Icons.check_circle_outline,
+                  ),
+                  label: Text(product.isActive ? 'Desactivar' : 'Activar'),
+                ),
+                const SizedBox(width: 16),
+              ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(28),
+        padding: EdgeInsets.all(compact ? 12 : 28),
         children: [
           Card(
             clipBehavior: Clip.antiAlias,
             child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 320,
-                    height: 320,
+              padding: EdgeInsets.all(compact ? 12 : 24),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final stacked = constraints.maxWidth < 600;
+                  final image = Container(
+                    width: stacked ? null : 320,
+                    height: stacked ? 220 : 320,
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
                       color: Theme.of(context)
                           .colorScheme
                           .surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: product.imageUrl == null
                         ? const Icon(Icons.inventory_2_outlined, size: 80)
@@ -119,77 +147,87 @@ class _Profile extends ConsumerWidget {
                               ),
                             ),
                           ),
-                  ),
-                  const SizedBox(width: 28),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
+                  );
+                  final summary = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _StatusChip(
+                            label: product.isActive ? 'Activo' : 'Inactivo',
+                            icon: product.isActive
+                                ? Icons.check_circle_outline
+                                : Icons.visibility_off_outlined,
+                            color: product.isActive ? Colors.green : Colors.red,
+                          ),
+                          if (product.isOutOfStock)
+                            const _StatusChip(
+                              label: 'Sin stock',
+                              icon: Icons.remove_shopping_cart_outlined,
+                              color: Colors.red,
+                            )
+                          else if (product.requiresRestock)
                             _StatusChip(
-                              label: product.isActive ? 'Activo' : 'Inactivo',
-                              icon: product.isActive
-                                  ? Icons.check_circle_outline
-                                  : Icons.visibility_off_outlined,
-                              color: product.isActive
-                                  ? Colors.green
-                                  : Colors.red,
+                              label: 'Reponer (punto: ${product.reorderPoint})',
+                              icon: Icons.warning_amber_outlined,
+                              color: Colors.orange,
+                            )
+                          else
+                            const _StatusChip(
+                              label: 'En stock',
+                              icon: Icons.check_circle_outline,
+                              color: Colors.green,
                             ),
-                            if (product.isOutOfStock)
-                              const _StatusChip(
-                                label: 'Sin stock',
-                                icon: Icons.remove_shopping_cart_outlined,
-                                color: Colors.red,
-                              )
-                            else if (product.requiresRestock)
-                              _StatusChip(
-                                label:
-                                    'Reponer (punto: ${product.reorderPoint})',
-                                icon: Icons.warning_amber_outlined,
-                                color: Colors.orange,
-                              )
-                            else
-                              const _StatusChip(
-                                label: 'En stock',
-                                icon: Icons.check_circle_outline,
-                                color: Colors.green,
-                              ),
-                            if (product.promotionPriceInCents != null)
-                              const _StatusChip(
-                                label: 'Con promoción',
-                                icon: Icons.local_offer_outlined,
-                                color: Colors.purple,
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          product.name,
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          crossAxisAlignment: WrapCrossAlignment.center,
+                          if (product.promotionPriceInCents != null)
+                            const _StatusChip(
+                              label: 'Con promoción',
+                              icon: Icons.local_offer_outlined,
+                              color: Colors.purple,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        product.name,
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _CopyableValue(prefix: 'SKU', value: product.sku),
+                          if (product.barcode?.trim().isNotEmpty == true)
+                            _CopyableValue(
+                              prefix: 'Código de barras',
+                              value: product.barcode!.trim(),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(product.description),
+                    ],
+                  );
+                  return stacked
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _CopyableValue(prefix: 'SKU', value: product.sku),
-                            if (product.barcode?.trim().isNotEmpty == true)
-                              _CopyableValue(
-                                prefix: 'Código de barras',
-                                value: product.barcode!.trim(),
-                              ),
+                            image,
+                            const SizedBox(height: 16),
+                            summary,
                           ],
-                        ),
-                        const SizedBox(height: 14),
-                        Text(product.description),
-                      ],
-                    ),
-                  ),
-                ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            image,
+                            const SizedBox(width: 28),
+                            Expanded(child: summary),
+                          ],
+                        );
+                },
               ),
             ),
           ),
@@ -1239,13 +1277,19 @@ class _CopyableValue extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '$prefix: $value',
-            style: Theme.of(context).textTheme.labelLarge,
+          Flexible(
+            child: Text(
+              '$prefix: $value',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
           ),
           IconButton(
             tooltip: 'Copiar $prefix',
             visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
             iconSize: 16,
             icon: const Icon(Icons.copy, size: 16),
             onPressed: () async {
