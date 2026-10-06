@@ -7,6 +7,18 @@ El SDD historico vive en `sdd-historical.md`.
 
 ## Specs nuevas
 
+- `../../screens/sales-commercial-operations/`: flujos de UI para cotizaciones,
+  pedidos, facturas, devoluciones y consignaciones usando los comandos
+  comerciales ya expuestos.
+- `../../screens/sales-quote-form/`: alta rapida, descuentos y disponibilidad de
+  stock en cotizaciones.
+- `../../screens/sales-quote-detail/`: reapertura desde lista/perfil, estados y
+  navegacion de retorno contextual.
+- `returns/1.return-business.spec.md` y `returns/2.database-contract.spec.md`:
+  reglas, ownership cross-module, transaccion e inventario/finanzas de
+  devoluciones; la segunda define matriz pgTAP obligatoria.
+- `../../screens/sales-return-form/`: contrato UX/API de captura y confirmacion
+  (bloqueado hasta implementar los contratos de Sales, Inventory y Payments).
 - `customer-management/0.open-questions.md`: **registro canonico de las 44
   decisiones de Clientes**. Las 23 preguntas abiertas se cerraron el
   2026-10-03.

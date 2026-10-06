@@ -180,6 +180,35 @@ Lo que si existe hoy y no contradice este contrato:
 - `payment_applications` y `customer_credit_entries` como tablas vacias;
 - `sales_invoices.status` con `DRAFT`, `CONFIRMED`, `CANCELLED`, `PAID`.
 
+## Devoluciones de venta (extension requerida)
+
+La devolucion tiene una frontera adicional, especificada en
+`.specs/modules/sales/returns/1.return-business.spec.md`,
+`.specs/modules/sales/returns/2.database-contract.spec.md` y
+`.specs/modules/payments/returns/1.sales-return-settlement.spec.md`.
+
+- Sales conserva la devolucion comercial, snapshot de factura y reduccion de
+  deuda. Inventory conserva destinos/movimientos, y Payments conserva refunds y
+  creditos.
+- Propuesta: la RPC transaccional propietaria de Sales orquesta las RPC
+  publicas de Inventory y Payments porque la devolucion es el agregado
+  solicitado. Cada modulo escribe unicamente sus tablas; confirmar esta
+  propiedad contra el mandato de orquestador unico antes de implementar.
+- Se reduce primero la deuda impaga. Solo el excedente se devuelve como dinero
+  o credito, elegido de forma excluyente una vez por devolucion. No se crea
+  valor financiero por deuda no pagada.
+- Payments debe validar bajo bloqueo el dinero elegible por factura (pagos
+  confirmados menos reembolsos previos) y exponer comandos idempotentes para
+  refund o credito con referencia unica a devolucion.
+- `create_refund` existe, pero el contrato actual no limita explicitamente el
+  monto restante ni vincula el reembolso a una devolucion. Las capacidades de
+  credito/aplicacion tampoco estan implementadas; se requieren contratos y
+  pgTAP antes de UI de confirmacion.
+- La misma transaccion incluye movimientos de Inventory; un fallo financiero o
+  fisico revierte todos los efectos. Cuarentena y exclusion de stock vendible
+  pertenecen a Inventory, no a una escritura de Sales.
+- Esta extension esta especificada, no implementada.
+
 ## Tareas
 
 - [ ] Anadir `currencyCode`, `exchangeRate`, `usdEquivalent` y `commandId` a
@@ -196,6 +225,9 @@ Lo que si existe hoy y no contradice este contrato:
 - [ ] Pruebas minimas: aplicacion valida, rechazo por factura anulada, rechazo
       por exceso de saldo, idempotencia por `commandId`, doble envio
       concurrente y reversion ante fallo intermedio.
+- [ ] Devoluciones: elegibilidad y refund/credito idempotentes, capacidad bajo
+      bloqueo, referencia unica y pgTAP conforme a
+      `modules/sales/returns/2.database-contract.spec.md`.
 
 ## Criterio de listo
 
