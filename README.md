@@ -27,7 +27,18 @@ flutter run -d macos
 ```
 
 La aplicación usa por defecto `http://127.0.0.1:54321`. Las migraciones y los
-datos de demostración viven en `supabase/migrations/` y `supabase/seed.sql`.
+datos mínimos de demostración para una base nueva viven en `supabase/seed.sql`.
+Para poblar una base local existente sin reiniciarla, aplica el conjunto amplio
+e idempotente con:
+
+```bash
+docker exec -i supabase_db_serp psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/seed_demo.sql
+```
+
+La carga amplia también se ejecuta automáticamente después de `seed.sql` en
+cada `supabase db reset` local. Solo funciona en modo `TEST`; su alcance y
+documentos incluidos están descritos en
+`.specs/modules/demo-data/1.demo-dataset.spec.md`.
 
 ## Validación
 
