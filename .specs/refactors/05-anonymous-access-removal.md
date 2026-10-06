@@ -227,6 +227,159 @@ Antes de implementar, volver a consultar `information_schema`,
 - [ ] Mantener bloqueado el modo `PRODUCTION` hasta satisfacer todos los
   criterios binarios de `.specs/modules/authorization/production-gate.md`.
 
+## Guia de relevo y ejecucion segura
+
+Esta seccion es el punto de entrada para el siguiente agente. Leer primero los
+documentos listados aqui; no inferir que los permisos o el estado del esquema
+siguen iguales a la ultima corrida.
+
+### Estado inicial verificado
+
+- Commit de E2E de devolucion autenticada: `d2a83fd`.
+- Commit que bloquea el bootstrap por dispositivo y la purga: `94cdf44`.
+- La migracion `20261006180000_block_legacy_device_bootstrap.sql` ya se aplico
+  a Supabase local mediante `--include-all`; no se aplico a un proyecto remoto.
+- Ultima regresion registrada: 449 pruebas pgTAP en 22 archivos, 18 pruebas del
+  modulo Configuracion, `flutter analyze` limpio.
+- `supabase/config.toml` aun tiene signup de Auth habilitado en `[auth]` y
+  `[auth.email]`. No apagarlo hasta reemplazar la cuenta creada por `signUp` en
+  `integration_test/sales_return_authorized_lifecycle_flow_test.dart` por una
+  fixture aprovisionada de forma controlada.
+- No existe pantalla/proveedor de sesion Auth en `lib/`; `app_router.dart`
+  inicia directamente en `/products`. `main.dart` crea `DeviceIdentity` y la
+  inyecta en varios modulos. Las funciones de negocio y los grants de `anon`
+  siguen pendientes de migracion.
+- La base local contiene historial E2E y usuarios Auth sinteticos. No usar
+  `supabase db reset`, purga, ni limpieza manual para “dejarla limpia”.
+- El commit actual solo tiene `Signed-off-by`; no es criptograficamente firmado.
+  Revisar la politica de `AGENTS.md` y no afirmar firma GPG/SSH sin
+  `git verify-commit` exitoso.
+- En esta maquina no hay `gpg` ni `user.signingkey` configurados; no cambiar la
+  configuracion global ni reutilizar una clave SSH sin autorizacion del usuario.
+
+### Fuentes de informacion por tema
+
+| Tema | Revisar primero |
+|---|---|
+| Decisiones y secuencia | Este archivo, especialmente `Decisiones aprobadas`, `Avance aplicado` y esta guia |
+| Gate de produccion | `.specs/modules/authorization/production-gate.md` |
+| Auth existente/placeholder | `.specs/modules/authorization/1.one-time-pin-approval.spec.md`; es borrador PIN, no implementacion de login |
+| Composicion y rutas | `lib/main.dart`, `lib/core/navigation/app_router.dart`, `lib/modules/*/*_module.dart` |
+| Configuracion Auth local | `supabase/config.toml`, secciones `[auth]` y `[auth.email]` |
+| Identidad por dispositivo | `lib/core/device/device_identity.dart`, `lib/core/identity/identity_context.dart`, busqueda `DeviceIdentity` y `device_identifier` |
+| Autor/auditoria SQL | Migraciones con `p_actor_name`, `p_device_identifier`, `actor_name`, `created_by`, `updated_by`; `core/audit/` |
+| Modelo de seguridad | Todas las migraciones en `supabase/migrations/`; `pg_policies`, ACL y funciones `SECURITY DEFINER` |
+| Contratos DB y concurrencia | `supabase/tests/database/`, `supabase/tests/concurrency/` y tests nuevos en `supabase/tests/` |
+| Recorridos E2E | `.specs/testing/e2e.md` y `integration_test/`; considerar prerequisitos/efectos persistentes de cada flujo |
+| Patrones Flutter | `.specs/01-module-contracts.md`, `.specs/architecture/module-security-contract.md`, DI y API publica de cada modulo |
+
+Buscar referencias con `rg -n "anon|to public|grant execute|SECURITY DEFINER|signUp\\(|signInAnonymously|claim_local_superadmin|superadmin_device_identifier|DeviceIdentity|device_identifier" lib supabase integration_test test .specs`.
+Cada coincidencia debe clasificarse: identidad, trazabilidad, permiso directo,
+politica RLS, RPC indirecta, fixture o referencia historica. No borrar una
+coincidencia solo por nombre.
+
+### Orden obligatorio del trabajo
+
+1. **Rebaselinar.** Ejecutar `git status --short`, anotar `git rev-parse HEAD`
+   y revisar diffs ajenos antes de editar. Confirmar entorno con
+   `SUPABASE_TELEMETRY_DISABLED=1 supabase status` y
+   `SUPABASE_TELEMETRY_DISABLED=1 supabase migration list --local`. No mostrar ni
+   guardar las claves que pueda imprimir `supabase status`.
+2. **Especificar el modulo Auth.** Crear/actualizar contrato funcional y
+   tecnico para inicio/cierre de sesion, restauracion/expiracion, aprovisionar
+   cuentas fuera del cliente, navegacion protegida y estados offline. Respetar
+   el unico punto de composicion (`main.dart`) y la API publica del modulo.
+   No reutilizar el borrador PIN como identidad.
+3. **Definir aprovisionamiento y primer admin.** El cliente Flutter nunca recibe
+   `service_role` ni implementa registro. El primer usuario se crea con Auth
+   desde una herramienta operativa confiable. El bootstrap debe identificar
+   exactamente a ese `auth.uid()` preseleccionado por el operador; no usar
+   “primer usuario que llegue” ni una RPC reclamable por cualquier sesion.
+   Implementar la asignacion de forma atomica, de una sola vez y con prueba de
+   carrera. Mantener iguales los permisos comerciales de usuarios normales;
+   el superadmin solo se distingue para operaciones de instalacion aprobadas.
+4. **Provisionar fixtures antes de cerrar signup.** Cambiar E2E y pruebas para
+   consumir una cuenta local preaprovisionada o un fixture admin aislado. La
+   clave `service_role` solo puede usarse en tooling de pruebas que falle si no
+   esta en loopback y nunca en la app, bundles, logs o CI compartida. Probar que
+   signup y Auth anonimo estan rechazados; entonces apagar signup en ambos
+   `enable_signup` de `supabase/config.toml` (`[auth]`, `[auth.email]`).
+5. **Integrar la sesion en Flutter.** Agregar proveedor de estado Auth,
+   formulario solo de inicio, cierre, expiracion y guarda de rutas. Redirigir
+   rutas de negocio a login sin sesion, y no cargar providers/repositorios antes
+   de autenticar. Probar restauracion de sesion, expiracion, logout y regreso a
+   la ruta solicitada sin bucles GoRouter.
+6. **Migrar identidad/auditoria gradualmente.** Para cada modulo, dejar de
+   aceptar actor como identidad declarada por el cliente y establecer actor
+   desde `auth.uid()` en SQL. Conservar nombre/id de equipo solo como metadata
+   explicita de trazabilidad, no como prueba de identidad o autorizacion.
+   Considerar la cola offline: comandos creados por una sesion no deben
+   sincronizarse bajo otra cuenta sin una politica especifica.
+7. **Migrar permisos por modulo.** Inventariar el invocador real de cada lectura
+   y RPC; agregar grants/RLS para `authenticated`, retirar `anon`/`PUBLIC` solo
+   para ese contrato y en la misma unidad de trabajo actualizar pgTAP, pruebas
+   de repositorio y E2E. Nunca hacer un `REVOKE` global antes de que todos los
+   consumers hayan cambiado.
+8. **Retirar legado y abrir gates al final.** Eliminar `claim_local_superadmin`,
+   columnas y parametros basados en dispositivo solo despues de `rg` sin
+   consumers y pruebas de esquema migrado. Reabrir purga/produccion solo con
+   identidad superadmin Auth probada, gate SQL, audit trail y confirmacion UI.
+   Un usuario Auth normal debe recibir rechazo en esas operaciones.
+9. **Cerrar el release gate.** Repetir el inventario de grants/politicas por
+   entorno, comparar con la linea base, correr todas las suites, E2E verticales
+   y build desktop. Actualizar el gate con evidencia; no marcar produccion lista
+   solo porque compila o porque los tests mock pasan.
+
+### Comandos y limites operativos
+
+Validacion Flutter, sin tocar Supabase:
+
+```bash
+flutter analyze
+flutter test
+flutter test test/modules/authorization
+flutter test integration_test/<flujo_auth>.dart -d macos
+flutter build macos --debug
+```
+
+Validacion DB local (requiere Docker/Supabase local; deshabilitar telemetria si
+el CLI no puede escribir fuera del workspace):
+
+```bash
+SUPABASE_TELEMETRY_DISABLED=1 supabase status
+SUPABASE_TELEMETRY_DISABLED=1 supabase migration list --local
+SUPABASE_TELEMETRY_DISABLED=1 supabase test db supabase/tests/database
+SUPABASE_TELEMETRY_DISABLED=1 supabase test db supabase/tests/concurrency
+```
+
+Aplicar migraciones solo tras inspeccionar `migration list`, confirmar que la
+URL sea loopback y leer el SQL. Preferir `supabase migration up --local`; si la
+CLI exige `--include-all` por migraciones ya aplicadas fuera de orden, revisar
+cuales incluye y explicar el efecto antes de usarlo. No ejecutar `supabase db
+reset` en el entorno local compartido de este proyecto: elimina los registros
+E2E y datos de trabajo. No ejecutar comandos ligados a proyectos remotos salvo
+autorizacion expresa y plan de restauracion probado.
+
+### Rollback y checkpoint de cada fase
+
+- Cada fase/flujo completado se guarda en un commit selectivo que incluya
+  implementacion, spec y tests. Revisar staged diff antes de confirmar; nunca
+  incluir las modificaciones previas de otro agente por conveniencia.
+- Aplicacion: revertir con un commit compensatorio o volver al commit estable
+  mediante el procedimiento de release del equipo; no reescribir commits
+  compartidos ni usar `reset --hard`.
+- Base de datos: priorizar migraciones aditivas forward-fix. Para grants, una
+  reversa solo puede restaurar el permiso minimo a `authenticated`; nunca
+  reabrir `anon`/`PUBLIC` en bloque. El gate de purga/produccion no se revierte
+  junto con fallos de login.
+- Datos E2E son persistentes e inmutables; guardar ids/documentos sinteticos en
+  el reporte de la corrida y no borrarlos para simular rollback.
+- Antes del commit: pruebas relevantes y `git diff --cached --check`. Despues:
+  verificar commit, trailers/firma criptografica disponible y estado del arbol.
+  Si se interrumpe una fase incompleta, crear checkpoint de alcance limitado
+  con estado `wip` y dejar pasos de continuacion; no abandonar cambios sin
+  explicar como recuperarlos.
+
 ## Criterios de aceptacion
 
 1. Ninguna operacion de negocio protegida puede ejecutarse con rol `anon` ni

@@ -143,6 +143,39 @@ Rules:
 - Pull requests or finished tasks that change behavior should include the spec
   update and the code/test update together.
 
+## Commits, Signatures, and Rollback
+
+- Treat each completed work session as a recoverable checkpoint. Before
+  finishing a session, commit the changes made in that session unless the user
+  explicitly asks to leave them uncommitted or a genuine blocker prevents it.
+- Keep each commit scoped to one coherent change. Include its implementation,
+  tests, and relevant specs together; split independent work into separate
+  commits.
+- At session start, record `git status --short` and the current `HEAD`. Never
+  stage, amend, revert, or commit pre-existing/user changes unless they are
+  explicitly part of the requested work. Use path-selective staging and inspect
+  `git diff --cached` before committing.
+- Sign commits cryptographically with the configured Git signer
+  (`git commit -S`) and verify them with `git verify-commit HEAD` when signing
+  is available.
+  Add the repository's authorship attestation with `git commit -s` as well.
+- `Signed-off-by` (`-s`) is not a cryptographic signature. If no signer is
+  configured, do not claim the commit is cryptographically signed: make a
+  scoped `-s` checkpoint when permitted so the work remains reversible, report
+  that signing is unavailable, and do not change global Git signing settings
+  or create/use a signing key without the user's approval.
+- Never rewrite a commit that may already be shared. Correct committed work
+  with a follow-up commit or `git revert`; do not use destructive reset/checkout
+  commands to discard user work.
+- Before committing, run the relevant tests and `git diff --cached --check`.
+  After committing, verify the commit message/signature and inspect
+  `git status --short`; report any remaining pre-existing or blocked changes
+  separately so the user knows what can be rolled back independently.
+- Do not run database reset, destructive data cleanup, production-mode changes,
+  or broad permission revocations as a rollback mechanism. For database
+  changes, document the forward-fix/compensating migration and the exact local
+  or remote environment affected.
+
 Screen/form test specs:
 - Every screen or form spec must include `4.tests.spec.md`.
 - A form is not "ready" unless tests cover its real operation and validation
