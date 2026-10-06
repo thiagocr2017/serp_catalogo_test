@@ -12,6 +12,31 @@ import 'package:serp/modules/sales/presentation/pages/customers_page.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  testWidgets('formulario de cliente permite volver desde el encabezado', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      initialLocation: '/sales/customers',
+      routes: salesRoutes,
+    );
+    await tester.pumpWidget(_appWithRouter(router, _RecordingCustomerApi()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nuevo cliente'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CustomerFormPage), findsOneWidget);
+    expect(find.byTooltip('Volver'), findsOneWidget);
+    await tester.tap(find.byTooltip('Volver'));
+    await tester.pumpAndSettle();
+
+    expect(
+      router.routerDelegate.currentConfiguration.uri.path,
+      '/sales/customers',
+    );
+    expect(find.byType(CustomerFormPage), findsNothing);
+  });
+
   testWidgets('cliente sin nombre exige correccion antes de guardar', (
     tester,
   ) async {
@@ -28,7 +53,10 @@ void main() {
     expect(find.text('Escriba el nombre fiscal del negocio.'), findsOneWidget);
     expect(find.text('Escriba el nombre de fantasía.'), findsOneWidget);
     expect(find.text('Ingrese el teléfono de contacto.'), findsOneWidget);
-    expect(find.text('Escriba la gira o agrupación comercial.'), findsOneWidget);
+    expect(
+      find.text('Escriba la gira o agrupación comercial.'),
+      findsOneWidget,
+    );
     expect(find.text('Escriba la dirección.'), findsOneWidget);
     expect(find.byType(CustomerFormPage), findsOneWidget);
     expect(api.createdCustomers, 0);
@@ -106,7 +134,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // Comprobar que aparecen las 5 advertencias mínimas requeridas a la vez
-      expect(find.text('Escriba el nombre fiscal del negocio.'), findsOneWidget);
+      expect(
+        find.text('Escriba el nombre fiscal del negocio.'),
+        findsOneWidget,
+      );
       expect(find.text('Escriba el nombre de fantasía.'), findsOneWidget);
       expect(find.text('Ingrese el teléfono de contacto.'), findsOneWidget);
       expect(
@@ -168,7 +199,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // 1. Advertencias mínimas requeridas
-      expect(find.text('Escriba el nombre fiscal del negocio.'), findsOneWidget);
+      expect(
+        find.text('Escriba el nombre fiscal del negocio.'),
+        findsOneWidget,
+      );
       expect(find.text('Escriba el nombre de fantasía.'), findsOneWidget);
       expect(find.text('Ingrese el teléfono de contacto.'), findsOneWidget);
       expect(
@@ -1249,6 +1283,18 @@ Widget _app(
   _RecordingCustomerApi customerApi, {
   List<CarrierDto> carriers = const [],
   List<IdentificationTypeDto> identificationTypes = const [],
+}) => _appWithRouter(
+  GoRouter(initialLocation: '/sales/customers', routes: salesRoutes),
+  customerApi,
+  carriers: carriers,
+  identificationTypes: identificationTypes,
+);
+
+Widget _appWithRouter(
+  GoRouter router,
+  _RecordingCustomerApi customerApi, {
+  List<CarrierDto> carriers = const [],
+  List<IdentificationTypeDto> identificationTypes = const [],
 }) => ProviderScope(
   overrides: [
     customerApiProvider.overrideWithValue(customerApi),
@@ -1259,12 +1305,7 @@ Widget _app(
       ),
     ),
   ],
-  child: MaterialApp.router(
-    routerConfig: GoRouter(
-      initialLocation: '/sales/customers',
-      routes: salesRoutes,
-    ),
-  ),
+  child: MaterialApp.router(routerConfig: router),
 );
 
 Future<void> _selectCustomerType(WidgetTester tester, String label) async {
@@ -1569,10 +1610,11 @@ class _RecordingCustomerApi implements CustomerApi {
   }
 
   @override
-  Future<List<CustomerContactDto>> getCustomerContacts(String customerId) async =>
-      initialContacts
-          .where((contact) => contact.customerId == customerId)
-          .toList();
+  Future<List<CustomerContactDto>> getCustomerContacts(
+    String customerId,
+  ) async => initialContacts
+      .where((contact) => contact.customerId == customerId)
+      .toList();
 
   @override
   Future<CustomerContactDto> saveCustomerContact({
@@ -1654,8 +1696,7 @@ class _RecordingCustomerApi implements CustomerApi {
   @override
   Future<CustomerCommercialSummaryDto> getCustomerCommercialSummary(
     String customerId,
-  ) async =>
-      CustomerCommercialSummaryDto.empty(customerId);
+  ) async => CustomerCommercialSummaryDto.empty(customerId);
 
   int createdCustomerCategories = 0;
   String? createdCustomerCategoryName;
@@ -1699,14 +1740,13 @@ class _RecordingCustomerApi implements CustomerApi {
     String? description,
     String? color,
     bool isActive = true,
-  }) async =>
-      CustomerCategoryDto(
-        id: id,
-        name: name,
-        description: description,
-        color: color,
-        isActive: isActive,
-      );
+  }) async => CustomerCategoryDto(
+    id: id,
+    name: name,
+    description: description,
+    color: color,
+    isActive: isActive,
+  );
 
   @override
   Future<void> deleteCustomerCategory(String id) async {}

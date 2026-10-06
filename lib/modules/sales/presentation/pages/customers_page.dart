@@ -473,6 +473,11 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
     ]) {
       controller.addListener(_markDirty);
     }
+    // Linea base del formulario nuevo: sin ella _baseline queda null y cualquier
+    // notificacion menor (p. ej. el cambio de seleccion al recibir foco un campo)
+    // marcaba _dirty y disparaba la alerta de cambios sin guardar al volver.
+    // En edicion la linea base se recalcula en _loadCustomer tras hidratar.
+    _baseline = _snapshot();
     if (widget.customerId != null) _loadCustomer(widget.customerId!);
   }
 
@@ -758,6 +763,11 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
       },
       child: Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            tooltip: 'Volver',
+            onPressed: _cancel,
+            icon: const Icon(Icons.arrow_back),
+          ),
           title: Text(existing == null ? 'Nuevo cliente' : 'Editar cliente'),
         ),
         body: _loadingCustomer
@@ -1515,7 +1525,10 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                           TextButton.icon(
                                             onPressed:
                                                 _showQuickCreateCategoryDialog,
-                                            icon: const Icon(Icons.add, size: 16),
+                                            icon: const Icon(
+                                              Icons.add,
+                                              size: 16,
+                                            ),
                                             label: const Text(
                                               'Crear primera categoría',
                                             ),
@@ -1534,18 +1547,16 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                             ),
                                             avatar:
                                                 cat.color != null &&
+                                                    _tryParseColor(cat.color) !=
+                                                        null
+                                                ? CircleAvatar(
+                                                    radius: 6,
+                                                    backgroundColor:
                                                         _tryParseColor(
-                                                              cat.color,
-                                                            ) !=
-                                                            null
-                                                    ? CircleAvatar(
-                                                      radius: 6,
-                                                      backgroundColor:
-                                                          _tryParseColor(
-                                                            cat.color,
-                                                          ),
-                                                    )
-                                                    : null,
+                                                          cat.color,
+                                                        ),
+                                                  )
+                                                : null,
                                             label: Text(cat.name),
                                             selected: _selectedCategoryIds
                                                 .contains(cat.id),
@@ -1986,8 +1997,7 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
           draft.role.text.trim().isEmpty ||
           !isValidLocalPhone(draft.phone.text),
     )) {
-      newContactsError =
-          'Cada contacto necesita nombre, teléfono de al menos 8 dígitos y cargo.';
+      newContactsError = 'Cada contacto necesita nombre, teléfono de al menos 8 dígitos y cargo.';
       hasError = true;
     }
 
@@ -2346,10 +2356,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                   .read(customerApiProvider)
                   .createCustomerCategory(
                     name: name.text.trim(),
-                    description:
-                        description.text.trim().isEmpty
-                            ? null
-                            : description.text.trim(),
+                    description: description.text.trim().isEmpty
+                        ? null
+                        : description.text.trim(),
                     color: selectedColor,
                   );
               if (context.mounted) Navigator.pop(context, newCat);
@@ -2452,24 +2461,23 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                 decoration: BoxDecoration(
                                   color: _tryParseColor(hex),
                                   shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color:
-                                        selectedColor == hex
-                                            ? Theme.of(context)
-                                                .colorScheme
-                                                .primary
-                                            : Colors.transparent,
-                                    width: selectedColor == hex ? 3 : 1,
-                                  ),
-                                ),
-                                child:
-                                    selectedColor == hex
-                                        ? const Icon(
-                                          Icons.check,
-                                          size: 16,
-                                          color: Colors.white,
+                                  border: selectedColor == hex
+                                      ? Border.all(
+                                          color: Theme.of(context).colorScheme.primary,
+                                          width: 3,
                                         )
-                                        : null,
+                                      : Border.all(
+                                          color: Theme.of(context).colorScheme.outlineVariant,
+                                          width: 1,
+                                        ),
+                                ),
+                                child: selectedColor == hex
+                                    ? Icon(
+                                        Icons.check,
+                                        size: 16,
+                                        color: Theme.of(context).colorScheme.onPrimary,
+                                      )
+                                    : null,
                               ),
                             ),
                         ],
