@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'app_tokens.dart';
+import 'semantic_colors.dart';
+
+export 'app_tokens.dart';
+export 'intent_button.dart';
+export 'semantic_colors.dart';
+
 abstract final class AppTheme {
   static ThemeData get light => _build(Brightness.light);
 
@@ -15,6 +22,11 @@ abstract final class AppTheme {
     return ThemeData(
       brightness: brightness,
       colorScheme: scheme,
+      extensions: [
+        brightness == Brightness.dark
+            ? AppSemanticColors.dark
+            : AppSemanticColors.light,
+      ],
       useMaterial3: true,
       scaffoldBackgroundColor: scheme.surface,
       canvasColor: scheme.surface,
@@ -55,6 +67,31 @@ abstract final class AppTheme {
         ),
         labelStyle: TextStyle(color: scheme.onSurfaceVariant),
         hintStyle: TextStyle(color: scheme.onSurfaceVariant),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTokens.radiusMedium),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTokens.radiusMedium),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTokens.radiusMedium),
+          ),
+        ),
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: scheme.surfaceContainerLow,

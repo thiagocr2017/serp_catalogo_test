@@ -13,6 +13,7 @@ void main() {
       'el tema ${entry.key} conserva contraste en información y botones',
       () {
         final colors = entry.value.colorScheme;
+        final semantic = entry.value.extension<AppSemanticColors>()!;
         expect(_contrast(colors.onSurface, colors.surface), greaterThan(4.5));
         expect(_contrast(colors.onPrimary, colors.primary), greaterThan(4.5));
         expect(
@@ -21,6 +22,18 @@ void main() {
         );
         expect(
           _contrast(colors.onErrorContainer, colors.errorContainer),
+          greaterThan(4.5),
+        );
+        expect(
+          _contrast(semantic.successForeground, semantic.successBackground),
+          greaterThan(4.5),
+        );
+        expect(
+          _contrast(semantic.warningForeground, semantic.warningBackground),
+          greaterThan(4.5),
+        );
+        expect(
+          _contrast(semantic.infoForeground, semantic.infoBackground),
           greaterThan(4.5),
         );
       },

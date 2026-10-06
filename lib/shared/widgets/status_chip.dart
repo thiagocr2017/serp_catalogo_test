@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/semantic_colors.dart';
+
 /// Tono semántico para indicadores de estado (chips, avatares, badges).
 enum StatusTone { success, danger, info, warning, neutral }
 
@@ -12,33 +14,24 @@ enum StatusTone { success, danger, info, warning, neutral }
   final theme = Theme.of(context);
   final dark = theme.brightness == Brightness.dark;
   final scheme = theme.colorScheme;
+  final semantic =
+      theme.extension<AppSemanticColors>() ??
+      (dark ? AppSemanticColors.dark : AppSemanticColors.light);
   return switch (tone) {
-    StatusTone.success =>
-      dark
-          ? (
-              Colors.green.shade900.withValues(alpha: .35),
-              Colors.green.shade200,
-            )
-          : (Colors.green.shade100, Colors.green.shade900),
-    StatusTone.danger =>
-      dark
-          ? (Colors.red.shade900.withValues(alpha: .35), Colors.red.shade200)
-          : (Colors.red.shade100, Colors.red.shade900),
-    StatusTone.info =>
-      dark
-          ? (Colors.blue.shade900.withValues(alpha: .35), Colors.blue.shade200)
-          : (Colors.blue.shade100, Colors.blue.shade900),
-    StatusTone.warning =>
-      dark
-          ? (
-              Colors.orange.shade900.withValues(alpha: .35),
-              Colors.orange.shade200,
-            )
-          : (Colors.orange.shade100, Colors.orange.shade900),
-    StatusTone.neutral =>
-      dark
-          ? (scheme.surfaceContainerHighest, scheme.onSurfaceVariant)
-          : (Colors.grey.shade200, Colors.grey.shade800),
+    StatusTone.success => (
+      semantic.successBackground,
+      semantic.successForeground,
+    ),
+    StatusTone.danger => (scheme.errorContainer, scheme.onErrorContainer),
+    StatusTone.info => (semantic.infoBackground, semantic.infoForeground),
+    StatusTone.warning => (
+      semantic.warningBackground,
+      semantic.warningForeground,
+    ),
+    StatusTone.neutral => (
+      scheme.surfaceContainerHighest,
+      scheme.onSurfaceVariant,
+    ),
   };
 }
 
