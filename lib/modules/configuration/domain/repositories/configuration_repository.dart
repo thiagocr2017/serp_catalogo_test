@@ -23,6 +23,7 @@ abstract interface class ConfigurationRepository {
   Future<PackagingPresentation> savePackagingPresentation({
     String? id,
     required String name,
+    int unitsPerPresentation = 1,
   });
 
   Future<List<Carrier>> getCarriers();

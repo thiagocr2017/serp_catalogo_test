@@ -17,10 +17,19 @@ void main() {
       name: 'Nombre',
       description: 'Descripcion',
       currentStock: 34,
+      unitPriceInCents: 1250,
+      packagePriceInCents: 10000,
+      packagingPresentationId: 'presentation-1',
+      packagingPresentationName: 'Caja',
+      minimumSaleQuantity: 2,
+      minimumOrderQuantity: 10,
     );
 
     expect(query.isActive, isTrue);
     expect(product.sku, 'SKU-1');
+    expect(product.unitPriceInCents, 1250);
+    expect(product.packagingPresentationName, 'Caja');
+    expect(product.minimumSaleQuantity, 2);
   });
 
   test('el indice publico expone la revision de datos y la fachada', () {

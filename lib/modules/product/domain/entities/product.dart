@@ -10,6 +10,7 @@ class Product {
     required this.unitPriceInCents,
     required this.minimumOrderQuantity,
     this.minimumSaleQuantity = 1,
+    this.unitsPerPresentation = 1,
     required this.packagingPresentationId,
     this.packagingPresentationName,
     required this.cbmPerMoq,
@@ -47,6 +48,7 @@ class Product {
   final int? packagePriceInCents;
   final int minimumOrderQuantity;
   final int minimumSaleQuantity;
+  final int unitsPerPresentation;
   final String packagingPresentationId;
   final String? packagingPresentationName;
   final double cbmPerMoq;

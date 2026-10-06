@@ -88,11 +88,16 @@ void main() {
     expect(api.createdPresentations, 0);
 
     await tester.enterText(find.widgetWithText(TextField, 'Nombre'), 'Cartón');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Unidades por presentación'),
+      '6',
+    );
     await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
     await tester.pumpAndSettle();
 
     expect(api.createdPresentations, 1);
     expect(api.lastCreatedPresentationName, 'Cartón');
+    expect(api.lastCreatedPresentationUnits, 6);
   });
 
   testWidgets('presentacion existente carga y actualiza por API publica', (
@@ -103,6 +108,7 @@ void main() {
         PackagingPresentationDto(
           id: 'presentation-1',
           name: 'Caja',
+          unitsPerPresentation: 6,
           sortOrder: 0,
           isActive: true,
           version: 7,
@@ -123,13 +129,27 @@ void main() {
 
     expect(find.text('Editar presentación'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Caja'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(
+            find.widgetWithText(TextField, 'Unidades por presentación'),
+          )
+          .controller
+          ?.text,
+      '6',
+    );
 
     await tester.enterText(find.widgetWithText(TextField, 'Nombre'), 'Cartón');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Unidades por presentación'),
+      '12',
+    );
     await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
     await tester.pumpAndSettle();
 
     expect(api.updatedPresentationId, 'presentation-1');
     expect(api.updatedPresentationName, 'Cartón');
+    expect(api.updatedPresentationUnits, 12);
     expect(api.updatedPresentationVersion, 7);
   });
 
@@ -343,6 +363,8 @@ void main() {
       500,
       scrollable: find.byType(Scrollable).first,
     );
+    await tester.ensureVisible(find.text('Mayorista'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Mayorista'));
     await tester.pumpAndSettle();
 
@@ -392,6 +414,8 @@ void main() {
       500,
       scrollable: find.byType(Scrollable).first,
     );
+    await tester.ensureVisible(find.text('Mayorista'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Mayorista'));
     await tester.pumpAndSettle();
 
@@ -437,9 +461,11 @@ class _RecordingConfigurationApi implements ConfigurationApi {
   int createdPresentations = 0;
   SaveBusinessSettingsCommand? lastBusinessCommand;
   String? lastCreatedPresentationName;
+  int? lastCreatedPresentationUnits;
   String? updatedPresentationId;
   String? updatedPresentationName;
   int? updatedPresentationVersion;
+  int? updatedPresentationUnits;
   String? deactivatedPresentationId;
   int? deactivatedPresentationVersion;
   int savedCarriers = 0;
@@ -560,9 +586,11 @@ class _RecordingConfigurationApi implements ConfigurationApi {
   ) async {
     createdPresentations++;
     lastCreatedPresentationName = command.name;
+    lastCreatedPresentationUnits = command.unitsPerPresentation;
     return PackagingPresentationDto(
       id: command.commandId,
       name: command.name,
+      unitsPerPresentation: command.unitsPerPresentation,
       sortOrder: 0,
       isActive: true,
       version: 1,
@@ -575,10 +603,12 @@ class _RecordingConfigurationApi implements ConfigurationApi {
   ) async {
     updatedPresentationId = command.id;
     updatedPresentationName = command.name;
+    updatedPresentationUnits = command.unitsPerPresentation;
     updatedPresentationVersion = command.expectedVersion;
     return PackagingPresentationDto(
       id: command.id,
       name: command.name,
+      unitsPerPresentation: command.unitsPerPresentation,
       sortOrder: 0,
       isActive: true,
       version: command.expectedVersion + 1,
@@ -728,9 +758,11 @@ class _LegacySettingsRepository implements ConfigurationRepository {
   Future<PackagingPresentation> savePackagingPresentation({
     String? id,
     required String name,
+    int unitsPerPresentation = 1,
   }) async => PackagingPresentation(
     id: id ?? 'presentation-new',
     name: name,
+    unitsPerPresentation: unitsPerPresentation,
     sortOrder: 0,
   );
 

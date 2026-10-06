@@ -16,12 +16,17 @@ void main() {
     description: 'Descripcion',
     categoryId: 'c-1',
     unitPriceInCents: 1250,
+    packagePriceInCents: 10000,
     minimumOrderQuantity: 10,
+    minimumSaleQuantity: 2,
+    unitsPerPresentation: 6,
     packagingPresentationId: 'pp-1',
+    packagingPresentationName: 'Caja',
     cbmPerMoq: 0.5,
     factoryCostInCents: 700,
     currentStock: 34,
     reorderPoint: 5,
+    promotionPriceInCents: 1000,
     isActive: true,
     createdAt: DateTime(2026, 1, 1),
   );
@@ -44,6 +49,9 @@ void main() {
       );
       expect(a, equals(b));
       expect(a.hashCode, b.hashCode);
+      expect(a.unitPriceInCents, 0);
+      expect(a.minimumSaleQuantity, 1);
+      expect(a.unitsPerPresentation, 1);
     });
 
     test('distingue productos distintos', () {
@@ -79,6 +87,9 @@ void main() {
         'name',
         'description',
         'currentStock',
+        'promotionalPriceInCents',
+        'reorderPoint',
+        'unitsPerPresentation',
       ]) {
         expect(text, contains(field), reason: 'falta el campo $field');
       }
@@ -93,11 +104,20 @@ void main() {
       expect(dto.name, 'Nombre');
       expect(dto.description, 'Descripcion');
       expect(dto.currentStock, 34);
+      expect(dto.promotionalPriceInCents, 1000);
+      expect(dto.reorderPoint, 5);
+      expect(dto.unitPriceInCents, 1250);
+      expect(dto.packagePriceInCents, 10000);
+      expect(dto.packagingPresentationId, 'pp-1');
+      expect(dto.packagingPresentationName, 'Caja');
+      expect(dto.minimumSaleQuantity, 2);
+      expect(dto.unitsPerPresentation, 6);
+      expect(dto.minimumOrderQuantity, 10);
     });
 
     test('no expone campos internos del producto', () {
-      // El DTO publico solo declara cinco campos. Si se anade uno al mapeo sin
-      // declararlo en el contrato, este test sigue pasando; lo que protege es
+      // El DTO publico contiene solo los campos del contrato. Si se anade uno
+      // al mapeo sin declararlo en el contrato, este test sigue pasando; protege
       // la superficie de `product_api.dart` (ver su test de superficie).
       final dto = buildProduct().toSummaryDto();
       expect(dto.runtimeType.toString(), 'ProductSummaryDto');

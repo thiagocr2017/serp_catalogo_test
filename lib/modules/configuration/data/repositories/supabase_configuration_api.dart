@@ -231,35 +231,39 @@ class SupabaseConfigurationApi implements ConfigurationApi {
   @override
   Future<PackagingPresentationDto> createPackagingPresentation(
     CreatePackagingPresentationCommand command,
-  ) async => _presentation(
-    Map<String, dynamic>.from(
+  ) async => _presentation({
+    ...Map<String, dynamic>.from(
       await _client.rpc<dynamic>(
         'create_packaging_presentation',
         params: {
           'p_command_id': command.commandId,
           'p_name': command.name,
+          'p_units_per_presentation': command.unitsPerPresentation,
           ..._identity(command.identity),
         },
       ) as Map,
     ),
-  );
+    'units_per_presentation': command.unitsPerPresentation,
+  });
 
   @override
   Future<PackagingPresentationDto> updatePackagingPresentation(
     UpdatePackagingPresentationCommand command,
-  ) async => _presentation(
-    Map<String, dynamic>.from(
+  ) async => _presentation({
+    ...Map<String, dynamic>.from(
       await _client.rpc<dynamic>(
         'update_packaging_presentation',
         params: {
           'p_presentation_id': command.id,
           'p_name': command.name,
+          'p_units_per_presentation': command.unitsPerPresentation,
           'p_expected_version': command.expectedVersion,
           ..._identity(command.identity),
         },
       ) as Map,
     ),
-  );
+    'units_per_presentation': command.unitsPerPresentation,
+  });
 
   @override
   Future<PackagingPresentationDto> deactivatePackagingPresentation(
@@ -477,6 +481,7 @@ class SupabaseConfigurationApi implements ConfigurationApi {
       PackagingPresentationDto(
         id: row['id'] as String,
         name: row['name'] as String,
+        unitsPerPresentation: row['units_per_presentation'] as int? ?? 1,
         sortOrder: row['sort_order'] as int,
         isActive: row['is_active'] as bool,
         version: row['version'] as int,

@@ -53,7 +53,9 @@ class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-    appBar: AppBar(title: const Text('Configuración')),
+    appBar: AppBar(
+      title: Semantics(header: true, child: const Text('Configuración')),
+    ),
     body: ref
         .watch(businessSettingsProvider)
         .when(
@@ -274,7 +276,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Crea los tipos necesarios, por ejemplo Unidad, Caja, Cartón, Paquete o Set. Puedes renombrarlos o desactivar los que ya no deban usarse en productos nuevos.',
+          'Define el nombre y las unidades que contiene cada presentación. Ejemplo: Caja + 6 unidades. Ese factor guía el incremento de cantidad al cotizar.',
         ),
         const SizedBox(height: 16),
         ref
@@ -425,17 +427,17 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
                       ActionChip(
                         avatar:
                             item.color != null &&
-                                    _tryParseColor(item.color) != null
-                                ? CircleAvatar(
-                                  radius: 8,
-                                  backgroundColor: _tryParseColor(item.color),
-                                )
-                                : Icon(
-                                  item.isActive
-                                      ? Icons.label_outline
-                                      : Icons.label_off_outlined,
-                                  size: 18,
-                                ),
+                                _tryParseColor(item.color) != null
+                            ? CircleAvatar(
+                                radius: 8,
+                                backgroundColor: _tryParseColor(item.color),
+                              )
+                            : Icon(
+                                item.isActive
+                                    ? Icons.label_outline
+                                    : Icons.label_off_outlined,
+                                size: 18,
+                              ),
                         label: Text(
                           item.isActive ? item.name : '${item.name} (inactiva)',
                         ),
@@ -570,7 +572,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        item.name,
+                        '${item.name} · ${item.unitsPerPresentation} ${item.unitsPerPresentation == 1 ? 'unidad' : 'unidades'}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium,
@@ -682,7 +684,11 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
 
   Future<void> _editPresentation([PackagingPresentationDto? existing]) async {
     final controller = TextEditingController(text: existing?.name ?? '');
+    final unitsController = TextEditingController(
+      text: '${existing?.unitsPerPresentation ?? 1}',
+    );
     String? nameError;
+    String? unitsError;
     var dirty = false;
     final accepted = await showDialog<bool>(
       context: context,
@@ -710,6 +716,14 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
               );
               return;
             }
+            final units = int.tryParse(unitsController.text.trim());
+            if (units == null || units < 1) {
+              setDialogState(
+                () =>
+                    unitsError = 'Ingrese una cantidad entera mayor que cero.',
+              );
+              return;
+            }
             Navigator.pop(context, true);
           }
 
@@ -723,22 +737,48 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
               title: Text(
                 existing == null ? 'Nueva presentación' : 'Editar presentación',
               ),
-              content: TextField(
-                controller: controller,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: 'Nombre',
-                  hintText: 'Ej. Cartón',
-                  errorText: nameError,
-                  border: const OutlineInputBorder(),
+              content: SizedBox(
+                width: 360,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Nombre',
+                        hintText: 'Ej. Caja',
+                        errorText: nameError,
+                        border: const OutlineInputBorder(),
+                      ),
+                      onChanged: (_) {
+                        markDirty();
+                        if (nameError != null) {
+                          setDialogState(() => nameError = null);
+                        }
+                      },
+                      onSubmitted: (_) => submit(),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: unitsController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Unidades por presentación',
+                        hintText: 'Ej. 6',
+                        errorText: unitsError,
+                        border: const OutlineInputBorder(),
+                      ),
+                      onChanged: (_) {
+                        markDirty();
+                        if (unitsError != null) {
+                          setDialogState(() => unitsError = null);
+                        }
+                      },
+                      onSubmitted: (_) => submit(),
+                    ),
+                  ],
                 ),
-                onChanged: (_) {
-                  markDirty();
-                  if (nameError != null) {
-                    setDialogState(() => nameError = null);
-                  }
-                },
-                onSubmitted: (_) => submit(),
               ),
               actions: [
                 TextButton(onPressed: cancel, child: const Text('Cancelar')),
@@ -757,6 +797,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
           CreatePackagingPresentationCommand(
             commandId: const Uuid().v4(),
             name: controller.text,
+            unitsPerPresentation: int.parse(unitsController.text.trim()),
             identity: identity,
           ),
         );
@@ -765,6 +806,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
           UpdatePackagingPresentationCommand(
             id: existing.id,
             name: controller.text,
+            unitsPerPresentation: int.parse(unitsController.text.trim()),
             expectedVersion: existing.version,
             identity: identity,
           ),
@@ -774,6 +816,7 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.dispose();
+      unitsController.dispose();
     });
   }
 
@@ -1409,8 +1452,9 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
                           alignment: Alignment.centerLeft,
                           child: TextButton.icon(
                             style: TextButton.styleFrom(
-                              foregroundColor:
-                                  Theme.of(context).colorScheme.error,
+                              foregroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .error,
                             ),
                             icon: const Icon(Icons.delete_outline),
                             label: const Text('Eliminar categoría'),

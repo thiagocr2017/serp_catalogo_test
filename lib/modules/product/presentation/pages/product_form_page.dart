@@ -195,12 +195,17 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
     );
   }
 
-  /// Precio por bulto sugerido: unitario × venta mínima, hasta que el
+  /// Precio por presentacion sugerido: unitario × unidades del empaque, hasta que el
   /// usuario lo edite manualmente.
   void _maybeAutofillPackage() {
     if (_packagePriceManual) return;
     final unit = _tryCents(_unitPrice.text);
-    final quantity = int.tryParse(_minimumSaleQuantity.text.trim());
+    final quantity = ref
+        .read(packagingPresentationDtosProvider)
+        .value
+        ?.where((item) => item.id == _packagingPresentationId)
+        .firstOrNull
+        ?.unitsPerPresentation;
     if (unit == null || unit <= 0 || quantity == null || quantity <= 0) return;
     _packagePrice.text = ((unit * quantity) / 100).toStringAsFixed(2);
   }
@@ -289,6 +294,15 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
             : _cents(_packagePrice.text),
         minimumOrderQuantity: int.parse(_moq.text),
         minimumSaleQuantity: int.parse(_minimumSaleQuantity.text),
+        unitsPerPresentation:
+            ref
+                .read(packagingPresentationDtosProvider)
+                .value
+                ?.where((item) => item.id == _packagingPresentationId)
+                .firstOrNull
+                ?.unitsPerPresentation ??
+            _existing?.unitsPerPresentation ??
+            1,
         packagingPresentationId: _packagingPresentationId!,
         packagingPresentationName: ref
             .read(packagingPresentationDtosProvider)
@@ -442,6 +456,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
     final categories = ref.watch(categoriesProvider);
     final presentations =
         ref.watch(packagingPresentationDtosProvider).value ?? [];
+    final selectedPresentation = presentations
+        .where((item) => item.id == _packagingPresentationId)
+        .firstOrNull;
     if (_packagingPresentationId == null && presentations.isNotEmpty) {
       _packagingPresentationId = presentations.first.id;
     }
@@ -456,384 +473,412 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
           navigator.pop();
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            _isEditing
-                ? 'Editar producto · ${_existing?.sku ?? ''}'
-                : 'Nuevo producto',
+      child: Semantics(
+        container: true,
+        label: _isEditing ? 'Formulario de producto' : 'Nuevo producto',
+        child: Scaffold(
+          appBar: AppBar(
+            leading: IconButton(
+              tooltip: 'Volver',
+              onPressed: _cancel,
+              icon: const Icon(Icons.arrow_back),
+            ),
+            title: Text(
+              _isEditing
+                  ? 'Editar producto · ${_existing?.sku ?? ''}'
+                  : 'Nuevo producto',
+            ),
           ),
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1080),
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final halfWidth = constraints.maxWidth >= 700
-                              ? 320.0
-                              : constraints.maxWidth;
-                          final fullWidth = constraints.maxWidth;
-                          return Form(
-                            key: _formKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _section(
-                                  'Información general',
-                                  'Identificación y descripción del producto.',
-                                  halfWidth,
-                                  [
-                                    _field(
-                                      _sku,
-                                      'SKU',
-                                      width: halfWidth,
-                                      autofocus: !_isEditing,
-                                      validator: _required,
-                                    ),
-                                    _field(
-                                      _barcode,
-                                      'Código de barras (opcional)',
-                                      width: halfWidth,
-                                    ),
-                                    _field(
-                                      _name,
-                                      'Nombre',
-                                      width: halfWidth,
-                                      validator: _required,
-                                    ),
-                                    SizedBox(
-                                      width: halfWidth,
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          categories.when(
-                                            loading: () =>
-                                                const LinearProgressIndicator(),
-                                            error: (e, _) =>
-                                                Text('Error de categorías: $e'),
-                                            data: (items) {
-                                              final categoryItems = [
-                                                ...items,
-                                                for (final item
-                                                    in _quickCategories)
-                                                  if (!items.any(
-                                                    (existing) =>
-                                                        existing.id == item.id,
-                                                  ))
-                                                    item,
-                                              ];
-                                              return DropdownButtonFormField<
-                                                String
-                                              >(
-                                                initialValue: _categoryId,
-                                                isExpanded: true,
-                                                decoration:
-                                                    const InputDecoration(
-                                                      labelText: 'Categoría',
-                                                      border:
-                                                          OutlineInputBorder(),
-                                                    ),
-                                                items: [
-                                                  for (final item
-                                                      in categoryItems)
-                                                    DropdownMenuItem(
-                                                      value: item.id,
-                                                      child: Text(item.name),
-                                                    ),
-                                                ],
-                                                validator: (value) =>
-                                                    value == null
-                                                    ? 'Seleccione una categoría'
-                                                    : null,
-                                                onChanged: (value) =>
-                                                    setState(() {
-                                                      _categoryId = value;
-                                                      _markDirty();
-                                                    }),
-                                              );
-                                            },
-                                          ),
-                                          Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: TextButton.icon(
-                                              onPressed: _createQuickCategory,
-                                              icon: const Icon(Icons.add),
-                                              label: const Text(
-                                                'Nueva categoría',
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: fullWidth,
-                                      child: TextFormField(
-                                        controller: _description,
-                                        maxLines: 3,
-                                        onChanged: (_) => _markDirty(),
-                                        decoration: const InputDecoration(
-                                          labelText:
-                                              'Descripción para catálogo',
-                                          border: OutlineInputBorder(),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                _imageSection(fullWidth),
-                                _section(
-                                  'Precio de venta',
-                                  'Lo que paga el cliente. El margen se calcula contra el costo total (fábrica + extras).',
-                                  halfWidth,
-                                  [
-                                    _field(
-                                      _unitPrice,
-                                      'Precio unitario USD',
-                                      width: halfWidth,
-                                      number: true,
-                                      validator: _requiredDecimal,
-                                      onChanged: (_) => _maybeAutofillPackage(),
-                                    ),
-                                    _field(
-                                      _packagePrice,
-                                      'Precio por bulto USD (opcional)',
-                                      width: halfWidth,
-                                      number: true,
-                                      validator: _optionalDecimal,
-                                      helper: _packagePriceManual
-                                          ? 'Precio manual.'
-                                          : 'Calculado: unitario × venta mínima (editable).',
-                                      suffixIcon: _packagePriceManual
-                                          ? IconButton(
-                                              tooltip: 'Volver al cálculo automático',
-                                              onPressed: () => setState(() {
-                                                _packagePriceManual = false;
-                                                _markDirty();
-                                                _maybeAutofillPackage();
-                                              }),
-                                              icon: const Icon(
-                                                Icons.calculate_outlined,
-                                              ),
-                                            )
-                                          : null,
-                                      onChanged: (_) =>
-                                          _packagePriceManual = true,
-                                    ),
-                                    _field(
-                                      _minimumSaleQuantity,
-                                      'Venta mínima al cliente',
-                                      width: halfWidth,
-                                      number: true,
-                                      helper: 'Unidades mínimas por venta.',
-                                      validator: _positiveInteger,
-                                      onChanged: (_) => _maybeAutofillPackage(),
-                                    ),
-                                    SizedBox(
-                                      width: halfWidth,
-                                      child: DropdownButtonFormField<String>(
-                                        key: ValueKey(_packagingPresentationId),
-                                        initialValue: _packagingPresentationId,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Presentación de venta',
-                                          border: OutlineInputBorder(),
-                                        ),
-                                        items: presentations
-                                            .map(
-                                              (item) => DropdownMenuItem(
-                                                value: item.id,
-                                                child: Text(item.name),
-                                              ),
-                                            )
-                                            .toList(),
-                                        validator: (value) => value == null
-                                            ? presentations.isEmpty
-                                                  ? 'No hay presentaciones: créalas en Configuración'
-                                                  : 'Seleccione una presentación'
-                                            : null,
-                                        onChanged: (value) => setState(() {
-                                          _packagingPresentationId = value;
-                                          _markDirty();
-                                        }),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: fullWidth,
-                                      child: _marginBanner(context),
-                                    ),
-                                  ],
-                                ),
-                                _section(
-                                  'Costo y reposición',
-                                  'Datos internos: no aparecen en el catálogo.',
-                                  halfWidth,
-                                  [
-                                    _field(
-                                      _factoryCost,
-                                      'Costo de fábrica USD',
-                                      width: halfWidth,
-                                      number: true,
-                                      validator: _requiredDecimal,
-                                    ),
-                                    _field(
-                                      _extraCosts,
-                                      'Costos extra por unidad USD (opcional)',
-                                      width: halfWidth,
-                                      number: true,
-                                      validator: _optionalDecimal,
-                                      helper: 'Flete, empaque o impuestos prorrateados. Mejora el cálculo del margen.',
-                                    ),
-                                    _field(
-                                      _moq,
-                                      'MOQ al proveedor',
-                                      width: halfWidth,
-                                      number: true,
-                                      helper:
-                                          'Lote mínimo de compra para reponer.',
-                                      validator: _positiveInteger,
-                                    ),
-                                    _field(
-                                      _cbm,
-                                      'CBM por MOQ',
-                                      width: halfWidth,
-                                      number: true,
-                                      helper: 'Volumen del lote para fletes.',
-                                      validator: _requiredDecimal,
-                                    ),
-                                    _field(
-                                      _reorderPoint,
-                                      'Punto de reorden',
-                                      width: halfWidth,
-                                      number: true,
-                                      helper:
-                                          'Avisa cuando el stock llegue aquí.',
-                                      validator: _nonNegativeInteger,
-                                    ),
-                                  ],
-                                ),
-                                _section(
-                                  'Promoción individual',
-                                  'Tiene prioridad sobre cualquier promoción masiva vigente.',
-                                  halfWidth,
-                                  [
-                                    _field(
-                                      _promotionPrice,
-                                      'Precio promocional USD (opcional)',
-                                      width: halfWidth,
-                                      number: true,
-                                      validator: (value) {
-                                        if (value == null ||
-                                            value.trim().isEmpty) {
-                                          return null;
-                                        }
-                                        if (_tryCents(value) == null) {
-                                          return 'Ingrese un número válido';
-                                        }
-                                        final price = _tryCents(
-                                          _unitPrice.text,
-                                        );
-                                        final promo = _tryCents(value)!;
-                                        if (price != null &&
-                                            price > 0 &&
-                                            promo >= price) {
-                                          return 'Debe ser menor que el precio unitario';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    SizedBox(
-                                      width: fullWidth,
-                                      child: TextFormField(
-                                        controller: _promotionText,
-                                        maxLines: 2,
-                                        onChanged: (_) => _markDirty(),
-                                        decoration: const InputDecoration(
-                                          labelText:
-                                              'Condiciones de la promoción',
-                                          border: OutlineInputBorder(),
-                                        ),
-                                      ),
-                                    ),
-                                    if (_promoDiscount() != null)
-                                      SizedBox(
-                                        width: fullWidth,
-                                        child: _discountBanner(context),
-                                      ),
-                                  ],
-                                ),
-                                if (_isEditing && _existing != null)
+          body: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1080),
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final halfWidth = constraints.maxWidth >= 700
+                                ? 320.0
+                                : constraints.maxWidth;
+                            final fullWidth = constraints.maxWidth;
+                            return Form(
+                              key: _formKey,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
                                   _section(
-                                    'Inventario',
-                                    'El stock es de solo lectura y cambia únicamente mediante movimientos.',
+                                    'Información general',
+                                    'Identificación y descripción del producto.',
                                     halfWidth,
                                     [
+                                      _field(
+                                        _sku,
+                                        'SKU',
+                                        width: halfWidth,
+                                        autofocus: !_isEditing,
+                                        validator: _required,
+                                      ),
+                                      _field(
+                                        _barcode,
+                                        'Código de barras (opcional)',
+                                        width: halfWidth,
+                                      ),
+                                      _field(
+                                        _name,
+                                        'Nombre',
+                                        width: halfWidth,
+                                        validator: _required,
+                                      ),
                                       SizedBox(
                                         width: halfWidth,
-                                        child: InputDecorator(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            categories.when(
+                                              loading: () =>
+                                                  const LinearProgressIndicator(),
+                                              error: (e, _) => Text(
+                                                'Error de categorías: $e',
+                                              ),
+                                              data: (items) {
+                                                final categoryItems = [
+                                                  ...items,
+                                                  for (final item
+                                                      in _quickCategories)
+                                                    if (!items.any(
+                                                      (existing) =>
+                                                          existing.id ==
+                                                          item.id,
+                                                    ))
+                                                      item,
+                                                ];
+                                                return DropdownButtonFormField<
+                                                  String
+                                                >(
+                                                  initialValue: _categoryId,
+                                                  isExpanded: true,
+                                                  decoration:
+                                                      const InputDecoration(
+                                                        labelText: 'Categoría',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                      ),
+                                                  items: [
+                                                    for (final item
+                                                        in categoryItems)
+                                                      DropdownMenuItem(
+                                                        value: item.id,
+                                                        child: Text(item.name),
+                                                      ),
+                                                  ],
+                                                  validator: (value) =>
+                                                      value == null
+                                                      ? 'Seleccione una categoría'
+                                                      : null,
+                                                  onChanged: (value) =>
+                                                      setState(() {
+                                                        _categoryId = value;
+                                                        _markDirty();
+                                                      }),
+                                                );
+                                              },
+                                            ),
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: TextButton.icon(
+                                                onPressed: _createQuickCategory,
+                                                icon: const Icon(Icons.add),
+                                                label: const Text(
+                                                  'Nueva categoría',
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: fullWidth,
+                                        child: TextFormField(
+                                          controller: _description,
+                                          maxLines: 3,
+                                          onChanged: (_) => _markDirty(),
                                           decoration: const InputDecoration(
-                                            labelText: 'Stock actual',
+                                            labelText:
+                                                'Descripción para catálogo',
                                             border: OutlineInputBorder(),
-                                          ),
-                                          child: Text(
-                                            '${_existing!.currentStock}',
                                           ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                if (!_isEditing)
+                                  _imageSection(fullWidth),
                                   _section(
-                                    'Inventario inicial',
-                                    'Crea el primer movimiento inmutable del inventario.',
+                                    'Precio de venta',
+                                    'Lo que paga el cliente. El margen se calcula contra el costo total (fábrica + extras).',
                                     halfWidth,
                                     [
                                       _field(
-                                        _initialStock,
-                                        'Stock inicial',
+                                        _unitPrice,
+                                        'Precio unitario USD',
                                         width: halfWidth,
                                         number: true,
+                                        validator: _requiredDecimal,
+                                        onChanged: (_) =>
+                                            _maybeAutofillPackage(),
+                                      ),
+                                      _field(
+                                        _packagePrice,
+                                        'Precio por presentación USD (opcional)',
+                                        width: halfWidth,
+                                        number: true,
+                                        validator: _optionalDecimal,
+                                        helper: _packagePriceManual
+                                            ? 'Precio manual.'
+                                            : 'Calculado: unitario × unidades por presentación (editable).',
+                                        suffixIcon: _packagePriceManual
+                                            ? IconButton(
+                                                tooltip: 'Volver al cálculo automático',
+                                                onPressed: () => setState(() {
+                                                  _packagePriceManual = false;
+                                                  _markDirty();
+                                                  _maybeAutofillPackage();
+                                                }),
+                                                icon: const Icon(
+                                                  Icons.calculate_outlined,
+                                                ),
+                                              )
+                                            : null,
+                                        onChanged: (_) =>
+                                            _packagePriceManual = true,
+                                      ),
+                                      _field(
+                                        _minimumSaleQuantity,
+                                        'Venta mínima al cliente',
+                                        width: halfWidth,
+                                        number: true,
+                                        helper: 'Unidades mínimas por venta.',
+                                        validator: _positiveInteger,
+                                      ),
+                                      SizedBox(
+                                        width: halfWidth,
+                                        child: DropdownButtonFormField<String>(
+                                          isExpanded: true,
+                                          key: ValueKey(
+                                            _packagingPresentationId,
+                                          ),
+                                          initialValue:
+                                              _packagingPresentationId,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Presentación de venta',
+                                            border: OutlineInputBorder(),
+                                          ),
+                                          items: presentations
+                                              .map(
+                                                (item) => DropdownMenuItem(
+                                                  value: item.id,
+                                                  child: Text(
+                                                    item.name,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              )
+                                              .toList(),
+                                          validator: (value) => value == null
+                                              ? presentations.isEmpty
+                                                    ? 'No hay presentaciones: créalas en Configuración'
+                                                    : 'Seleccione una presentación'
+                                              : null,
+                                          onChanged: (value) => setState(() {
+                                            _packagingPresentationId = value;
+                                            _markDirty();
+                                            _maybeAutofillPackage();
+                                          }),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: fullWidth,
+                                        child: Text(
+                                          'Incremento: ${selectedPresentation?.unitsPerPresentation ?? 1} ${selectedPresentation?.unitsPerPresentation == 1 ? 'unidad' : 'unidades'} por presentación, definido en Configuración.',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: fullWidth,
+                                        child: _marginBanner(context),
+                                      ),
+                                    ],
+                                  ),
+                                  _section(
+                                    'Costo y reposición',
+                                    'Datos internos: no aparecen en el catálogo.',
+                                    halfWidth,
+                                    [
+                                      _field(
+                                        _factoryCost,
+                                        'Costo de fábrica USD',
+                                        width: halfWidth,
+                                        number: true,
+                                        validator: _requiredDecimal,
+                                      ),
+                                      _field(
+                                        _extraCosts,
+                                        'Costos extra por unidad USD (opcional)',
+                                        width: halfWidth,
+                                        number: true,
+                                        validator: _optionalDecimal,
+                                        helper: 'Flete, empaque o impuestos prorrateados. Mejora el cálculo del margen.',
+                                      ),
+                                      _field(
+                                        _moq,
+                                        'MOQ al proveedor',
+                                        width: halfWidth,
+                                        number: true,
+                                        helper: 'Lote mínimo de compra para reponer.',
+                                        validator: _positiveInteger,
+                                      ),
+                                      _field(
+                                        _cbm,
+                                        'CBM por MOQ',
+                                        width: halfWidth,
+                                        number: true,
+                                        helper: 'Volumen del lote para fletes.',
+                                        validator: _requiredDecimal,
+                                      ),
+                                      _field(
+                                        _reorderPoint,
+                                        'Punto de reorden',
+                                        width: halfWidth,
+                                        number: true,
+                                        helper: 'Avisa cuando el stock llegue aquí.',
                                         validator: _nonNegativeInteger,
                                       ),
                                     ],
                                   ),
-                                const SizedBox(height: 28),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    TextButton(
-                                      onPressed: _cancel,
-                                      child: const Text('Cancelar'),
+                                  _section(
+                                    'Promoción individual',
+                                    'Tiene prioridad sobre cualquier promoción masiva vigente.',
+                                    halfWidth,
+                                    [
+                                      _field(
+                                        _promotionPrice,
+                                        'Precio promocional USD (opcional)',
+                                        width: halfWidth,
+                                        number: true,
+                                        validator: (value) {
+                                          if (value == null ||
+                                              value.trim().isEmpty) {
+                                            return null;
+                                          }
+                                          if (_tryCents(value) == null) {
+                                            return 'Ingrese un número válido';
+                                          }
+                                          final price = _tryCents(
+                                            _unitPrice.text,
+                                          );
+                                          final promo = _tryCents(value)!;
+                                          if (price != null &&
+                                              price > 0 &&
+                                              promo >= price) {
+                                            return 'Debe ser menor que el precio unitario';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      SizedBox(
+                                        width: fullWidth,
+                                        child: TextFormField(
+                                          controller: _promotionText,
+                                          maxLines: 2,
+                                          onChanged: (_) => _markDirty(),
+                                          decoration: const InputDecoration(
+                                            labelText:
+                                                'Condiciones de la promoción',
+                                            border: OutlineInputBorder(),
+                                          ),
+                                        ),
+                                      ),
+                                      if (_promoDiscount() != null)
+                                        SizedBox(
+                                          width: fullWidth,
+                                          child: _discountBanner(context),
+                                        ),
+                                    ],
+                                  ),
+                                  if (_isEditing && _existing != null)
+                                    _section(
+                                      'Inventario',
+                                      'El stock es de solo lectura y cambia únicamente mediante movimientos.',
+                                      halfWidth,
+                                      [
+                                        SizedBox(
+                                          width: halfWidth,
+                                          child: InputDecorator(
+                                            decoration: const InputDecoration(
+                                              labelText: 'Stock actual',
+                                              border: OutlineInputBorder(),
+                                            ),
+                                            child: Text(
+                                              '${_existing!.currentStock}',
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 12),
-                                    FilledButton.icon(
-                                      onPressed: _saving ? null : _save,
-                                      icon: _saving
-                                          ? const SizedBox.square(
-                                              dimension: 16,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : const Icon(Icons.save),
-                                      label: const Text('Guardar producto'),
+                                  if (!_isEditing)
+                                    _section(
+                                      'Inventario inicial',
+                                      'Crea el primer movimiento inmutable del inventario.',
+                                      halfWidth,
+                                      [
+                                        _field(
+                                          _initialStock,
+                                          'Stock inicial',
+                                          width: halfWidth,
+                                          number: true,
+                                          validator: _nonNegativeInteger,
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                                  const SizedBox(height: 28),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      TextButton(
+                                        onPressed: _cancel,
+                                        child: const Text('Cancelar'),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      FilledButton.icon(
+                                        onPressed: _saving ? null : _save,
+                                        icon: _saving
+                                            ? const SizedBox.square(
+                                                dimension: 16,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                            : const Icon(Icons.save),
+                                        label: const Text('Guardar producto'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
+        ),
       ),
     );
   }
@@ -1085,7 +1130,10 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                           _imageScale = 1;
                           _markDirty();
                         }),
-                        icon: const Icon(Icons.center_focus_strong),
+                        icon: const Icon(
+                          Icons.center_focus_strong,
+                          semanticLabel: 'Centrar imagen',
+                        ),
                         label: const Text('Centrar imagen'),
                       ),
                     ],

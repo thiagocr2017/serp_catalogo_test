@@ -13,6 +13,21 @@ import 'package:serp/modules/product/domain/repositories/product_repository.dart
 import 'package:serp/modules/product/presentation/pages/product_form_page.dart';
 
 void main() {
+  testWidgets('producto permite volver al indice desde el encabezado', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(_RecordingProductRepository(), const ProductFormPage()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Volver'), findsOneWidget);
+    await tester.tap(find.byTooltip('Volver'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Productos'), findsOneWidget);
+  });
+
   testWidgets('producto invalido muestra errores y no guarda', (tester) async {
     final repository = _RecordingProductRepository();
 
@@ -176,6 +191,8 @@ void main() {
       find.widgetWithText(TextFormField, 'Precio unitario USD'),
       '22.50',
     );
+    expect(find.text('Unidad'), findsOneWidget);
+    expect(find.textContaining('Incremento: 6 unidades'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Guardar producto'),
       600,
@@ -188,6 +205,7 @@ void main() {
     expect(repository.lastSavedProduct?.id, 'product-1');
     expect(repository.lastSavedProduct?.name, 'Producto actualizado');
     expect(repository.lastSavedProduct?.unitPriceInCents, 2250);
+    expect(repository.lastSavedProduct?.unitsPerPresentation, 6);
   });
 }
 
@@ -348,6 +366,7 @@ class _FakeConfigurationApi implements ConfigurationApi {
         PackagingPresentationDto(
           id: 'presentation-1',
           name: 'Unidad',
+          unitsPerPresentation: 6,
           sortOrder: 0,
           isActive: true,
           version: 1,

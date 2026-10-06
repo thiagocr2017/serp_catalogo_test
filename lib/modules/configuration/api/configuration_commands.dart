@@ -75,11 +75,13 @@ class CreatePackagingPresentationCommand {
   const CreatePackagingPresentationCommand({
     required this.commandId,
     required this.name,
+    this.unitsPerPresentation = 1,
     required this.identity,
   });
 
   final String commandId;
   final String name;
+  final int unitsPerPresentation;
   final IdentityContext identity;
 }
 
@@ -87,12 +89,14 @@ class UpdatePackagingPresentationCommand {
   const UpdatePackagingPresentationCommand({
     required this.id,
     required this.name,
+    this.unitsPerPresentation = 1,
     required this.expectedVersion,
     required this.identity,
   });
 
   final String id;
   final String name;
+  final int unitsPerPresentation;
   final int expectedVersion;
   final IdentityContext identity;
 }
@@ -246,10 +250,7 @@ class UpdateCustomerCategoryCommand {
 }
 
 class DeleteCustomerCategoryCommand {
-  const DeleteCustomerCategoryCommand({
-    required this.id,
-    this.identity,
-  });
+  const DeleteCustomerCategoryCommand({required this.id, this.identity});
 
   final String id;
   final IdentityContext? identity;

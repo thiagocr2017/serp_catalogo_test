@@ -102,8 +102,8 @@ sus relaciones con promociones masivas y se registra una acción legible en
 | `unit_price` | Numeric(18,2) | Precio por unidad en la moneda configurada. |
 | `package_price` | Numeric(18,2), nullable | Precio por paquete o caja. |
 | `min_order_quantity` | Integer | Cantidad mínima de compra. |
-| `minimum_sale_quantity` | Integer | Cantidad mínima que se vende al cliente; es independiente del MOQ de recompra. |
-| `packaging_presentation_id` | UUID, FK | Presentación configurable obligatoria, por ejemplo Unidad, Caja, Set o Cartón. |
+| `minimum_sale_quantity` | Integer | Cantidad mínima que se vende al cliente; es independiente del MOQ de recompra. La escala (unidad base o presentación) debe quedar explícita al adoptar el factor de conversión. |
+| `packaging_presentation_id` | UUID, FK | Presentación configurable obligatoria, por ejemplo Unidad, Caja, Set o Cartón. Actualmente guarda solo el nombre; no expresa unidades contenidas. Ver contrato objetivo en `2.packaging-units.spec.md`. |
 | `cbm_per_moq` | Decimal | Volumen correspondiente al MOQ. |
 | `factory_cost` | Numeric(18,2) | Costo de fábrica antes de importación. |
 | `image_url` | String, nullable | URL de la imagen optimizada en Supabase Storage. |

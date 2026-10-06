@@ -161,6 +161,7 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
           (row) => PackagingPresentation(
             id: row['id'] as String,
             name: row['name'] as String,
+            unitsPerPresentation: row['units_per_presentation'] as int? ?? 1,
             sortOrder: row['sort_order'] as int,
             isActive: row['is_active'] as bool,
           ),
@@ -172,6 +173,7 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
   Future<PackagingPresentation> savePackagingPresentation({
     String? id,
     required String name,
+    int unitsPerPresentation = 1,
   }) async {
     if (id == null) {
       final row = await _client.rpc<Map<String, dynamic>>(
@@ -179,6 +181,7 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
         params: {
           'p_command_id': _newUuid(),
           'p_name': name,
+          'p_units_per_presentation': unitsPerPresentation,
           'p_actor_name': _device.actorName,
           'p_device_name': _device.name,
           'p_device_identifier': _device.identifier,
@@ -187,6 +190,7 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
       return PackagingPresentation(
         id: row['id'] as String,
         name: row['name'] as String,
+        unitsPerPresentation: unitsPerPresentation,
         sortOrder: row['sort_order'] as int,
         isActive: row['is_active'] as bool,
       );
@@ -202,6 +206,7 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
         params: {
           'p_presentation_id': id,
           'p_name': name,
+          'p_units_per_presentation': unitsPerPresentation,
           'p_expected_version': expectedVersion,
           'p_actor_name': _device.actorName,
           'p_device_name': _device.name,
@@ -211,6 +216,7 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
       return PackagingPresentation(
         id: result['id'] as String,
         name: result['name'] as String,
+        unitsPerPresentation: unitsPerPresentation,
         sortOrder: result['sort_order'] as int,
         isActive: result['is_active'] as bool,
       );

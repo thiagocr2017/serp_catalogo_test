@@ -13,6 +13,15 @@ extension ProductPublicMapper on Product {
     name: name,
     description: description,
     currentStock: currentStock,
+    unitPriceInCents: unitPriceInCents,
+    promotionalPriceInCents: promotionPriceInCents,
+    reorderPoint: reorderPoint,
+    packagePriceInCents: packagePriceInCents,
+    packagingPresentationId: packagingPresentationId,
+    packagingPresentationName: packagingPresentationName,
+    minimumSaleQuantity: minimumSaleQuantity,
+    unitsPerPresentation: unitsPerPresentation,
+    minimumOrderQuantity: minimumOrderQuantity,
   );
 }
 

@@ -72,6 +72,7 @@ class PackagingPresentationDto {
   const PackagingPresentationDto({
     required this.id,
     required this.name,
+    this.unitsPerPresentation = 1,
     required this.sortOrder,
     required this.isActive,
     required this.version,
@@ -79,6 +80,7 @@ class PackagingPresentationDto {
 
   final String id;
   final String name;
+  final int unitsPerPresentation;
   final int sortOrder;
   final bool isActive;
   final int version;

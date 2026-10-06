@@ -46,6 +46,15 @@ class ProductSummaryDto {
     required this.name,
     required this.description,
     required this.currentStock,
+    this.unitPriceInCents = 0,
+    this.promotionalPriceInCents,
+    this.reorderPoint = 0,
+    this.packagePriceInCents,
+    this.packagingPresentationId,
+    this.packagingPresentationName,
+    this.minimumSaleQuantity = 1,
+    this.unitsPerPresentation = 1,
+    this.minimumOrderQuantity = 1,
   });
 
   final String id;
@@ -53,6 +62,15 @@ class ProductSummaryDto {
   final String name;
   final String description;
   final int currentStock;
+  final int unitPriceInCents;
+  final int? promotionalPriceInCents;
+  final int reorderPoint;
+  final int? packagePriceInCents;
+  final String? packagingPresentationId;
+  final String? packagingPresentationName;
+  final int minimumSaleQuantity;
+  final int unitsPerPresentation;
+  final int minimumOrderQuantity;
 
   @override
   bool operator ==(Object other) =>
@@ -61,13 +79,45 @@ class ProductSummaryDto {
       other.sku == sku &&
       other.name == name &&
       other.description == description &&
-      other.currentStock == currentStock;
+      other.currentStock == currentStock &&
+      other.unitPriceInCents == unitPriceInCents &&
+      other.promotionalPriceInCents == promotionalPriceInCents &&
+      other.reorderPoint == reorderPoint &&
+      other.packagePriceInCents == packagePriceInCents &&
+      other.packagingPresentationId == packagingPresentationId &&
+      other.packagingPresentationName == packagingPresentationName &&
+      other.minimumSaleQuantity == minimumSaleQuantity &&
+      other.unitsPerPresentation == unitsPerPresentation &&
+      other.minimumOrderQuantity == minimumOrderQuantity;
 
   @override
-  int get hashCode => Object.hash(id, sku, name, description, currentStock);
+  int get hashCode => Object.hash(
+    id,
+    sku,
+    name,
+    description,
+    currentStock,
+    unitPriceInCents,
+    promotionalPriceInCents,
+    reorderPoint,
+    packagePriceInCents,
+    packagingPresentationId,
+    packagingPresentationName,
+    minimumSaleQuantity,
+    unitsPerPresentation,
+    minimumOrderQuantity,
+  );
 
   @override
   String toString() =>
       'ProductSummaryDto(id: $id, sku: $sku, name: $name, '
-      'description: $description, currentStock: $currentStock)';
+      'description: $description, currentStock: $currentStock, '
+      'unitPriceInCents: $unitPriceInCents, '
+      'promotionalPriceInCents: $promotionalPriceInCents, '
+      'reorderPoint: $reorderPoint, '
+      'packagePriceInCents: $packagePriceInCents, '
+      'packagingPresentationName: $packagingPresentationName, '
+      'minimumSaleQuantity: $minimumSaleQuantity, '
+      'unitsPerPresentation: $unitsPerPresentation, '
+      'minimumOrderQuantity: $minimumOrderQuantity)';
 }
