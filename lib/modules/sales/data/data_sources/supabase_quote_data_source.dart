@@ -56,6 +56,8 @@ class SupabaseQuoteDataSource {
               'discount_percent': l.discountPercent,
               'product_sku': l.productSku,
               'product_name': l.productName,
+              'presentation_name': l.presentationName,
+              'units_per_presentation': l.unitsPerPresentation,
             },
         ],
         'p_actor_name': _device.actorName,
@@ -79,6 +81,45 @@ class SupabaseQuoteDataSource {
           QuoteStatus.expired => 'EXPIRED',
           QuoteStatus.converted => 'CONVERTED',
         },
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
+    return _quote(row);
+  }
+
+  Future<SalesQuote> updateQuote({
+    required String id,
+    required String customerId,
+    required String customerName,
+    DateTime? validUntil,
+    String? notes,
+    String? agentId,
+    required List<QuoteLineInput> lines,
+  }) async {
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'update_quote',
+      params: {
+        'p_quote_id': id,
+        'p_customer_id': customerId,
+        'p_customer_name': customerName,
+        'p_valid_until': validUntil?.toIso8601String().split('T').first,
+        'p_notes': notes,
+        'p_agent_id': agentId,
+        'p_lines': [
+          for (final line in lines)
+            {
+              'product_id': line.productId,
+              'quantity': line.quantity,
+              'unit_price': line.unitPrice,
+              'discount_percent': line.discountPercent,
+              'product_sku': line.productSku,
+              'product_name': line.productName,
+              'presentation_name': line.presentationName,
+              'units_per_presentation': line.unitsPerPresentation,
+            },
+        ],
         'p_actor_name': _device.actorName,
         'p_device_name': _device.name,
         'p_device_identifier': _device.identifier,
@@ -115,5 +156,21 @@ class SupabaseQuoteDataSource {
     updatedAt: row['updated_at'] == null
         ? null
         : DateTime.parse(row['updated_at'] as String),
+    lines: (row['sales_quote_lines'] as List<dynamic>? ?? const []).map((item) {
+      final line = item as Map<String, dynamic>;
+      return SalesQuoteLine(
+        id: line['id'] as String,
+        quoteId: line['quote_id'] as String,
+        productId: line['product_id'] as String,
+        quantity: line['quantity'] as int,
+        unitPrice: (line['unit_price'] as num).toDouble(),
+        totalPrice: (line['total_price'] as num).toDouble(),
+        discountPercent: (line['discount_percent'] as num?)?.toDouble() ?? 0,
+        productSku: line['product_sku'] as String?,
+        productName: line['product_name'] as String?,
+        presentationName: line['presentation_name'] as String?,
+        unitsPerPresentation: line['units_per_presentation'] as int? ?? 1,
+      );
+    }).toList(),
   );
 }

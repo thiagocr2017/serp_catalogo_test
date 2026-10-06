@@ -15,6 +15,7 @@ class SalesQuote {
     this.agentId,
     this.createdAt,
     this.updatedAt,
+    this.lines = const [],
   });
 
   final String id;
@@ -30,6 +31,7 @@ class SalesQuote {
   final String? agentId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final List<SalesQuoteLine> lines;
 }
 
 class SalesQuoteLine {
@@ -43,6 +45,8 @@ class SalesQuoteLine {
     this.discountPercent = 0,
     this.productSku,
     this.productName,
+    this.presentationName,
+    this.unitsPerPresentation = 1,
   });
 
   final String id;
@@ -54,4 +58,6 @@ class SalesQuoteLine {
   final double discountPercent;
   final String? productSku;
   final String? productName;
+  final String? presentationName;
+  final int unitsPerPresentation;
 }

@@ -37,4 +37,23 @@ class SupabaseQuoteRepository implements QuoteRepository {
   @override
   Future<SalesQuote> updateQuoteStatus(String id, QuoteStatus status) =>
       _source.updateQuoteStatus(id, status);
+
+  @override
+  Future<SalesQuote> updateQuote({
+    required String id,
+    required String customerId,
+    required String customerName,
+    DateTime? validUntil,
+    String? notes,
+    String? agentId,
+    required List<QuoteLineInput> lines,
+  }) => _source.updateQuote(
+    id: id,
+    customerId: customerId,
+    customerName: customerName,
+    validUntil: validUntil,
+    notes: notes,
+    agentId: agentId,
+    lines: lines,
+  );
 }

@@ -22,15 +22,16 @@ class SupabaseSalesInvoiceApi implements SalesInvoiceApi {
 
   @override
   Future<SalesInvoiceDto> createInvoice({
+    required String customerId,
     required String customerName,
     required String currencyCode,
     required double exchangeRate,
     String? notes,
     required List<SalesInvoiceLineInput> lines,
     required String warehouseId,
-    required String locationId,
   }) async {
     final invoice = await _source.createInvoice(
+      customerId: customerId,
       customerName: customerName,
       currencyCode: currencyCode,
       exchangeRate: exchangeRate,
@@ -47,7 +48,6 @@ class SupabaseSalesInvoiceApi implements SalesInvoiceApi {
           ),
       ],
       warehouseId: warehouseId,
-      locationId: locationId,
     );
     return invoice.toDto();
   }

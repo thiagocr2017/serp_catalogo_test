@@ -14,6 +14,15 @@ abstract interface class QuoteRepository {
     required List<QuoteLineInput> lines,
   });
   Future<SalesQuote> updateQuoteStatus(String id, QuoteStatus status);
+  Future<SalesQuote> updateQuote({
+    required String id,
+    required String customerId,
+    required String customerName,
+    DateTime? validUntil,
+    String? notes,
+    String? agentId,
+    required List<QuoteLineInput> lines,
+  });
 }
 
 class QuoteLineInput {
@@ -24,6 +33,8 @@ class QuoteLineInput {
     this.discountPercent = 0,
     this.productSku,
     this.productName,
+    this.presentationName,
+    this.unitsPerPresentation = 1,
   });
 
   final String productId;
@@ -32,4 +43,6 @@ class QuoteLineInput {
   final double discountPercent;
   final String? productSku;
   final String? productName;
+  final String? presentationName;
+  final int unitsPerPresentation;
 }

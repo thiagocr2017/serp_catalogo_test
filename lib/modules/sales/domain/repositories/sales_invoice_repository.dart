@@ -4,13 +4,13 @@ abstract interface class SalesInvoiceRepository {
   Future<List<SalesInvoice>> getInvoices();
   Future<SalesInvoice?> getInvoiceById(String id);
   Future<SalesInvoice> createInvoice({
+    required String customerId,
     required String customerName,
     required String currencyCode,
     required double exchangeRate,
     String? notes,
     required List<SalesInvoiceLineInput> lines,
     required String warehouseId,
-    required String locationId,
   });
   Future<SalesInvoice> cancelInvoice(String id, {required String reason});
 }

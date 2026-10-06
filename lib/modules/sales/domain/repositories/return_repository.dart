@@ -15,6 +15,7 @@ abstract interface class ReturnRepository {
 class ReturnLineInput {
   const ReturnLineInput({
     required this.productId,
+    required this.invoiceLineId,
     required this.quantity,
     required this.unitPrice,
     this.productSku,
@@ -22,6 +23,7 @@ class ReturnLineInput {
   });
 
   final String productId;
+  final String invoiceLineId;
   final int quantity;
   final double unitPrice;
   final String? productSku;

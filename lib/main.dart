@@ -104,10 +104,7 @@ Future<void> main() async {
   );
   final orderApi = SupabaseOrderApi(orderDataSource);
 
-  final returnDataSource = SupabaseReturnDataSource(
-    Supabase.instance.client,
-    device,
-  );
+  final returnDataSource = SupabaseReturnDataSource(Supabase.instance.client);
   final returnApi = SupabaseReturnApi(returnDataSource);
 
   final consignmentDataSource = SupabaseConsignmentDataSource(

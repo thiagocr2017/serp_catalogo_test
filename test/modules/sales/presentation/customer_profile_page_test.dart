@@ -4,6 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:serp/modules/configuration/configuration_module.dart';
 import 'package:serp/modules/sales/api/customer_api.dart';
+import 'package:serp/modules/sales/api/consignment_api.dart';
+import 'package:serp/modules/sales/api/order_api.dart';
+import 'package:serp/modules/sales/api/quote_api.dart';
+import 'package:serp/modules/sales/api/return_api.dart';
+import 'package:serp/modules/sales/api/sales_invoice_api.dart';
 import 'package:serp/modules/sales/api/sales_routes.dart';
 import 'package:serp/modules/sales/presentation/pages/customer_profile_page.dart';
 import 'package:serp/shared/widgets/desktop_shell_widget.dart';
@@ -72,12 +77,57 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Volver a clientes'), findsOneWidget);
-    await tester.tap(find.text('Volver a clientes'));
+    expect(find.byTooltip('Volver a clientes'), findsOneWidget);
+    await tester.tap(find.byTooltip('Volver a clientes'));
     await tester.pumpAndSettle();
 
     expect(find.text('Mostrando 1 de 1 clientes'), findsOneWidget);
     expect(find.text('Cliente de Prueba'), findsOneWidget);
+  });
+
+  testWidgets('perfil muestra borrador y abre detalle con retorno al cliente', (
+    tester,
+  ) async {
+    final api = _FakeCustomerApi(
+      customers: const [
+        CustomerDto(id: 'customer-1', name: 'Cliente de Prueba'),
+      ],
+    );
+    final quotes = _EmptyQuoteApi([
+      SalesQuoteDto(
+        id: 'quote-1',
+        quoteNumber: 'COT-000021',
+        customerId: 'customer-1',
+        customerName: 'Cliente de Prueba',
+        status: QuoteStatus.draft,
+        totalAmount: 120,
+        currencyCode: 'CRC',
+      ),
+    ]);
+
+    await tester.pumpWidget(
+      _shellRoutesApp(api, '/sales/customers/customer-1', quoteApi: quotes),
+    );
+    await tester.pumpAndSettle();
+    final tabBarContext = tester.element(find.byType(TabBar).last);
+    DefaultTabController.of(tabBarContext).animateTo(4);
+    await tester.pumpAndSettle();
+
+    expect(find.text('COT-000021'), findsOneWidget);
+    expect(find.textContaining('Borrador'), findsOneWidget);
+    expect(find.byTooltip('Cambiar estado de cotización'), findsOneWidget);
+    final quoteTile = tester.widget<ListTile>(
+      find.ancestor(
+        of: find.text('COT-000021'),
+        matching: find.byType(ListTile),
+      ),
+    );
+    quoteTile.onTap!.call();
+    await tester.pumpAndSettle();
+    expect(find.text('Detalle de cotización'), findsOneWidget);
+    await tester.tap(find.byTooltip('Volver al cliente'));
+    await tester.pumpAndSettle();
+    expect(find.text('Perfil de cliente'), findsOneWidget);
   });
 
   testWidgets('menu Clientes navega al indice desde el perfil', (tester) async {
@@ -166,7 +216,32 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(_profileApp(api, 'customer-1'));
+      await tester.pumpWidget(
+        _profileApp(
+          api,
+          'customer-1',
+          quoteApi: _EmptyQuoteApi([
+            SalesQuoteDto(
+              id: 'quote-pending',
+              quoteNumber: 'COT-PENDIENTE',
+              customerId: 'customer-1',
+              customerName: 'Cliente Con Alertas',
+              status: QuoteStatus.draft,
+              totalAmount: 75,
+              currencyCode: 'CRC',
+            ),
+            SalesQuoteDto(
+              id: 'quote-other',
+              quoteNumber: 'COT-OTRO',
+              customerId: 'customer-2',
+              customerName: 'Otro Cliente',
+              status: QuoteStatus.draft,
+              totalAmount: 90,
+              currencyCode: 'CRC',
+            ),
+          ]),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Credito vencido'), findsOneWidget);
@@ -177,10 +252,15 @@ void main() {
       expect(find.text('Documentos pendientes'), findsOneWidget);
       expect(
         find.text(
-          '3 documento(s) pendientes de procesar, despachar o liquidar.',
+          '1 documento(s) pendientes de procesar, despachar o liquidar.',
         ),
         findsOneWidget,
       );
+      await tester.tap(find.text('Documentos pendientes'));
+      await tester.pumpAndSettle();
+      expect(find.text('Documentos pendientes'), findsNWidgets(2));
+      expect(find.textContaining('COT-PENDIENTE'), findsOneWidget);
+      expect(find.text('COT-OTRO'), findsNothing);
     },
   );
 
@@ -221,7 +301,6 @@ void main() {
             'Credito vencido',
             'Sobre limite de credito',
             'Cliente inactivo',
-            'Documentos pendientes',
           }.contains,
         )
         .toList();
@@ -230,7 +309,6 @@ void main() {
       'Credito vencido',
       'Sobre limite de credito',
       'Cliente inactivo',
-      'Documentos pendientes',
     ]);
   });
 
@@ -337,7 +415,7 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -1200));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sin pedidos abiertos'), findsOneWidget);
+    expect(find.text('Sin pedidos'), findsOneWidget);
 
     await tester.tap(find.text('Facturas'));
     await tester.pumpAndSettle();
@@ -396,9 +474,18 @@ void main() {
   });
 }
 
-Widget _profileApp(_FakeCustomerApi api, String customerId) => ProviderScope(
+Widget _profileApp(
+  _FakeCustomerApi api,
+  String customerId, {
+  QuoteApi? quoteApi,
+}) => ProviderScope(
   overrides: [
     customerApiProvider.overrideWithValue(api),
+    quoteApiProvider.overrideWithValue(quoteApi ?? const _EmptyQuoteApi()),
+    orderApiProvider.overrideWithValue(const _EmptyOrderApi()),
+    salesInvoiceApiProvider.overrideWithValue(const _EmptyInvoiceApi()),
+    returnApiProvider.overrideWithValue(const _EmptyReturnApi()),
+    consignmentApiProvider.overrideWithValue(const _EmptyConsignmentApi()),
     identificationTypeDtosProvider.overrideWith(
       (ref) async => const [
         IdentificationTypeDto(
@@ -415,7 +502,14 @@ Widget _profileApp(_FakeCustomerApi api, String customerId) => ProviderScope(
 );
 
 Widget _routesApp(_FakeCustomerApi api) => ProviderScope(
-  overrides: [customerApiProvider.overrideWithValue(api)],
+  overrides: [
+    customerApiProvider.overrideWithValue(api),
+    quoteApiProvider.overrideWithValue(_EmptyQuoteApi()),
+    orderApiProvider.overrideWithValue(const _EmptyOrderApi()),
+    salesInvoiceApiProvider.overrideWithValue(const _EmptyInvoiceApi()),
+    returnApiProvider.overrideWithValue(const _EmptyReturnApi()),
+    consignmentApiProvider.overrideWithValue(const _EmptyConsignmentApi()),
+  ],
   child: MaterialApp.router(
     routerConfig: GoRouter(
       initialLocation: '/sales/customers',
@@ -424,37 +518,123 @@ Widget _routesApp(_FakeCustomerApi api) => ProviderScope(
   ),
 );
 
-Widget _shellRoutesApp(_FakeCustomerApi api, String initialLocation) =>
-    ProviderScope(
-      overrides: [
-        customerApiProvider.overrideWithValue(api),
-        identificationTypeDtosProvider.overrideWith(
-          (ref) async => const [
-            IdentificationTypeDto(
-              id: 'type-1',
-              code: 'JURIDICAL_ID',
-              name: 'Cedula juridica',
-              isActive: true,
-              version: 1,
-            ),
-          ],
+Widget _shellRoutesApp(
+  _FakeCustomerApi api,
+  String initialLocation, {
+  QuoteApi? quoteApi,
+}) => ProviderScope(
+  overrides: [
+    customerApiProvider.overrideWithValue(api),
+    quoteApiProvider.overrideWithValue(quoteApi ?? const _EmptyQuoteApi()),
+    orderApiProvider.overrideWithValue(const _EmptyOrderApi()),
+    salesInvoiceApiProvider.overrideWithValue(const _EmptyInvoiceApi()),
+    returnApiProvider.overrideWithValue(const _EmptyReturnApi()),
+    consignmentApiProvider.overrideWithValue(const _EmptyConsignmentApi()),
+    identificationTypeDtosProvider.overrideWith(
+      (ref) async => const [
+        IdentificationTypeDto(
+          id: 'type-1',
+          code: 'JURIDICAL_ID',
+          name: 'Cedula juridica',
+          isActive: true,
+          version: 1,
         ),
       ],
-      child: MaterialApp.router(
-        routerConfig: GoRouter(
-          initialLocation: initialLocation,
-          routes: [
-            ShellRoute(
-              builder: (context, state, child) => DesktopShellWidget(
-                currentLocation: state.uri.path,
-                child: child,
-              ),
-              routes: salesRoutes,
-            ),
-          ],
+    ),
+  ],
+  child: MaterialApp.router(
+    routerConfig: GoRouter(
+      initialLocation: initialLocation,
+      routes: [
+        ShellRoute(
+          builder: (context, state, child) =>
+              DesktopShellWidget(currentLocation: state.uri.path, child: child),
+          routes: salesRoutes,
         ),
-      ),
-    );
+      ],
+    ),
+  ),
+);
+
+class _EmptyOrderApi implements OrderApi {
+  const _EmptyOrderApi();
+
+  @override
+  Future<List<SalesOrderDto>> getOrders() async => const [];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _EmptyInvoiceApi implements SalesInvoiceApi {
+  const _EmptyInvoiceApi();
+
+  @override
+  Future<List<SalesInvoiceDto>> getInvoices() async => const [];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _EmptyReturnApi implements ReturnApi {
+  const _EmptyReturnApi();
+
+  @override
+  Future<List<SalesReturnDto>> getReturns() async => const [];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _EmptyConsignmentApi implements ConsignmentApi {
+  const _EmptyConsignmentApi();
+
+  @override
+  Future<List<SalesConsignmentDto>> getConsignments() async => const [];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _EmptyQuoteApi implements QuoteApi {
+  const _EmptyQuoteApi([this.quotes = const []]);
+
+  final List<SalesQuoteDto> quotes;
+
+  @override
+  Future<List<SalesQuoteDto>> getQuotes() async => quotes;
+
+  @override
+  Future<SalesQuoteDto?> getQuoteById(String id) async =>
+      quotes.where((quote) => quote.id == id).firstOrNull;
+
+  @override
+  Future<SalesQuoteDto> createQuote({
+    required String customerId,
+    required String customerName,
+    required String currencyCode,
+    required double exchangeRate,
+    DateTime? validUntil,
+    String? notes,
+    String? agentId,
+    required List<QuoteLineInput> lines,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<SalesQuoteDto> updateQuoteStatus(String id, QuoteStatus status) =>
+      throw UnimplementedError();
+
+  @override
+  Future<SalesQuoteDto> updateQuote({
+    required String id,
+    required String customerId,
+    required String customerName,
+    DateTime? validUntil,
+    String? notes,
+    String? agentId,
+    required List<QuoteLineInput> lines,
+  }) => throw UnimplementedError();
+}
 
 class _FakeCustomerApi implements CustomerApi {
   const _FakeCustomerApi({

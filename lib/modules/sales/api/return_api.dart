@@ -23,3 +23,7 @@ final returnApiProvider = Provider<ReturnApi>(
 final returnsProvider = FutureProvider<List<SalesReturnDto>>(
   (ref) => ref.watch(returnApiProvider).getReturns(),
 );
+
+final returnByIdProvider = FutureProvider.family<SalesReturnDto?, String>(
+  (ref, id) => ref.watch(returnApiProvider).getReturnById(id),
+);

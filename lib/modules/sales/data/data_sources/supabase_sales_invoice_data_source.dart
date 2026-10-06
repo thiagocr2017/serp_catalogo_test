@@ -29,18 +29,19 @@ class SupabaseSalesInvoiceDataSource {
   }
 
   Future<SalesInvoice> createInvoice({
+    required String customerId,
     required String customerName,
     required String currencyCode,
     required double exchangeRate,
     String? notes,
     required List<SalesInvoiceLineInput> lines,
     required String warehouseId,
-    required String locationId,
   }) async {
     final row = await _client.rpc<Map<String, dynamic>>(
       'create_sale_invoice_with_dispatch',
       params: {
         'p_command_id': const Uuid().v4(),
+        'p_customer_id': customerId,
         'p_customer_name': customerName,
         'p_currency_code': currencyCode,
         'p_exchange_rate': exchangeRate,
@@ -57,7 +58,6 @@ class SupabaseSalesInvoiceDataSource {
             },
         ],
         'p_warehouse_id': warehouseId,
-        'p_location_id': locationId,
         'p_actor_name': _device.actorName,
         'p_device_name': _device.name,
         'p_device_identifier': _device.identifier,
@@ -84,9 +84,11 @@ class SupabaseSalesInvoiceDataSource {
   }
 
   SalesInvoice _invoice(Map<String, dynamic> row) {
-    (row['sales_invoice_lines'] as List<dynamic>?)
-        ?.map((l) => _line(l as Map<String, dynamic>))
-        .toList();
+    final lines =
+        (row['sales_invoice_lines'] as List<dynamic>?)
+            ?.map((l) => _line(l as Map<String, dynamic>))
+            .toList() ??
+        const <SalesInvoiceLine>[];
     return SalesInvoice(
       id: row['id'] as String,
       invoiceNumber: row['invoice_number'] as String,
@@ -104,6 +106,7 @@ class SupabaseSalesInvoiceDataSource {
       exchangeRate: (row['exchange_rate'] as num?)?.toDouble() ?? 1.0,
       notes: row['notes'] as String?,
       inventoryDocumentId: row['inventory_document_id'] as String?,
+      lines: lines,
       createdAt: row['created_at'] == null
           ? null
           : DateTime.parse(row['created_at'] as String),

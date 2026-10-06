@@ -18,6 +18,15 @@ abstract interface class QuoteApi {
     required List<QuoteLineInput> lines,
   });
   Future<SalesQuoteDto> updateQuoteStatus(String id, QuoteStatus status);
+  Future<SalesQuoteDto> updateQuote({
+    required String id,
+    required String customerId,
+    required String customerName,
+    DateTime? validUntil,
+    String? notes,
+    String? agentId,
+    required List<QuoteLineInput> lines,
+  });
 }
 
 final quoteApiProvider = Provider<QuoteApi>(
@@ -26,4 +35,8 @@ final quoteApiProvider = Provider<QuoteApi>(
 
 final quotesProvider = FutureProvider<List<SalesQuoteDto>>(
   (ref) => ref.watch(quoteApiProvider).getQuotes(),
+);
+
+final quoteByIdProvider = FutureProvider.family<SalesQuoteDto?, String>(
+  (ref, id) => ref.watch(quoteApiProvider).getQuoteById(id),
 );

@@ -48,6 +48,8 @@ class SupabaseQuoteApi implements QuoteApi {
             discountPercent: l.discountPercent,
             productSku: l.productSku,
             productName: l.productName,
+            presentationName: l.presentationName,
+            unitsPerPresentation: l.unitsPerPresentation,
           ),
       ],
     );
@@ -59,4 +61,35 @@ class SupabaseQuoteApi implements QuoteApi {
     final quote = await _source.updateQuoteStatus(id, status);
     return quote.toDto();
   }
+
+  @override
+  Future<SalesQuoteDto> updateQuote({
+    required String id,
+    required String customerId,
+    required String customerName,
+    DateTime? validUntil,
+    String? notes,
+    String? agentId,
+    required List<QuoteLineInput> lines,
+  }) async => (await _source.updateQuote(
+    id: id,
+    customerId: customerId,
+    customerName: customerName,
+    validUntil: validUntil,
+    notes: notes,
+    agentId: agentId,
+    lines: [
+      for (final line in lines)
+        domain.QuoteLineInput(
+          productId: line.productId,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          discountPercent: line.discountPercent,
+          productSku: line.productSku,
+          productName: line.productName,
+          presentationName: line.presentationName,
+          unitsPerPresentation: line.unitsPerPresentation,
+        ),
+    ],
+  )).toDto();
 }

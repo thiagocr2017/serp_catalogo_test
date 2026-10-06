@@ -15,21 +15,21 @@ class SupabaseSalesInvoiceRepository implements SalesInvoiceRepository {
 
   @override
   Future<SalesInvoice> createInvoice({
+    required String customerId,
     required String customerName,
     required String currencyCode,
     required double exchangeRate,
     String? notes,
     required List<SalesInvoiceLineInput> lines,
     required String warehouseId,
-    required String locationId,
   }) => _source.createInvoice(
+    customerId: customerId,
     customerName: customerName,
     currencyCode: currencyCode,
     exchangeRate: exchangeRate,
     notes: notes,
     lines: lines,
     warehouseId: warehouseId,
-    locationId: locationId,
   );
 
   @override

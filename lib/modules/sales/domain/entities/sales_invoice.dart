@@ -12,6 +12,7 @@ class SalesInvoice {
     this.exchangeRate = 1.0,
     this.notes,
     this.inventoryDocumentId,
+    this.lines = const [],
     this.createdAt,
     this.updatedAt,
     this.confirmedAt,
@@ -28,6 +29,7 @@ class SalesInvoice {
   final double exchangeRate;
   final String? notes;
   final String? inventoryDocumentId;
+  final List<SalesInvoiceLine> lines;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? confirmedAt;

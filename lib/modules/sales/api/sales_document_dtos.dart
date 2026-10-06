@@ -44,6 +44,8 @@ class QuoteLineInput {
     this.discountPercent = 0,
     this.productSku,
     this.productName,
+    this.presentationName,
+    this.unitsPerPresentation = 1,
   });
 
   final String productId;
@@ -52,6 +54,8 @@ class QuoteLineInput {
   final double discountPercent;
   final String? productSku;
   final String? productName;
+  final String? presentationName;
+  final int unitsPerPresentation;
 }
 
 @immutable
@@ -77,6 +81,7 @@ class OrderLineInput {
 class ReturnLineInput {
   const ReturnLineInput({
     required this.productId,
+    required this.invoiceLineId,
     required this.quantity,
     required this.unitPrice,
     this.productSku,
@@ -84,6 +89,7 @@ class ReturnLineInput {
   });
 
   final String productId;
+  final String invoiceLineId;
   final int quantity;
   final double unitPrice;
   final String? productSku;
@@ -330,6 +336,8 @@ class SalesQuoteLineDto {
     this.discountPercent = 0,
     this.productSku,
     this.productName,
+    this.presentationName,
+    this.unitsPerPresentation = 1,
   });
 
   final String id;
@@ -341,6 +349,8 @@ class SalesQuoteLineDto {
   final double discountPercent;
   final String? productSku;
   final String? productName;
+  final String? presentationName;
+  final int unitsPerPresentation;
 
   @override
   bool operator ==(Object other) =>
@@ -355,7 +365,9 @@ class SalesQuoteLineDto {
           totalPrice == other.totalPrice &&
           discountPercent == other.discountPercent &&
           productSku == other.productSku &&
-          productName == other.productName;
+          productName == other.productName &&
+          presentationName == other.presentationName &&
+          unitsPerPresentation == other.unitsPerPresentation;
 
   @override
   int get hashCode => Object.hash(
@@ -368,6 +380,8 @@ class SalesQuoteLineDto {
     discountPercent,
     productSku,
     productName,
+    presentationName,
+    unitsPerPresentation,
   );
 }
 
@@ -600,6 +614,7 @@ class SalesReturnLineDto {
     required this.id,
     required this.returnId,
     required this.productId,
+    this.invoiceLineId,
     required this.quantity,
     required this.unitPrice,
     required this.totalPrice,
@@ -610,6 +625,7 @@ class SalesReturnLineDto {
   final String id;
   final String returnId;
   final String productId;
+  final String? invoiceLineId;
   final int quantity;
   final double unitPrice;
   final double totalPrice;
@@ -624,6 +640,7 @@ class SalesReturnLineDto {
           id == other.id &&
           returnId == other.returnId &&
           productId == other.productId &&
+          invoiceLineId == other.invoiceLineId &&
           quantity == other.quantity &&
           unitPrice == other.unitPrice &&
           totalPrice == other.totalPrice &&

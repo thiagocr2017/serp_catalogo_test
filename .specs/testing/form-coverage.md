@@ -23,7 +23,7 @@ dato, formato, rangos y que no se ejecuten comandos con datos inválidos.
 | Productos | Importar/exportar productos | Operación específica | `bulk_product_transfer_service_test.dart` | **No listo como formulario UI**: existe cobertura de servicio; falta prueba de pantalla para selección CSV/ZIP y bloqueo por errores. |
 | Inventario | Bodegas | CRU actual | `warehouses_form_validation_test.dart` | **Cubierto para la operación actual**: create inválido/válido, read y update. |
 | Inventario | Ubicaciones | CRU actual | `warehouses_form_validation_test.dart` | **Cubierto para la operación actual**: read y update de ubicación existente. Falta create específico de ubicación. |
-| Inventario | Documento de inventario | Confirmar documento | Pendiente | **No listo**: bloqueado hasta estabilizar pantalla/autocomplete de documentos en el bloque de Inventario. |
+| Inventario | Documento de inventario | Confirmar documento | `inventory_document_form_page_test.dart` | **Parcial**: rechaza sin producto y confirma ajuste válido con payload/navegación usando API fake. Falta persistencia real, traslado, borrador y error de servidor. |
 | Inventario | Conteos físicos | Operación específica | Pendiente | **No listo**: pantalla aún en desarrollo. |
 | Configuración | Empresa/impuestos | Update/configurar | `settings_form_validation_test.dart` | **Cubierto para la operación actual**: guarda válido por API pública y rechaza decimal no normalizado. |
 | Configuración | Presentaciones | CRU actual | `settings_form_validation_test.dart` | **Cubierto para la operación actual**: create inválido/válido, read y update. |
@@ -31,17 +31,15 @@ dato, formato, rangos y que no se ejecuten comandos con datos inválidos.
 | Configuración | Purga de prueba a producción | Operación destructiva | Pendiente | **No listo**: falta prueba de confirmación y bloqueo por texto incorrecto. |
 | Ventas | Agentes | CRUD lógico | `agent_form_validation_test.dart` | **Cubierto para la operación actual**: create inválido/válido, read, update, activar y desactivar. |
 | Ventas | Clientes | CRUD lógico + contactos | `customers_form_validation_test.dart` | **Cubierto para la operación actual**: create inválido/válido, validación de contactos y límite, read/update, guardado de contactos y desactivar. |
-| Ventas | Cotizaciones | Operación/documento | Pendiente | **No listo**: la pantalla actual es lista de solo lectura. |
-| Ventas | Pedidos | Operación/documento | Pendiente | **No listo**: la pantalla actual es lista de solo lectura. |
-| Ventas | Facturas | Operación/documento | Pendiente | **No listo**: la pantalla actual es lista de solo lectura. |
-| Ventas | Devoluciones | Operación/documento | Pendiente | **No listo**: la pantalla actual es lista de solo lectura. |
-| Ventas | Consignaciones | Operación/documento | Pendiente | **No listo**: la pantalla actual es lista de solo lectura. |
+| Ventas | Cotizaciones, pedidos, facturas, devoluciones y consignaciones | Operación/documento | `sales_document_form_page_test.dart` | **Parcial**: render de las cinco variantes; creación valida/invalida probada para cotización. Falta prueba de payload/validación y acciones API de los otros cuatro tipos. |
 | Pagos | Pagos y recibos | Operación/documento | Pendiente | **No listo**: el módulo todavía no tiene formularios completos. |
 
 ## Suite actual verificada
 
-La suite de formularios registrada contiene 21 pruebas de UI y debe ejecutarse
-antes de marcar como completa una tarea que toque formularios:
+La suite de formularios registrada contiene 21 pruebas de UI; las pruebas
+recientes de pantallas comerciales e inventario se mantienen en sus archivos
+específicos. Debe ejecutarse antes de marcar como completa una tarea que toque
+formularios:
 
 ```bash
 flutter test \

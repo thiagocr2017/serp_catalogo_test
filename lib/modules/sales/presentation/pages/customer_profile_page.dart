@@ -6,11 +6,48 @@ import '../../../../core/utilities/phone_number.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../../configuration/configuration_module.dart';
 import '../../api/customer_api.dart';
+import '../../api/consignment_api.dart';
+import '../../api/order_api.dart';
+import '../../api/quote_api.dart';
+import '../../api/return_api.dart';
+import '../../api/sales_invoice_api.dart';
 
 class CustomerProfilePage extends ConsumerWidget {
-  const CustomerProfilePage({required this.customerId, super.key});
+  const CustomerProfilePage({
+    required this.customerId,
+    this.returnTo,
+    super.key,
+  });
 
   final String customerId;
+  final String? returnTo;
+
+  String get _safeReturnTo {
+    final value = returnTo;
+    if (value != null) {
+      final uri = Uri.tryParse(value);
+      final internal =
+          uri != null &&
+          !uri.hasScheme &&
+          uri.host.isEmpty &&
+          value.startsWith('/');
+      if (internal && RegExp(r'^/sales/quotes/[^/?]+$').hasMatch(uri.path)) {
+        final nested = uri.queryParameters['returnTo'];
+        if (nested == null ||
+            nested == '/sales/quotes' ||
+            RegExp(r'^/sales/customers/[^/?]+$').hasMatch(nested)) {
+          return value;
+        }
+      }
+      if (internal &&
+          RegExp(r'^/sales/(invoices|returns|consignments)/[^/?]+$')
+              .hasMatch(uri.path)) {
+        return value;
+      }
+      if (value == '/sales/quotes') return value;
+    }
+    return '/sales/customers';
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) =>
@@ -20,8 +57,8 @@ class CustomerProfilePage extends ConsumerWidget {
           if (snapshot.connectionState != ConnectionState.done) {
             return Scaffold(
               appBar: AppBar(
+                leading: _BackToCustomersAction(path: _safeReturnTo),
                 title: const Text('Perfil de cliente'),
-                actions: const [_BackToCustomersAction()],
               ),
               body: Center(child: CircularProgressIndicator()),
             );
@@ -30,21 +67,25 @@ class CustomerProfilePage extends ConsumerWidget {
           if (customer == null) {
             return Scaffold(
               appBar: AppBar(
+                leading: _BackToCustomersAction(path: _safeReturnTo),
                 title: const Text('Perfil de cliente'),
-                actions: const [_BackToCustomersAction()],
               ),
               body: const Center(child: Text('El cliente no existe.')),
             );
           }
-          return _CustomerProfileView(customer: customer);
+          return _CustomerProfileView(
+            customer: customer,
+            returnTo: _safeReturnTo,
+          );
         },
       );
 }
 
 class _CustomerProfileView extends ConsumerWidget {
-  const _CustomerProfileView({required this.customer});
+  const _CustomerProfileView({required this.customer, required this.returnTo});
 
   final CustomerDto customer;
+  final String returnTo;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -57,10 +98,9 @@ class _CustomerProfileView extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: _BackToCustomersAction(path: returnTo),
         title: const Text('Perfil de cliente'),
         actions: [
-          const _BackToCustomersAction(),
-          const SizedBox(width: 8),
           Semantics(
             button: true,
             label: 'Editar cliente ${customer.name}',
@@ -109,13 +149,20 @@ class _CustomerProfileView extends ConsumerWidget {
 }
 
 class _BackToCustomersAction extends StatelessWidget {
-  const _BackToCustomersAction();
+  const _BackToCustomersAction({required this.path});
+
+  final String path;
 
   @override
-  Widget build(BuildContext context) => TextButton.icon(
-    onPressed: () => context.go('/sales/customers'),
+  Widget build(BuildContext context) => IconButton(
+    tooltip: path.startsWith('/sales/quotes/')
+        ? 'Volver a cotización'
+        : path.startsWith('/sales/returns/') ||
+              path.startsWith('/sales/consignments/')
+        ? 'Volver al documento'
+        : 'Volver a clientes',
+    onPressed: () => context.go(path),
     icon: const Icon(Icons.arrow_back),
-    label: const Text('Volver a clientes'),
   );
 }
 
@@ -233,7 +280,78 @@ class _Alerts extends ConsumerWidget {
       customerCommercialSummaryProvider(customer.id),
     );
     final summary = summaryAsync.value;
-
+    final ordersAsync = ref.watch(ordersProvider);
+    final quotesAsync = ref.watch(quotesProvider);
+    final consignmentsAsync = ref.watch(consignmentsProvider);
+    final returnsAsync = ref.watch(returnsProvider);
+    final pendingDocumentsError = [
+      ordersAsync.hasError,
+      quotesAsync.hasError,
+      consignmentsAsync.hasError,
+      returnsAsync.hasError,
+    ].contains(true);
+    final pendingDocumentsLoading =
+        ordersAsync.isLoading ||
+        quotesAsync.isLoading ||
+        consignmentsAsync.isLoading ||
+        returnsAsync.isLoading;
+    final pendingCount = pendingDocumentsError || pendingDocumentsLoading
+        ? null
+        : (ordersAsync.value ?? const <SalesOrderDto>[])
+                  .where(
+                    (doc) =>
+                        _belongsToCustomer(
+                          doc.customerId,
+                          doc.customerName,
+                          customer,
+                        ) &&
+                        {
+                          OrderStatus.draft,
+                          OrderStatus.confirmed,
+                          OrderStatus.reserved,
+                        }.contains(doc.status),
+                  )
+                  .length +
+              (quotesAsync.value ?? const <SalesQuoteDto>[])
+                  .where(
+                    (doc) =>
+                        _belongsToCustomer(
+                          doc.customerId,
+                          doc.customerName,
+                          customer,
+                        ) &&
+                        {
+                          QuoteStatus.draft,
+                          QuoteStatus.sent,
+                        }.contains(doc.status),
+                  )
+                  .length +
+              (consignmentsAsync.value ?? const <SalesConsignmentDto>[])
+                  .where(
+                    (doc) =>
+                        _belongsToCustomer(
+                          doc.customerId,
+                          doc.customerName,
+                          customer,
+                        ) &&
+                        {
+                          ConsignmentStatus.draft,
+                          ConsignmentStatus.sent,
+                          ConsignmentStatus.partialReturn,
+                        }.contains(doc.status),
+                  )
+                  .length +
+              (returnsAsync.value ?? const <SalesReturnDto>[])
+                  .where(
+                    (doc) =>
+                        _belongsToCustomer(
+                          doc.customerId,
+                          doc.customerName,
+                          customer,
+                        ) &&
+                        doc.status == ReturnStatus.draft,
+                  )
+                  .length;
     final alerts = <_ProfileAlert>[
       if (summary != null && summary.overdueInvoicesCount > 0)
         _ProfileAlert(
@@ -262,13 +380,19 @@ class _Alerts extends ConsumerWidget {
               : 'No debe usarse para ventas nuevas sin reactivarlo.',
           color: Theme.of(context).colorScheme.errorContainer,
         ),
-      if (summary != null && summary.totalPendingDocuments > 0)
+      if (pendingDocumentsError ||
+          pendingDocumentsLoading ||
+          (pendingCount ?? 0) > 0)
         _ProfileAlert(
           icon: Icons.pending_actions_outlined,
           title: 'Documentos pendientes',
-          message:
-              '${summary.totalPendingDocuments} documento(s) pendientes de procesar, despachar o liquidar.',
+          message: pendingDocumentsError
+              ? 'No se pudieron cargar los documentos relacionados. Abra para ver el error.'
+              : pendingDocumentsLoading
+              ? 'Consultando documentos relacionados...'
+              : '$pendingCount documento(s) pendientes de procesar, despachar o liquidar.',
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          onTap: () => _showPendingDocuments(context, ref, customer),
         ),
     ];
 
@@ -290,10 +414,19 @@ class _Alerts extends ConsumerWidget {
                   color: alert.color,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: ListTile(
-                  leading: Icon(alert.icon),
-                  title: Text(alert.title),
-                  subtitle: Text(alert.message),
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  clipBehavior: Clip.antiAlias,
+                  child: ListTile(
+                    onTap: alert.onTap,
+                    leading: Icon(alert.icon),
+                    title: Text(alert.title),
+                    subtitle: Text(alert.message),
+                    trailing: alert.onTap == null
+                        ? null
+                        : const Icon(Icons.arrow_forward),
+                  ),
                 ),
               ),
             ),
@@ -441,6 +574,66 @@ class _SummaryColumn extends ConsumerWidget {
       customerCommercialSummaryProvider(customer.id),
     );
     final summary = summaryAsync.value;
+    final quotesAsync = ref.watch(quotesProvider);
+    final customerQuotes =
+        quotesAsync.value
+            ?.where(
+              (quote) => _belongsToCustomer(
+                quote.customerId,
+                quote.customerName,
+                customer,
+              ),
+            )
+            .toList() ??
+        const <SalesQuoteDto>[];
+    final ordersAsync = ref.watch(ordersProvider);
+    final invoicesAsync = ref.watch(salesInvoicesProvider);
+    final returnsAsync = ref.watch(returnsProvider);
+    final consignmentsAsync = ref.watch(consignmentsProvider);
+    final customerOrders =
+        ordersAsync.value
+            ?.where(
+              (doc) => _belongsToCustomer(
+                doc.customerId,
+                doc.customerName,
+                customer,
+              ),
+            )
+            .toList() ??
+        const <SalesOrderDto>[];
+    final customerInvoices =
+        invoicesAsync.value
+            ?.where(
+              (doc) => _belongsToCustomer(
+                doc.customerId,
+                doc.customerName,
+                customer,
+              ),
+            )
+            .toList() ??
+        const <SalesInvoiceDto>[];
+    final customerReturns =
+        returnsAsync.value
+            ?.where(
+              (doc) => _belongsToCustomer(
+                doc.customerId,
+                doc.customerName,
+                customer,
+              ),
+            )
+            .toList() ??
+        const <SalesReturnDto>[];
+    final customerConsignments =
+        consignmentsAsync.value
+            ?.where(
+              (doc) => _belongsToCustomer(
+                doc.customerId,
+                doc.customerName,
+                customer,
+              ),
+            )
+            .toList() ??
+        const <SalesConsignmentDto>[];
 
     final lastPurchaseText = summary?.lastPurchaseAt != null
         ? _dateText(summary!.lastPurchaseAt!)
@@ -525,7 +718,7 @@ class _SummaryColumn extends ConsumerWidget {
         _ProfileSection(
           title: 'Documentos',
           icon: Icons.folder_copy_outlined,
-          children: const [
+          children: [
             DefaultTabController(
               length: 6,
               child: Column(
@@ -546,30 +739,164 @@ class _SummaryColumn extends ConsumerWidget {
                     height: 148,
                     child: TabBarView(
                       children: [
-                        _DocumentEmpty(
-                          title: 'Sin pedidos abiertos',
-                          message: 'Cuando existan pedidos del cliente apareceran aqui.',
+                        _documentList(
+                          context,
+                          ordersAsync,
+                          customerOrders,
+                          emptyTitle: 'Sin pedidos',
+                          emptyMessage:
+                              'Los pedidos del cliente aparecerán aquí.',
+                          number: (doc) => doc.orderNumber,
+                          status: (doc) => _orderStatusLabel(doc.status),
+                          amount: (doc) =>
+                              '${doc.currencyCode} ${doc.totalAmount.toStringAsFixed(2)}',
+                          onOpen: (_) => context.go(
+                            '/sales/orders?customerId=${Uri.encodeQueryComponent(customer.id)}&customerName=${Uri.encodeQueryComponent(customer.name)}',
+                          ),
                         ),
-                        _DocumentEmpty(
-                          title: 'Sin facturas',
-                          message: 'Las facturas emitidas para este cliente se listaran aqui.',
+                        _documentList(
+                          context,
+                          invoicesAsync,
+                          customerInvoices,
+                          emptyTitle: 'Sin facturas',
+                          emptyMessage: 'Las facturas emitidas para este cliente aparecerán aquí.',
+                          number: (doc) => doc.invoiceNumber,
+                          status: (doc) => _invoiceStatusLabel(doc.status),
+                          amount: (doc) =>
+                              '${doc.currencyCode} ${doc.totalAmount.toStringAsFixed(2)}',
+                          onOpen: (doc) => context.go(
+                            '/sales/invoices/${doc.id}?returnTo=${Uri.encodeQueryComponent('/sales/customers/${customer.id}')}',
+                          ),
+                          trailing: (doc) =>
+                              doc.status == SalesInvoiceStatus.confirmed ||
+                                  doc.status == SalesInvoiceStatus.paid
+                              ? IconButton(
+                                  tooltip: 'Iniciar devolución',
+                                  icon: const Icon(
+                                    Icons.assignment_return_outlined,
+                                  ),
+                                  onPressed: () => context.go(
+                                    '/sales/returns/new?invoiceId=${Uri.encodeQueryComponent(doc.id)}&returnTo=${Uri.encodeQueryComponent('/sales/customers/${customer.id}')}',
+                                  ),
+                                )
+                              : null,
                         ),
                         _DocumentEmpty(
                           title: 'Sin pagos registrados',
                           message:
                               'Los pagos aplicados al cliente apareceran aqui.',
                         ),
-                        _DocumentEmpty(
-                          title: 'Sin devoluciones',
-                          message: 'Las devoluciones del cliente se consultaran aqui.',
+                        _documentList(
+                          context,
+                          returnsAsync,
+                          customerReturns,
+                          emptyTitle: 'Sin devoluciones',
+                          emptyMessage:
+                              'Las devoluciones del cliente aparecerán aquí.',
+                          number: (doc) => doc.returnNumber,
+                          status: (doc) => _returnStatusLabel(doc.status),
+                          amount: (doc) =>
+                              '${doc.currencyCode} ${doc.totalAmount.toStringAsFixed(2)}',
+                          onOpen: (doc) => context.go(
+                            '/sales/returns/${doc.id}?returnTo=${Uri.encodeQueryComponent('/sales/customers/${customer.id}')}',
+                          ),
                         ),
-                        _DocumentEmpty(
-                          title: 'Sin cotizaciones activas',
-                          message: 'Las cotizaciones pendientes del cliente apareceran aqui.',
+                        quotesAsync.when(
+                          loading: () =>
+                              const Center(child: CircularProgressIndicator()),
+                          error: (error, _) => Center(
+                            child: Text(
+                              'No se pudieron cargar cotizaciones: $error',
+                            ),
+                          ),
+                          data: (_) => customerQuotes.isEmpty
+                              ? const _DocumentEmpty(
+                                  title: 'Sin cotizaciones',
+                                  message: 'Las cotizaciones del cliente aparecerán aquí.',
+                                )
+                              : ListView.builder(
+                                  itemCount: customerQuotes.length,
+                                  itemBuilder: (context, index) {
+                                    final quote = customerQuotes[index];
+                                    return ListTile(
+                                      dense: true,
+                                      title: Text(quote.quoteNumber),
+                                      subtitle: Text(
+                                        '${_quoteStatusLabel(quote.status)} · ${quote.currencyCode} ${quote.totalAmount.toStringAsFixed(2)}',
+                                      ),
+                                      trailing: PopupMenuButton<QuoteStatus>(
+                                        tooltip: 'Cambiar estado de cotización',
+                                        onSelected: (status) async {
+                                          try {
+                                            await ref
+                                                .read(quoteApiProvider)
+                                                .updateQuoteStatus(
+                                                  quote.id,
+                                                  status,
+                                                );
+                                            ref.invalidate(quotesProvider);
+                                            ref.invalidate(
+                                              customerCommercialSummaryProvider(
+                                                customer.id,
+                                              ),
+                                            );
+                                          } catch (error) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'No se pudo cambiar el estado: $error',
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                        itemBuilder: (_) => [
+                                          if (quote.status == QuoteStatus.draft)
+                                            const PopupMenuItem(
+                                              value: QuoteStatus.sent,
+                                              child: Text('Marcar enviada'),
+                                            ),
+                                          if (quote.status ==
+                                                  QuoteStatus.draft ||
+                                              quote.status ==
+                                                  QuoteStatus.sent) ...[
+                                            const PopupMenuItem(
+                                              value: QuoteStatus.accepted,
+                                              child: Text('Aceptar'),
+                                            ),
+                                            const PopupMenuItem(
+                                              value: QuoteStatus.rejected,
+                                              child: Text('Rechazar'),
+                                            ),
+                                          ],
+                                        ],
+                                        icon: const Icon(Icons.more_vert),
+                                      ),
+                                      onTap: () => context.go(
+                                        '/sales/quotes/${quote.id}?returnTo=${Uri.encodeComponent('/sales/customers/${customer.id}')}',
+                                      ),
+                                    );
+                                  },
+                                ),
                         ),
-                        _DocumentEmpty(
-                          title: 'Sin consignaciones',
-                          message: 'Las consignaciones del cliente se mostraran aqui.',
+                        _documentList(
+                          context,
+                          consignmentsAsync,
+                          customerConsignments,
+                          emptyTitle: 'Sin consignaciones',
+                          emptyMessage:
+                              'Las consignaciones del cliente aparecerán aquí.',
+                          number: (doc) => doc.consignmentNumber,
+                          status: (doc) => _consignmentStatusLabel(doc.status),
+                          amount: (doc) =>
+                              '${doc.currencyCode} ${doc.totalAmount.toStringAsFixed(2)}',
+                          onOpen: (doc) => context.go(
+                            '/sales/consignments/${doc.id}?returnTo=${Uri.encodeQueryComponent('/sales/customers/${customer.id}')}',
+                          ),
                         ),
                       ],
                     ),
@@ -740,12 +1067,234 @@ class _ProfileAlert {
     required this.title,
     required this.message,
     required this.color,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String message;
   final Color color;
+  final VoidCallback? onTap;
+}
+
+bool _belongsToCustomer(
+  String? customerId,
+  String customerName,
+  CustomerDto customer,
+) =>
+    customerId == customer.id ||
+    (customerId == null &&
+        customerName.trim().toLowerCase() ==
+            customer.name.trim().toLowerCase());
+
+Widget _documentList<T>(
+  BuildContext context,
+  AsyncValue<List<T>> async,
+  List<T> documents, {
+  required String emptyTitle,
+  required String emptyMessage,
+  required String Function(T) number,
+  required String Function(T) status,
+  required String Function(T) amount,
+  required void Function(T) onOpen,
+  Widget? Function(T)? trailing,
+}) => async.when(
+  loading: () => const Center(child: CircularProgressIndicator()),
+  error: (error, _) =>
+      Center(child: Text('No se pudieron cargar documentos: $error')),
+  data: (_) => documents.isEmpty
+      ? _DocumentEmpty(title: emptyTitle, message: emptyMessage)
+      : ListView.builder(
+          itemCount: documents.length,
+          itemBuilder: (context, index) {
+            final document = documents[index];
+            return ListTile(
+              dense: true,
+              title: Text(number(document)),
+              subtitle: Text('${status(document)} · ${amount(document)}'),
+              trailing:
+                  trailing?.call(document) ?? const Icon(Icons.chevron_right),
+              onTap: () => onOpen(document),
+            );
+          },
+        ),
+);
+
+Future<void> _showPendingDocuments(
+  BuildContext context,
+  WidgetRef ref,
+  CustomerDto customer,
+) async {
+  final results = await Future.wait([
+    ref
+        .read(ordersProvider.future)
+        .then<Object>((value) => value)
+        .catchError((Object e) => e),
+    ref
+        .read(quotesProvider.future)
+        .then<Object>((value) => value)
+        .catchError((Object e) => e),
+    ref
+        .read(consignmentsProvider.future)
+        .then<Object>((value) => value)
+        .catchError((Object e) => e),
+    ref
+        .read(returnsProvider.future)
+        .then<Object>((value) => value)
+        .catchError((Object e) => e),
+  ]);
+  if (!context.mounted) return;
+  final loadError = results
+      .whereType<Object>()
+      .where(
+        (value) =>
+            value is! List<SalesOrderDto> &&
+            value is! List<SalesQuoteDto> &&
+            value is! List<SalesConsignmentDto> &&
+            value is! List<SalesReturnDto>,
+      )
+      .firstOrNull;
+  if (loadError != null) {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('No se pudieron cargar los pendientes'),
+        content: Text(
+          'Error al consultar los documentos del cliente: $loadError',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+    return;
+  }
+  final orders = (results[0] as List<SalesOrderDto>)
+      .where(
+        (doc) =>
+            _belongsToCustomer(doc.customerId, doc.customerName, customer) &&
+            {
+              OrderStatus.draft,
+              OrderStatus.confirmed,
+              OrderStatus.reserved,
+            }.contains(doc.status),
+      )
+      .toList();
+  final quotes = (results[1] as List<SalesQuoteDto>)
+      .where(
+        (doc) =>
+            _belongsToCustomer(doc.customerId, doc.customerName, customer) &&
+            {QuoteStatus.draft, QuoteStatus.sent}.contains(doc.status),
+      )
+      .toList();
+  final consignments = (results[2] as List<SalesConsignmentDto>)
+      .where(
+        (doc) =>
+            _belongsToCustomer(doc.customerId, doc.customerName, customer) &&
+            {
+              ConsignmentStatus.draft,
+              ConsignmentStatus.sent,
+              ConsignmentStatus.partialReturn,
+            }.contains(doc.status),
+      )
+      .toList();
+  final returns = (results[3] as List<SalesReturnDto>)
+      .where(
+        (doc) =>
+            _belongsToCustomer(doc.customerId, doc.customerName, customer) &&
+            doc.status == ReturnStatus.draft,
+      )
+      .toList();
+  final rows =
+      <
+        ({
+          String kind,
+          String number,
+          String status,
+          String amount,
+          VoidCallback open,
+        })
+      >[
+        for (final doc in orders)
+          (
+            kind: 'Pedido',
+            number: doc.orderNumber,
+            status: _orderStatusLabel(doc.status),
+            amount: '${doc.currencyCode} ${doc.totalAmount.toStringAsFixed(2)}',
+            open: () => context.go(
+              '/sales/orders?customerId=${Uri.encodeQueryComponent(customer.id)}&customerName=${Uri.encodeQueryComponent(customer.name)}',
+            ),
+          ),
+        for (final doc in quotes)
+          (
+            kind: 'Cotización',
+            number: doc.quoteNumber,
+            status: _quoteStatusLabel(doc.status),
+            amount: '${doc.currencyCode} ${doc.totalAmount.toStringAsFixed(2)}',
+            open: () => context.go(
+              '/sales/quotes/${doc.id}?returnTo=${Uri.encodeQueryComponent('/sales/customers/${customer.id}')}',
+            ),
+          ),
+        for (final doc in consignments)
+          (
+            kind: 'Consignación',
+            number: doc.consignmentNumber,
+            status: _consignmentStatusLabel(doc.status),
+            amount: '${doc.currencyCode} ${doc.totalAmount.toStringAsFixed(2)}',
+            open: () => context.go(
+              '/sales/consignments/${doc.id}?returnTo=${Uri.encodeQueryComponent('/sales/customers/${customer.id}')}',
+            ),
+          ),
+        for (final doc in returns)
+          (
+            kind: 'Devolución',
+            number: doc.returnNumber,
+            status: _returnStatusLabel(doc.status),
+            amount: '${doc.currencyCode} ${doc.totalAmount.toStringAsFixed(2)}',
+            open: () => context.go(
+              '/sales/returns/${doc.id}?returnTo=${Uri.encodeQueryComponent('/sales/customers/${customer.id}')}',
+            ),
+          ),
+      ];
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Documentos pendientes'),
+      content: SizedBox(
+        width: 560,
+        child: rows.isEmpty
+            ? const Text(
+                'No hay documentos pendientes para este cliente. El resumen se actualizará al recargar.',
+              )
+            : ListView.builder(
+                shrinkWrap: true,
+                itemCount: rows.length,
+                itemBuilder: (context, index) {
+                  final row = rows[index];
+                  return ListTile(
+                    leading: const Icon(Icons.pending_actions_outlined),
+                    title: Text('${row.kind} · ${row.number}'),
+                    subtitle: Text('${row.status} · ${row.amount}'),
+                    trailing: const Icon(Icons.open_in_new),
+                    onTap: () {
+                      Navigator.of(dialogContext).pop();
+                      row.open();
+                    },
+                  );
+                },
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('Cerrar'),
+        ),
+      ],
+    ),
+  );
 }
 
 final _customerContactsProvider =
@@ -779,5 +1328,45 @@ String? _identificationLabel(List<IdentificationTypeDto> types, String? id) {
 
 String _money(double value) => value == 0 ? '0.00' : value.toStringAsFixed(2);
 
+String _quoteStatusLabel(QuoteStatus status) => switch (status) {
+  QuoteStatus.draft => 'Borrador',
+  QuoteStatus.sent => 'Enviada',
+  QuoteStatus.accepted => 'Aceptada',
+  QuoteStatus.rejected => 'Rechazada',
+  QuoteStatus.expired => 'Expirada',
+  QuoteStatus.converted => 'Convertida',
+};
+
 String _dateText(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+String _orderStatusLabel(OrderStatus status) => switch (status) {
+  OrderStatus.draft => 'Borrador',
+  OrderStatus.confirmed => 'Confirmado',
+  OrderStatus.reserved => 'Reservado',
+  OrderStatus.dispatched => 'Despachado',
+  OrderStatus.delivered => 'Entregado',
+  OrderStatus.cancelled => 'Cancelado',
+};
+
+String _invoiceStatusLabel(SalesInvoiceStatus status) => switch (status) {
+  SalesInvoiceStatus.draft => 'Borrador',
+  SalesInvoiceStatus.confirmed => 'Confirmada',
+  SalesInvoiceStatus.cancelled => 'Cancelada',
+  SalesInvoiceStatus.paid => 'Pagada',
+};
+
+String _returnStatusLabel(ReturnStatus status) => switch (status) {
+  ReturnStatus.draft => 'Borrador',
+  ReturnStatus.confirmed => 'Confirmada',
+  ReturnStatus.cancelled => 'Cancelada',
+};
+
+String _consignmentStatusLabel(ConsignmentStatus status) => switch (status) {
+  ConsignmentStatus.draft => 'Borrador',
+  ConsignmentStatus.sent => 'Enviada',
+  ConsignmentStatus.partialReturn => 'Devolución parcial',
+  ConsignmentStatus.returned => 'Devuelta',
+  ConsignmentStatus.settled => 'Liquidada',
+  ConsignmentStatus.cancelled => 'Cancelada',
+};

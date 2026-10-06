@@ -37,6 +37,7 @@ class SupabaseReturnApi implements ReturnApi {
         for (final l in lines)
           domain.ReturnLineInput(
             productId: l.productId,
+            invoiceLineId: l.invoiceLineId,
             quantity: l.quantity,
             unitPrice: l.unitPrice,
             productSku: l.productSku,

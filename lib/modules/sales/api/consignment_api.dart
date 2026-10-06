@@ -31,3 +31,8 @@ final consignmentApiProvider = Provider<ConsignmentApi>(
 final consignmentsProvider = FutureProvider<List<SalesConsignmentDto>>(
   (ref) => ref.watch(consignmentApiProvider).getConsignments(),
 );
+
+final consignmentByIdProvider =
+    FutureProvider.family<SalesConsignmentDto?, String>(
+      (ref, id) => ref.watch(consignmentApiProvider).getConsignmentById(id),
+    );

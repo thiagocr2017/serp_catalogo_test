@@ -94,7 +94,7 @@ extension SalesInvoiceLineMapper on SalesInvoiceLine {
 }
 
 extension SalesInvoiceMapper on SalesInvoice {
-  SalesInvoiceDto toDto({List<SalesInvoiceLine> lines = const []}) => SalesInvoiceDto(
+  SalesInvoiceDto toDto({List<SalesInvoiceLine>? lines}) => SalesInvoiceDto(
     id: id,
     invoiceNumber: invoiceNumber,
     customerName: customerName,
@@ -105,7 +105,7 @@ extension SalesInvoiceMapper on SalesInvoice {
     exchangeRate: exchangeRate,
     notes: notes,
     inventoryDocumentId: inventoryDocumentId,
-    lines: lines.map((l) => l.toDto()).toList(),
+    lines: (lines ?? this.lines).map((l) => l.toDto()).toList(),
     createdAt: createdAt,
     updatedAt: updatedAt,
     confirmedAt: confirmedAt,
@@ -124,11 +124,13 @@ extension SalesQuoteLineMapper on SalesQuoteLine {
     discountPercent: discountPercent,
     productSku: productSku,
     productName: productName,
+    presentationName: presentationName,
+    unitsPerPresentation: unitsPerPresentation,
   );
 }
 
 extension SalesQuoteMapper on SalesQuote {
-  SalesQuoteDto toDto({List<SalesQuoteLine> lines = const []}) => SalesQuoteDto(
+  SalesQuoteDto toDto({List<SalesQuoteLine>? lines}) => SalesQuoteDto(
     id: id,
     quoteNumber: quoteNumber,
     customerName: customerName,
@@ -140,7 +142,7 @@ extension SalesQuoteMapper on SalesQuote {
     validUntil: validUntil,
     notes: notes,
     agentId: agentId,
-    lines: lines.map((l) => l.toDto()).toList(),
+    lines: (lines ?? this.lines).map((l) => l.toDto()).toList(),
     createdAt: createdAt,
     updatedAt: updatedAt,
   );
@@ -187,6 +189,7 @@ extension SalesReturnLineMapper on SalesReturnLine {
     id: id,
     returnId: returnId,
     productId: productId,
+    invoiceLineId: invoiceLineId,
     quantity: quantity,
     unitPrice: unitPrice,
     totalPrice: totalPrice,
@@ -196,7 +199,7 @@ extension SalesReturnLineMapper on SalesReturnLine {
 }
 
 extension SalesReturnMapper on SalesReturn {
-  SalesReturnDto toDto({List<SalesReturnLine> lines = const []}) => SalesReturnDto(
+  SalesReturnDto toDto() => SalesReturnDto(
     id: id,
     returnNumber: returnNumber,
     customerName: customerName,
@@ -230,21 +233,22 @@ extension SalesConsignmentLineMapper on SalesConsignmentLine {
 }
 
 extension SalesConsignmentMapper on SalesConsignment {
-  SalesConsignmentDto toDto({List<SalesConsignmentLine> lines = const []}) => SalesConsignmentDto(
-    id: id,
-    consignmentNumber: consignmentNumber,
-    customerName: customerName,
-    status: status,
-    totalAmount: totalAmount,
-    currencyCode: currencyCode,
-    customerId: customerId,
-    returnedAmount: returnedAmount,
-    notes: notes,
-    agentId: agentId,
-    inventoryDocumentId: inventoryDocumentId,
-    lines: lines.map((l) => l.toDto()).toList(),
-    createdAt: createdAt,
-    updatedAt: updatedAt,
-    confirmedAt: confirmedAt,
-  );
+  SalesConsignmentDto toDto({List<SalesConsignmentLine> lines = const []}) =>
+      SalesConsignmentDto(
+        id: id,
+        consignmentNumber: consignmentNumber,
+        customerName: customerName,
+        status: status,
+        totalAmount: totalAmount,
+        currencyCode: currencyCode,
+        customerId: customerId,
+        returnedAmount: returnedAmount,
+        notes: notes,
+        agentId: agentId,
+        inventoryDocumentId: inventoryDocumentId,
+        lines: lines.map((l) => l.toDto()).toList(),
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        confirmedAt: confirmedAt,
+      );
 }

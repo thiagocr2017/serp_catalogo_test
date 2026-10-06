@@ -13,6 +13,7 @@ class SalesReturn {
     this.customerId,
     this.notes,
     this.inventoryDocumentId,
+    this.lines = const [],
     this.createdAt,
     this.updatedAt,
     this.confirmedAt,
@@ -29,6 +30,7 @@ class SalesReturn {
   final String? customerId;
   final String? notes;
   final String? inventoryDocumentId;
+  final List<SalesReturnLine> lines;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? confirmedAt;
@@ -39,6 +41,7 @@ class SalesReturnLine {
     required this.id,
     required this.returnId,
     required this.productId,
+    this.invoiceLineId,
     required this.quantity,
     required this.unitPrice,
     required this.totalPrice,
@@ -49,6 +52,7 @@ class SalesReturnLine {
   final String id;
   final String returnId;
   final String productId;
+  final String? invoiceLineId;
   final int quantity;
   final double unitPrice;
   final double totalPrice;

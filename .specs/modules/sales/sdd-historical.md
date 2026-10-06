@@ -26,9 +26,9 @@ El módulo de Ventas administra agentes, clientes, cotizaciones, pedidos, factur
 - Clientes: la prueba de UI cubre creación inválida/válida, validación de
   contactos, validación de límite de crédito numérico, carga, edición, guardado
   de contactos y desactivación.
-- Cotizaciones, pedidos, facturas, devoluciones y consignaciones no se marcan
-  como formularios completos mientras sus pantallas sigan siendo listas de
-  solo lectura o no tengan pruebas de operación/documento.
+- Cotizaciones, pedidos, facturas, devoluciones y consignaciones cuentan con
+  formularios de creación y acciones disponibles por API; falta completar la
+  cobertura de operación de cada tipo antes de considerarlos listos.
 
 ### Cotizaciones
 - Creación de cotizaciones con líneas de producto.
@@ -213,7 +213,8 @@ lib/modules/sales/
 │       ├── quotes_page.dart
 │       ├── orders_page.dart
 │       ├── returns_page.dart
-│       └── consignments_page.dart
+│       ├── consignments_page.dart
+│       └── sales_document_form_page.dart
 ├── di/
 │   └── sales_providers.dart
 └── sales_module.dart
@@ -245,7 +246,8 @@ lib/modules/sales/
 
 ## 7. Deuda técnica
 
-- Las pantallas de documentos son listas de solo lectura; falta UI para crear/editar.
+- Los flujos comerciales tienen UI de creación; falta edición de documentos y
+  completar cobertura de operación para cada tipo.
 - No existe conversión de cotización a pedido (CONVERTED).
 - No existe liquidación de consignación (SETTLED).
 - No existe integración con Pagos para marcar facturas como PAID.
