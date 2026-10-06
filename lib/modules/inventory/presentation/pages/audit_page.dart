@@ -121,8 +121,8 @@ class _AuditPageState extends ConsumerState<AuditPage> {
                             title: Text(_eventTitle(event)),
                             subtitle: Text(
                               '${event.actorName ?? 'Sistema'} · '
-                              '${event.deviceName ?? 'Sin dispositivo'} · '
-                              '${event.createdAt.toLocal()}',
+                              '${event.deviceName ?? 'Sin dispositivo'}\n'
+                              '${_dateTimeLabel(event.createdAt.toLocal())}',
                             ),
                             trailing: event.resourcePath == null
                                 ? const Icon(Icons.expand_more)
@@ -177,7 +177,8 @@ class _AuditPageState extends ConsumerState<AuditPage> {
   }
 
   String _eventTitle(_AuditEvent event) {
-    final resource = event.resourceLabel ?? _tableLabel(event.tableName);
+    final resource = _tableLabel(event.tableName);
+    final label = event.resourceLabel?.trim();
     final action = switch (event.operation) {
       'INSERT' => 'Se creó',
       'SOFT_DELETE' => 'Se desactivó',
@@ -189,7 +190,7 @@ class _AuditPageState extends ConsumerState<AuditPage> {
         'Se reactivó',
       _ => 'Se actualizó',
     };
-    return '$action $resource';
+    return '$action $resource${label?.isNotEmpty == true ? ' ${label!}' : ''}';
   }
 
   IconData _eventIcon(_AuditEvent event) => switch (event.operation) {
@@ -231,6 +232,10 @@ class _AuditPageState extends ConsumerState<AuditPage> {
   String _dateLabel(DateTime value) =>
       '${value.day.toString().padLeft(2, '0')}/'
       '${value.month.toString().padLeft(2, '0')}/${value.year}';
+
+  String _dateTimeLabel(DateTime value) =>
+      '${_dateLabel(value)} ${value.hour.toString().padLeft(2, '0')}:'
+      '${value.minute.toString().padLeft(2, '0')}';
 }
 
 class _AuditEvent {
