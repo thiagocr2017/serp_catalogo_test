@@ -55,6 +55,15 @@ la implementación Supabase porque es la raíz de composición de la aplicación
 
 ## 5. Reglas vigentes
 
+- La moneda de referencia de toda la aplicación se configura aquí con el
+  nombre y símbolo de la moneda de la empresa. Las pantallas y documentos
+  comerciales muestran esta moneda; no ofrecen un tipo de cambio como dato que
+  el usuario deba capturar.
+- Pagos es el único módulo que necesita manejar tipo de cambio: cuando recibe
+  dinero en una moneda distinta a la moneda de referencia configurada, debe
+  conservar la moneda e importe recibidos y aplicar la tasa correspondiente
+  para calcular su equivalente. Esta regla no habilita tipos de cambio en
+  cotizaciones, pedidos, facturas ni otros formularios comerciales.
 - El modo oscuro es el valor local predeterminado; la preferencia se conserva
   por equipo y no se guarda en Supabase.
 - Las presentaciones son dinámicas y obligatorias para todo producto.
