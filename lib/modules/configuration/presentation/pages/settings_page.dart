@@ -238,22 +238,36 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
         Text(
           widget.initial.appMode == 'PRODUCTION'
               ? 'Los datos actuales pertenecen al entorno de producción.'
-              : 'El entorno de prueba permite eliminar todos los datos operativos antes de iniciar producción.',
+              : 'La transición a producción y la purga de datos están bloqueadas hasta implementar y verificar el acceso con Supabase Auth.',
         ),
-        if (widget.initial.appMode == 'TEST' &&
-            widget.initial.isSuperAdmin) ...[
+        if (widget.initial.appMode == 'TEST') ...[
           const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.tonalIcon(
-              style: FilledButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
-                backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          Semantics(
+            liveRegion: true,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
               ),
-              onPressed: _confirmProduction,
-              icon: const Icon(Icons.delete_sweep_outlined),
-              label: const Text(
-                'Eliminar datos de prueba y pasar a producción',
+              child: const Padding(
+                padding: EdgeInsets.all(12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.lock_outline),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Acción bloqueada. Las cuentas se aprovisionarán '
+                        'sin registro abierto; el primer superadministrador '
+                        'debe vincularse mediante Supabase Auth.',
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1515,58 +1529,5 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
       return 'el registro ya no existe o ya fue desactivado.';
     }
     return text;
-  }
-
-  Future<void> _confirmProduction() async {
-    final confirmation = TextEditingController();
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar todos los datos de prueba'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Esta acción elimina productos, imágenes, categorías, promociones, movimientos de inventario y auditoría. Conserva únicamente la configuración y cambia la aplicación a producción.',
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: confirmation,
-              decoration: const InputDecoration(
-                labelText: 'Escribe PRODUCCION para confirmar',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(
-              context,
-              confirmation.text.trim().toUpperCase() == 'PRODUCCION',
-            ),
-            child: const Text('Eliminar y pasar a producción'),
-          ),
-        ],
-      ),
-    );
-    confirmation.dispose();
-    if (accepted != true) return;
-    await ref
-        .read(configurationRepositoryProvider)
-        .purgeTestDataAndGoProduction();
-    ref.invalidate(businessSettingsProvider);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Datos de prueba eliminados. Modo producción activo.'),
-        ),
-      );
-    }
   }
 }

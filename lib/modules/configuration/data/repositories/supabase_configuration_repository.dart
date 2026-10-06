@@ -17,14 +17,7 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
 
   @override
   Future<BusinessSettings> get() async {
-    var row = await _client.from('app_settings').select().single();
-    if (row['superadmin_device_identifier'] == null) {
-      await _client.rpc<void>(
-        'claim_local_superadmin',
-        params: {'p_device_identifier': _device.identifier},
-      );
-      row = await _client.from('app_settings').select().single();
-    }
+    final row = await _client.from('app_settings').select().single();
     return BusinessSettings(
       defaultCurrency: row['default_currency'] as String,
       decimalPlaces: row['decimal_places'] as int,
@@ -35,7 +28,7 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
       companyName: row['company_name'] as String,
       paymentMethods: row['payment_methods'] as String,
       appMode: row['app_mode'] as String? ?? 'TEST',
-      isSuperAdmin: row['superadmin_device_identifier'] == _device.identifier,
+      isSuperAdmin: false,
     );
   }
 
@@ -67,12 +60,11 @@ class SupabaseConfigurationRepository implements ConfigurationRepository {
   }
 
   @override
-  Future<void> purgeTestDataAndGoProduction() => _client.rpc<void>(
-    'purge_test_data_and_go_production',
-    params: {
-      'p_actor_name': _device.actorName,
-      'p_device_identifier': _device.identifier,
-    },
+  Future<void> purgeTestDataAndGoProduction() => Future.error(
+    UnsupportedError(
+      'La transición a producción está bloqueada hasta implementar '
+      'y verificar el bootstrap de Supabase Auth.',
+    ),
   );
 
   @override

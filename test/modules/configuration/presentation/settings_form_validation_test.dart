@@ -15,6 +15,30 @@ import 'package:serp/modules/configuration/domain/repositories/configuration_rep
 import 'package:serp/modules/configuration/presentation/pages/settings_page.dart';
 
 void main() {
+  testWidgets(
+    'transicion a produccion queda bloqueada durante migracion Auth',
+    (tester) async {
+      final api = _RecordingConfigurationApi();
+
+      await tester.pumpWidget(_app(api, isSuperAdmin: true));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Entorno de la aplicación'),
+        500,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      expect(
+        find.textContaining('La transición a producción y la purga de datos'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Eliminar datos de prueba y pasar a producción'),
+        findsNothing,
+      );
+    },
+  );
+
   testWidgets('configuracion guarda datos validos usando la API publica', (
     tester,
   ) async {
@@ -32,6 +56,8 @@ void main() {
       500,
       scrollable: find.byType(Scrollable).first,
     );
+    await tester.ensureVisible(find.text('Guardar configuración'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Guardar configuración'));
     await tester.pumpAndSettle();
 
@@ -431,22 +457,23 @@ void main() {
   });
 }
 
-Widget _app(_RecordingConfigurationApi api) => ProviderScope(
-  overrides: [
-    configurationApiProvider.overrideWithValue(api),
-    configurationRepositoryProvider.overrideWithValue(
-      _LegacySettingsRepository(),
-    ),
-    identityContextProvider.overrideWithValue(
-      const IdentityContext(
-        actorName: 'test',
-        deviceName: 'device',
-        deviceIdentifier: 'device-1',
-      ),
-    ),
-  ],
-  child: const MaterialApp(home: SettingsPage()),
-);
+Widget _app(_RecordingConfigurationApi api, {bool isSuperAdmin = false}) =>
+    ProviderScope(
+      overrides: [
+        configurationApiProvider.overrideWithValue(api),
+        configurationRepositoryProvider.overrideWithValue(
+          _LegacySettingsRepository(isSuperAdmin: isSuperAdmin),
+        ),
+        identityContextProvider.overrideWithValue(
+          const IdentityContext(
+            actorName: 'test',
+            deviceName: 'device',
+            deviceIdentifier: 'device-1',
+          ),
+        ),
+      ],
+      child: const MaterialApp(home: SettingsPage()),
+    );
 
 class _RecordingConfigurationApi implements ConfigurationApi {
   _RecordingConfigurationApi({
@@ -719,8 +746,12 @@ class _RecordingConfigurationApi implements ConfigurationApi {
 }
 
 class _LegacySettingsRepository implements ConfigurationRepository {
+  _LegacySettingsRepository({this.isSuperAdmin = false});
+
+  final bool isSuperAdmin;
+
   @override
-  Future<BusinessSettings> get() async => const BusinessSettings(
+  Future<BusinessSettings> get() async => BusinessSettings(
     defaultCurrency: 'USD',
     decimalPlaces: 2,
     taxPercentage: 0,
@@ -729,6 +760,7 @@ class _LegacySettingsRepository implements ConfigurationRepository {
     roundingIncrement: 0.01,
     companyName: '',
     paymentMethods: '',
+    isSuperAdmin: isSuperAdmin,
   );
 
   @override
