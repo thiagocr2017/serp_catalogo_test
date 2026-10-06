@@ -197,7 +197,7 @@ stock disponible = stock físico - stock reservado
 - Si una venta ya confirmada se anula, se genera `RETURN` o `REVERSAL` según la
   mercancía haya regresado o la salida haya sido un error.
 
-### 9.4 Transferencias entre bodegas — base implementada
+### 9.4 Transferencias entre bodegas — flujo parcial implementado
 
 Se permiten transferencias mediante un documento con estados:
 
@@ -206,8 +206,16 @@ BORRADOR → DESPACHADA → EN_TRANSITO → RECIBIDA
 ```
 
 El traslado inmediato confirmado crea `TRANSFER_OUT` y `TRANSFER_IN` y guarda
-salida, entrada, documento y auditoría de forma atómica. Todavía falta el flujo
-logístico diferido con borrador, despacho, tránsito, recepción y cancelación.
+salida, entrada, documento y auditoría de forma atómica. El flujo diferido ya
+permite guardar un borrador sin movimientos y despacharlo desde la lista; el
+despacho crea `TRANSFER_OUT` y actualiza estado en una transacción. Un reintento
+de despacho sobre estado `DESPACHADA` no duplica el movimiento. El paso a
+`EN_TRANSITO` y la recepción final `RECIBIDA` también están disponibles desde
+la lista. Cada RPC valida el estado previo, bloquea el documento y es
+idempotente en el estado destino; la recepción registra `TRANSFER_IN` por línea
+y actualiza el saldo destino atómicamente. UI y pgTAP verifican error
+recuperable, secuencia y reintentos. La operación de cancelación y su reversión
+de stock siguen pendientes.
 
 La experiencia objetivo aprobada será un traslado inteligente:
 

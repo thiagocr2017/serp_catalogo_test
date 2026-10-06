@@ -12,15 +12,12 @@ class InventoryDocumentPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => Scaffold(
     appBar: AppBar(
+      leading: IconButton(
+        tooltip: 'Volver a documentos',
+        onPressed: () => context.go('/inventory/documents'),
+        icon: const Icon(Icons.arrow_back),
+      ),
       title: const Text('Documento de inventario'),
-      actions: [
-        TextButton.icon(
-          onPressed: () => context.go('/inventory/documents'),
-          icon: const Icon(Icons.arrow_back),
-          label: const Text('Volver a documentos'),
-        ),
-        const SizedBox(width: 12),
-      ],
     ),
     body: FutureBuilder<InventoryDocumentDto?>(
       future: ref.read(inventoryApiProvider).getDocument(documentId),

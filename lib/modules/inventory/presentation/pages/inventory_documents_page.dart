@@ -44,13 +44,42 @@ class InventoryDocumentsPage extends ConsumerWidget {
   }
 }
 
-class _DocumentTile extends ConsumerWidget {
+class _DocumentTile extends ConsumerStatefulWidget {
   const _DocumentTile({required this.document});
 
   final InventoryDocumentDto document;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_DocumentTile> createState() => _DocumentTileState();
+}
+
+class _DocumentTileState extends ConsumerState<_DocumentTile> {
+  bool _saving = false;
+
+  InventoryDocumentDto get document => widget.document;
+
+  String? get _actionLabel {
+    if (document.type == InventoryDocumentType.transfer) {
+      return switch (document.status) {
+        'BORRADOR' => 'Despachar traslado',
+        'DESPACHADA' => 'Marcar en tránsito',
+        'EN_TRANSITO' => 'Registrar recepción',
+        _ => null,
+      };
+    }
+    return document.status == 'BORRADOR' ? 'Confirmar documento' : null;
+  }
+
+  IconData get _actionIcon => switch (document.status) {
+    'BORRADOR' => Icons.local_shipping_outlined,
+    'DESPACHADA' => Icons.directions_bus_outlined,
+    'EN_TRANSITO' => Icons.inventory_2_outlined,
+    _ => Icons.check_circle_outline,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final actionLabel = _actionLabel;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -66,52 +95,69 @@ class _DocumentTile extends ConsumerWidget {
             ),
             onTap: () => context.go('/inventory/documents/${document.id}'),
           ),
-          if (document.status == 'BORRADOR')
-            _DraftActions(
-              onConfirm: () => _confirmDraft(context, ref),
-              onDispatch: document.type == InventoryDocumentType.transfer
-                  ? () => _dispatchDraft(context, ref)
-                  : null,
-              documentType: document.type,
+          if (actionLabel != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _saving ? null : () => _runTransition(context),
+                    icon: _saving
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(_actionIcon),
+                    label: Text(actionLabel),
+                  ),
+                ],
+              ),
             ),
         ],
       ),
     );
   }
 
-  Future<void> _confirmDraft(BuildContext context, WidgetRef ref) async {
+  Future<void> _runTransition(BuildContext context) async {
+    setState(() => _saving = true);
     try {
-      await ref.read(inventoryApiProvider).confirmDocument(document.id);
+      final api = ref.read(inventoryApiProvider);
+      final successMessage = switch (document.status) {
+        'BORRADOR' when document.type == InventoryDocumentType.transfer =>
+          () async {
+            await api.dispatchTransfer(document.id);
+            return 'Traslado despachado';
+          },
+        'BORRADOR' => () async {
+          await api.confirmDocument(document.id);
+          return 'Documento confirmado';
+        },
+        'DESPACHADA' => () async {
+          await api.markTransferInTransit(document.id);
+          return 'Traslado marcado en tránsito';
+        },
+        'EN_TRANSITO' => () async {
+          await api.receiveTransfer(document.id);
+          return 'Recepción del traslado registrada';
+        },
+        _ => null,
+      };
+      if (successMessage == null) return;
+      final message = await successMessage();
       ref.invalidate(inventoryDocumentsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Documento confirmado')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
       }
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No fue posible confirmar: $error')),
+          SnackBar(content: Text('No fue posible completar la acción: $error')),
         );
       }
-    }
-  }
-
-  Future<void> _dispatchDraft(BuildContext context, WidgetRef ref) async {
-    try {
-      await ref.read(inventoryApiProvider).dispatchDocument(document.id);
-      ref.invalidate(inventoryDocumentsProvider);
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Documento despachado')));
-      }
-    } catch (error) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No fue posible despachar: $error')),
-        );
-      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -136,41 +182,4 @@ class _DocumentTile extends ConsumerWidget {
     'RECIBIDA' => StatusTone.success,
     _ => StatusTone.neutral,
   };
-}
-
-class _DraftActions extends StatelessWidget {
-  const _DraftActions({
-    required this.onConfirm,
-    this.onDispatch,
-    required this.documentType,
-  });
-
-  final VoidCallback onConfirm;
-  final VoidCallback? onDispatch;
-  final InventoryDocumentType documentType;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          OutlinedButton.icon(
-            onPressed: onConfirm,
-            icon: const Icon(Icons.check_circle_outline),
-            label: const Text('Confirmar'),
-          ),
-          if (onDispatch != null) ...[
-            const SizedBox(width: 8),
-            OutlinedButton.icon(
-              onPressed: onDispatch,
-              icon: const Icon(Icons.local_shipping_outlined),
-              label: const Text('Despachar'),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 }

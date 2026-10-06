@@ -62,7 +62,14 @@ class _InventoryDocumentFormPageState
         }
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Nuevo documento de inventario')),
+        appBar: AppBar(
+          leading: IconButton(
+            tooltip: 'Volver',
+            onPressed: _cancel,
+            icon: const Icon(Icons.arrow_back),
+          ),
+          title: const Text('Nuevo documento de inventario'),
+        ),
         body: warehouses.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) =>
@@ -103,6 +110,16 @@ class _InventoryDocumentFormPageState
   void _markClean() {
     _dirty = false;
     UnsavedChangesGuard.instance.markClean();
+  }
+
+  Future<void> _cancel() async {
+    if (_saving) return;
+    if (_dirty &&
+        !await UnsavedChangesGuard.instance.confirmNavigation(context)) {
+      return;
+    }
+    _markClean();
+    if (mounted) context.go('/inventory');
   }
 
   /// Propone valores iniciales sin pisar lo que el usuario ya eligió.
