@@ -26,9 +26,11 @@ El módulo de Ventas administra agentes, clientes, cotizaciones, pedidos, factur
 - Clientes: la prueba de UI cubre creación inválida/válida, validación de
   contactos, validación de límite de crédito numérico, carga, edición, guardado
   de contactos y desactivación.
-- Cotizaciones, pedidos, facturas, devoluciones y consignaciones cuentan con
-  formularios de creación y acciones disponibles por API; falta completar la
-  cobertura de operación de cada tipo antes de considerarlos listos.
+- Cotizaciones, pedidos, facturas y consignaciones cuentan con listas, rutas y
+  formularios conectados a APIs; la cobertura de operación completa aún está
+  pendiente. Las devoluciones existentes son de lectura: alta y confirmación
+  se bloquean en UI y API hasta implementar el contrato transaccional de
+  Sales/Inventory/Payments.
 
 ### Cotizaciones
 - Creación de cotizaciones con líneas de producto.
@@ -52,10 +54,11 @@ El módulo de Ventas administra agentes, clientes, cotizaciones, pedidos, factur
 - Cancelación con reversión de stock.
 
 ### Devoluciones
-- Creación de devoluciones vinculadas a facturas.
-- Estados: DRAFT, CONFIRMED, CANCELLED.
-- Creación atómica con documento de inventario CUSTOMER_RETURN.
-- Reversión automática de stock.
+- Lectura de devoluciones existentes y detalle disponible.
+- Alta nueva bloqueada: el RPC heredado confirma y mueve inventario con un
+  contrato incompatible con cuarentena, saldo financiero e idempotencia.
+- La creación se habilitará solo con el contrato atomico definido en
+  `.specs/modules/sales/returns/2.database-contract.spec.md` y pgTAP completo.
 
 ### Consignaciones
 - Creación de consignaciones con líneas de producto.

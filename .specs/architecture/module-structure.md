@@ -231,7 +231,7 @@ representa sólo como PDF.
 |---|---|---|---|
 | Productos | Funcional | `.specs/modules/product/sdd-historical.md` | Aislado mediante API pública |
 | Inventario | Funcional | `.specs/modules/inventory/sdd-historical.md` | Aislado mediante API pública |
-| Ventas | Parcial: agentes y clientes funcionales; documentos comerciales con modelo y RPC sin UI de creación | `.specs/modules/sales/sdd-historical.md` | Aislado mediante API pública |
+| Ventas | Parcial: agentes/clientes y UI de cotizaciones, pedidos, facturas y consignaciones; pruebas UI/pgTAP parciales. Alta de devoluciones bloqueada hasta RPC transaccional Sales/Inventory/Payments | `.specs/modules/sales/sdd-historical.md` | Aislado mediante API pública |
 | Configuración | Funcional | `.specs/modules/configuration/sdd-historical.md` | Aislado mediante API pública |
 | Pagos y Recibos | Funcional en su alcance actual: pagos, métodos, cuentas, gastos, traslados y reembolsos | `.specs/modules/payments/sdd-historical.md` | Aislado mediante API pública |
 | Autorización | No implementado; solo borrador de spec | `.specs/modules/authorization/` | Módulo futuro |

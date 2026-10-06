@@ -16,6 +16,10 @@ refactorizaciones complejas y pantallas/formularios.
 ├── architecture/
 │   ├── document-standards.md
 │   ├── module-security-contract.md
+│   ├── navigation-entrypoints.md
+│   ├── navigation-return-context.md
+│   ├── list-patterns.md
+│   ├── theme-governance.md
 │   └── module-structure.md
 ├── archive/
 │   └── verification/
@@ -23,8 +27,13 @@ refactorizaciones complejas y pantallas/formularios.
 │   └── schema-current.md
 ├── modules/
 │   └── <module>/
+│       └── demo-data/
+│           └── 1.demo-dataset.spec.md
+│       └── returns/ (contratos distribuidos por ownership)
 ├── refactors/
 │   └── <nn>-<topic>.md
+├── roadmaps/
+│   └── <yyyymmdd>-<topic>.md
 ├── screens/
 │   └── <screen-or-form>/
 │       ├── 1.requirements.spec.md
@@ -40,6 +49,12 @@ refactorizaciones complejas y pantallas/formularios.
 - Cambios de negocio: actualizar o crear spec en `modules/<module>/`.
 - Cambios de pantalla/formulario: actualizar o crear spec en `screens/<screen>/`.
 - Cambios de arquitectura transversal: actualizar `architecture/`.
+- Mejoras UX/UI que cruzan varias pantallas: registrar orden, dependencias y
+  decisiones pendientes en `roadmaps/`; los contratos reutilizables viven en
+  `architecture/` y cada pantalla conserva su spec de cuatro archivos.
+- Toda pantalla principal debe estar vinculada desde el menu lateral; mantener
+  `.specs/architecture/navigation-entrypoints.md` y la prueba del shell junto
+  con sus rutas y entradas visibles.
 - Cambios de esquema, permisos o RPC: actualizar `database/`.
 - Cambios de cobertura de formularios: actualizar `testing/form-coverage.md`.
 - Refactorizaciones necesarias: crear spec separada de refactorizacion en
@@ -48,9 +63,30 @@ refactorizaciones complejas y pantallas/formularios.
 
 ## Contratos transversales
 
+- La moneda de referencia de la app (nombre y símbolo) se define en
+  `.specs/modules/configuration/sdd-historical.md`; solo Pagos maneja tipo de
+  cambio cuando recibe dinero en otra moneda.
 - `04-sales-payments-contract.md`: frontera entre `sales` y `payments`.
   Definido y no implementado. Obligatorio antes de crear facturas persistentes
   con aplicaciones de pago.
+- `architecture/list-patterns.md`: listas indice, contextuales y de composicion.
+- `architecture/theme-governance.md`: fuente unica de tema, tokens y patrones
+  visuales compartidos.
+- La skill `.opencode/skills/ux-ui-screen-design/SKILL.md` apunta a estos
+  contratos y a `lib/shared/theme/` antes de crear o redisenar UI.
+- `roadmaps/20261005_ux-ui-improvements.md`: plan transversal priorizado de
+  listas, ventas, clientes, configuracion, auditoria, devoluciones y
+  consignaciones.
+- `roadmaps/20261006-module-readiness.md`: cierre progresivo de las capacidades
+  actuales con criterios de persistencia y verificacion por modulo.
+- `modules/inventory/document-lifecycle.spec.md`: estados y efectos atomicos
+  para traslados diferidos.
+
+- `modules/demo-data/1.demo-dataset.spec.md`: conjunto de datos local amplio,
+  sintético, idempotente y exclusivo del modo `TEST`.
+- `modules/sales/returns/`: reglas comerciales y contrato DB/pgTAP de
+  devoluciones; complementado por `modules/inventory/returns/` para cuarentena
+  y `modules/payments/returns/` para liquidacion.
 
 ## Specs de refactorizacion activas
 
@@ -62,6 +98,27 @@ refactorizaciones complejas y pantallas/formularios.
   expuestos a DTO publicos estables.
 - `refactors/04-block-1b-contract-cleanup.md`: puentes heredados que hay que
   eliminar en el bloque 1B.3.
+
+## Especificaciones de Pantallas y Formularios
+
+- `screens/customer-management/`: Rediseño y gestión integral de Clientes (lista, formulario y perfil).
+- `screens/customer-form/`: Formulario específico de alta y edición de cliente.
+- `screens/customer-list/`: Catálogo y lista de clientes.
+- `screens/customer-profile/`: Perfil 360°, alertas y pestañas de documentos.
+- `screens/customer-management/`: Requisitos integrales y criterios de
+  coordinación entre lista, formulario y perfil.
+- `screens/inventory-document-form/`: Formulario de documentos de inventario.
+- `screens/inventory-document-detail/`: Detalle y trazabilidad de documentos de inventario.
+- `screens/inventory-documents/`: Lista y transiciones de documentos de inventario.
+- `screens/product-form/`: Formulario de creación y edición de productos.
+- `screens/product-profile/`: Perfil de producto y presentación adaptable de
+  identificadores copiables.
+- `screens/product-list/`: Lista de productos y catálogo.
+- `screens/sales-commercial-operations/`: Operaciones de documentos comerciales de venta.
+- `screens/sales-quote-form/`: Alta y operación rápida de cotizaciones.
+- `screens/sales-quote-detail/`: detalle, estados y retorno contextual de cotizaciones.
+- `screens/sales-return-form/`: diseño de captura/liquidación de devoluciones,
+  pendiente de contratos DB/RPC y matriz pgTAP; su acceso actual es informativo.
 
 Las rutas citadas en cualquier documento son relativas a la raiz del
 repositorio.

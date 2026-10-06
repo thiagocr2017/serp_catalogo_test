@@ -158,17 +158,28 @@ todos los agentes que lean la documentacion.
 
 ### Fase 2 - Decisiones de negocio
 
+**Estado: completada.** Cerradas el 2026-10-03 / 2026-10-04.
+
 Objetivo: cerrar lo que no se puede resolver tecnicamente.
 
 - [x] Resolver las 23 preguntas de
       `.specs/modules/sales/customer-management/0.open-questions.md`.
       **Cerradas el 2026-10-03**; el registro llega a 44 decisiones y el
       rediseño de Clientes queda desbloqueado.
-- [ ] Definir el contrato publico Ventas <-> Pagos antes de crear facturas
+- [x] Definir el contrato publico Ventas <-> Pagos antes de crear facturas
       persistentes con aplicaciones de pago.
-- [ ] Definir el alcance real de `payments` frente al SDD: que partes del
+      **Resuelto el 2026-10-03**: redactado como spec en
+      `.specs/04-sales-payments-contract.md`.
+- [x] Definir el alcance real de `payments` frente al SDD: que partes del
       diseno estan implementadas y cuales no.
-- [ ] Decidir el alcance de `InventoryApi` (D-7 de consistencia).
+      **Resuelto el 2026-10-03**: alineado el SDD al codigo en
+      `.specs/modules/payments/sdd-historical.md` (§1 y §15) y
+      `.specs/modules/payments/1.status.spec.md`.
+- [x] Decidir el alcance de `InventoryApi` (D-7 de consistencia).
+      **Resuelto el 2026-10-03**: cerrado en
+      `.specs/refactors/01-document-consistency.md` (T8 / D7) y
+      `.specs/refactors/03-public-dto-migration.md` retirando el export de
+      `di/inventory_providers.dart` y acotando la frontera pública a `api/`.
 
 Razon: son bloqueos de producto, no de codigo. Resolverlos evita construir
 sobre supuestos falsos.
@@ -306,8 +317,8 @@ Depende de Fase 2 y del contrato Ventas <-> Pagos.
 |---|---|---|---|
 | R1 | Respuestas a las 23 preguntas de Clientes | Sin ellas no se puede diseñar el formulario ni las migraciones | **Resuelto 2026-10-03: resolver todas.** Registro completo en `modules/sales/customer-management/0.open-questions.md` (44 decisiones) |
 | R2 | Alcance real de `payments` frente al SDD | Determina que es deuda y que es funcionalidad nueva | **Resuelto 2026-10-03: alinear el SDD al codigo.** `.specs/modules/payments/sdd-historical.md` §1 declara el alcance vigente y §15 el futuro |
-| R3 | Contrato publico Ventas <-> Pagos | Condiciona facturas persistentes y `PAID` | **Resuelto 2026-10-03: definirlo ahora como spec** |
-| R4 | Retirar o documentar el export de `di/inventory_providers.dart` | Afecta la frontera publica de Inventario | Retirarlo (recomendado); o registrar excepcion con condicion de retiro |
+| R3 | Contrato publico Ventas <-> Pagos | Condiciona facturas persistentes y `PAID` | **Resuelto 2026-10-03: definirlo ahora como spec.** Ver `.specs/04-sales-payments-contract.md` |
+| R4 | Retirar o documentar el export de `di/inventory_providers.dart` | Afecta la frontera publica de Inventario | **Resuelto 2026-10-03: retirado el export.** Ver `01-document-consistency.md` T8 y `03-public-dto-migration.md` |
 | R5 | Nombres y campos de los DTO publicos de `product` | Fija el contrato que consumiran Inventario y el catalogo | Definirlos en `03-public-dto-migration.md` T1 antes de codificar |
 
 R4 quedo resuelta sin necesitar decision: se retiro el export y se verifico que
