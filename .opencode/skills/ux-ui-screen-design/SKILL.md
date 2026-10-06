@@ -31,6 +31,27 @@ tags: ["ux", "ui", "design", "usability", "accessibility", "screen-design"]
 
 ## 🧠 Principios Fundamentales (SIEMPRE aplicar)
 
+### Fuente de verdad para SERP
+
+Antes de proponer o implementar UI en este proyecto, consultar en este orden:
+
+1. `.specs/architecture/theme-governance.md` para tokens, intenciones y
+   componentes compartidos.
+2. `lib/shared/theme/` para `AppTheme`, `AppTokens`, `AppSemanticColors`,
+   `IntentButton` y controles visuales
+   reutilizables. Consumir `Theme.of(context).colorScheme`; no copiar paletas
+   de esta skill ni inventar colores locales.
+3. `.specs/architecture/list-patterns.md` para listas indice, contextuales y
+   de composicion; `.specs/architecture/navigation-entrypoints.md` y
+   `navigation-return-context.md` para acceso y regreso.
+4. Los cuatro archivos de `.specs/screens/<pantalla>/` como contrato funcional
+   y de pruebas. El spec del proyecto prevalece sobre recomendaciones generales.
+
+En SERP la preferencia claro/oscuro es local, mientras que la moneda y demas
+reglas comerciales pertenecen a Configuracion. No agregar un modulo de negocio
+para el tema visual. Si una intencion o patron compartido falta, extender
+`lib/shared/theme/` y su spec antes de usarlo en una pantalla.
+
 ### 1. **Usuario Primero, Siempre**
 - ¿Qué problema resuelve para el usuario?
 - ¿Cuál es el objetivo principal del usuario en esta pantalla?
@@ -182,6 +203,11 @@ Label (requerido *)
 | Actions | Inline (3 max) | Menú overflow |
 | Bulk actions | Checkbox + toolbar | Bottom sheet |
 | Empty state | Ilustración + CTA | Centrado |
+
+**Regla SERP:** la accion de abrir no puede existir solo en overflow. Identificar
+primero el tipo de lista en `.specs/architecture/list-patterns.md`; preservar el
+retorno contextual en saltos a otros modulos y probar anchos reducidos para
+evitar overflow.
 
 ### Estados Vacíos
 ```

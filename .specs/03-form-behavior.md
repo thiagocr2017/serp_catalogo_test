@@ -20,6 +20,12 @@ Ejemplos:
 
 Reglas:
 
+- Debe ofrecer una salida persistente en el `leading` del `AppBar`: un boton
+  icon-only con flecha y `tooltip` descriptivo (por ejemplo, `Volver`). Este es
+  el patron compartido con perfiles/detalles; no usar un boton de texto en la
+  zona de acciones como salida principal.
+- El destino debe ser el contexto que abrio el formulario; cuando no se pueda
+  conservar ese contexto, debe ser la lista/indice del modulo.
 - Debe advertir si el usuario intenta salir con cambios sin guardar.
 - La advertencia aplica al boton de cancelar, al retroceso de navegacion y al
   menu lateral de la app.
@@ -46,6 +52,15 @@ Reglas:
   nuevo cuando aplique.
 - Si la entidad necesita configuracion avanzada, esa configuracion queda en su
   pantalla completa.
+- El modal conserva controles propios de cerrar/cancelar y no incorpora el
+  boton de retorno del `AppBar` reservado para formularios completos.
+
+## Perfiles y pantallas de detalle
+
+- Deben usar el mismo boton icon-only de flecha en el `leading` del `AppBar`,
+  con tooltip que nombre el destino (por ejemplo, `Volver a clientes`).
+- La accion navega al indice/contexto padre y sigue disponible durante carga y
+  cuando el registro solicitado no existe.
 
 ## Consecuencia
 

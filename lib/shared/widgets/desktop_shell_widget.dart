@@ -14,17 +14,26 @@ class DesktopShellWidget extends StatelessWidget {
   final Widget child;
 
   bool _selected(String path) => currentLocation.startsWith(path);
+  bool _moduleSelected(List<String> routes) => routes.any(_selected);
 
   @override
   Widget build(BuildContext context) {
-    final productModuleSelected = const [
+    final productModuleSelected = _moduleSelected(const [
       '/products',
       '/categories',
       '/promotions',
       '/catalog-export',
       '/product-transfer',
-    ].any(_selected);
-    final salesModuleSelected = _selected('/sales');
+    ]);
+    final salesModuleSelected = _moduleSelected(const [
+      '/sales/agents',
+      '/sales/customers',
+      '/sales/quotes',
+      '/sales/orders',
+      '/sales/invoices',
+      '/sales/returns',
+      '/sales/consignments',
+    ]);
     final inventoryModuleSelected = _selected('/inventory');
     return Scaffold(
       body: Row(
@@ -48,6 +57,8 @@ class DesktopShellWidget extends StatelessWidget {
                   const SizedBox(height: 20),
                   ExpansionTile(
                     initiallyExpanded: productModuleSelected,
+                    splashColor: Colors.transparent,
+                    enableFeedback: false,
                     leading: const Icon(Icons.inventory_2_outlined),
                     title: const Text('Productos'),
                     childrenPadding: const EdgeInsets.only(left: 16),
@@ -86,6 +97,8 @@ class DesktopShellWidget extends StatelessWidget {
                   ),
                   ExpansionTile(
                     initiallyExpanded: salesModuleSelected,
+                    splashColor: Colors.transparent,
+                    enableFeedback: false,
                     leading: const Icon(Icons.point_of_sale_outlined),
                     title: const Text('Ventas'),
                     childrenPadding: const EdgeInsets.only(left: 16),
@@ -102,10 +115,42 @@ class DesktopShellWidget extends StatelessWidget {
                         'Clientes',
                         Icons.groups_outlined,
                       ),
+                      _item(
+                        context,
+                        '/sales/quotes',
+                        'Cotizaciones',
+                        Icons.request_quote_outlined,
+                      ),
+                      _item(
+                        context,
+                        '/sales/orders',
+                        'Pedidos',
+                        Icons.shopping_bag_outlined,
+                      ),
+                      _item(
+                        context,
+                        '/sales/invoices',
+                        'Facturas',
+                        Icons.receipt_long_outlined,
+                      ),
+                      _item(
+                        context,
+                        '/sales/returns',
+                        'Devoluciones',
+                        Icons.assignment_return_outlined,
+                      ),
+                      _item(
+                        context,
+                        '/sales/consignments',
+                        'Consignaciones',
+                        Icons.inventory_2_outlined,
+                      ),
                     ],
                   ),
                   ExpansionTile(
                     initiallyExpanded: inventoryModuleSelected,
+                    splashColor: Colors.transparent,
+                    enableFeedback: false,
                     leading: const Icon(Icons.swap_vert_circle_outlined),
                     title: const Text('Inventario'),
                     childrenPadding: const EdgeInsets.only(left: 16),
