@@ -16,6 +16,7 @@ class SupabaseProductDataSource {
     final rows = await _client
         .from('product_catalog')
         .select()
+        .order('category_sort_order')
         .order('catalog_sort_order')
         .order('name');
     final products = rows.map(ProductModel.new).toList();
