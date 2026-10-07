@@ -145,6 +145,7 @@ class _ProductTransferPageState extends ConsumerState<ProductTransferPage> {
                 '• El SKU identifica cada producto: si ya existe, se actualiza; si no existe, se crea.\n'
                 '• La categoría debe existir previamente y escribirse exactamente como aparece en el sistema.\n'
                 '• El stock_inicial solo se usa al crear productos nuevos. El stock existente cambia mediante movimientos de inventario.\n'
+                '• El campo "activo" debe ser SI/NO, 1/0 o TRUE/FALSE.\n'
                 '• Presentaciones aceptadas: UNIT/UNIDAD, BOX/CAJA y SET.\n'
                 '• Excel debe guardar el archivo como CSV UTF-8 delimitado por punto y coma.',
               ),

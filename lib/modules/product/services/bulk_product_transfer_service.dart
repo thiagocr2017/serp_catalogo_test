@@ -212,12 +212,7 @@ class BulkProductTransferService {
                   .where((row) => row.categoryId == category.id)
                   .length,
             ),
-            isActive: !const {
-              'NO',
-              'FALSE',
-              '0',
-              'INACTIVO',
-            }.contains(value('activo').toUpperCase()),
+            isActive: _parseBoolean(value('activo')),
             imageName: _nullable(value('imagen')),
           ),
         );
@@ -426,6 +421,14 @@ class BulkProductTransferService {
       client.close();
     }
     return ZipEncoder().encodeBytes(archive);
+  }
+
+  static bool _parseBoolean(String rawValue) {
+    if (rawValue.isEmpty) return true;
+    final val = rawValue.trim().toUpperCase();
+    if (const {'NO', 'N', 'FALSE', 'F', '0', 'INACTIVO', 'DESACTIVADO'}.contains(val)) return false;
+    if (const {'SI', 'S', 'YES', 'Y', 'TRUE', 'T', '1', 'ACTIVO'}.contains(val)) return true;
+    throw const FormatException("el campo 'activo' debe ser SI/NO, 1/0 o TRUE/FALSE");
   }
 
   static String? _nullable(String value) => value.isEmpty ? null : value;
