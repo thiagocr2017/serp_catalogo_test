@@ -13,41 +13,46 @@ class SupabaseProductDataSource {
   final DeviceIdentity _device;
 
   Future<List<ProductModel>> getProducts(ProductQuery query) async {
-    final rows = await _client
+    var queryBuilder = _client
         .from('product_catalog')
-        .select()
+        .select();
+
+    final searchTerm = query.searchTerm?.trim().toLowerCase();
+    if (searchTerm != null && searchTerm.isNotEmpty) {
+      queryBuilder = queryBuilder.or('name.ilike.%$searchTerm%,sku.ilike.%$searchTerm%,description.ilike.%$searchTerm%');
+    }
+
+    if (query.categoryId != null) {
+      queryBuilder = queryBuilder.eq('category_id', query.categoryId as Object);
+    }
+    
+    if (query.isActive != null) {
+      queryBuilder = queryBuilder.eq('is_active', query.isActive as Object);
+    }
+
+    if (query.onlyLowStock) {
+      // Handled in dart fallback
+    }
+
+    if (query.minimumPriceInCents != null) {
+      queryBuilder = queryBuilder.gte('unit_price', query.minimumPriceInCents! / 100);
+    }
+
+    if (query.maximumPriceInCents != null) {
+      queryBuilder = queryBuilder.lte('unit_price', query.maximumPriceInCents! / 100);
+    }
+
+    final rows = await queryBuilder
         .order('category_sort_order')
         .order('catalog_sort_order')
         .order('name');
+        
     final products = rows.map(ProductModel.new).toList();
-
+    
+    // Fallback for column comparison not supported directly by PostgREST
     return products.where((product) {
-      final searchTerm = query.searchTerm?.trim().toLowerCase();
-      final matchesSearch =
-          searchTerm == null ||
-          searchTerm.isEmpty ||
-          product.name.toLowerCase().contains(searchTerm) ||
-          product.sku.toLowerCase().contains(searchTerm) ||
-          product.description.toLowerCase().contains(searchTerm);
-      final matchesCategory =
-          query.categoryId == null || product.categoryId == query.categoryId;
-      final matchesStatus =
-          query.isActive == null || product.isActive == query.isActive;
-      final matchesStock =
-          !query.onlyLowStock || product.currentStock <= product.reorderPoint;
-      final matchesMinimumPrice =
-          query.minimumPriceInCents == null ||
-          product.unitPriceInCents >= query.minimumPriceInCents!;
-      final matchesMaximumPrice =
-          query.maximumPriceInCents == null ||
-          product.unitPriceInCents <= query.maximumPriceInCents!;
-
-      return matchesSearch &&
-          matchesCategory &&
-          matchesStatus &&
-          matchesStock &&
-          matchesMinimumPrice &&
-          matchesMaximumPrice;
+      final matchesStock = !query.onlyLowStock || product.currentStock <= product.reorderPoint;
+      return matchesStock;
     }).toList();
   }
 
