@@ -761,7 +761,9 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
                       autofocus: true,
                       decoration: InputDecoration(
                         labelText: 'Nombre',
-                        hintText: 'Ej. Caja',
+                        hintText: 'Ej. Caja de 12 unidades',
+                        helperText:
+                            'Debe ser único e indicar la cantidad incluida.',
                         errorText: nameError,
                         border: const OutlineInputBorder(),
                       ),
@@ -779,7 +781,9 @@ class _SettingsFormState extends ConsumerState<_SettingsForm> {
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         labelText: 'Unidades por presentación',
-                        hintText: 'Ej. 6',
+                        hintText: 'Ej. 12',
+                        helperText:
+                            'Debe coincidir con la cantidad del nombre.',
                         errorText: unitsError,
                         border: const OutlineInputBorder(),
                       ),

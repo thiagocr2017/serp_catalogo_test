@@ -156,6 +156,14 @@ void main() {
     expect(find.text('Editar presentación'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Caja'), findsOneWidget);
     expect(
+      find.text('Debe ser único e indicar la cantidad incluida.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Debe coincidir con la cantidad del nombre.'),
+      findsOneWidget,
+    );
+    expect(
       tester
           .widget<TextField>(
             find.widgetWithText(TextField, 'Unidades por presentación'),
@@ -165,7 +173,10 @@ void main() {
       '6',
     );
 
-    await tester.enterText(find.widgetWithText(TextField, 'Nombre'), 'Cartón');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre'),
+      'Caja de 12 unidades',
+    );
     await tester.enterText(
       find.widgetWithText(TextField, 'Unidades por presentación'),
       '12',
@@ -174,7 +185,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(api.updatedPresentationId, 'presentation-1');
-    expect(api.updatedPresentationName, 'Cartón');
+    expect(api.updatedPresentationName, 'Caja de 12 unidades');
     expect(api.updatedPresentationUnits, 12);
     expect(api.updatedPresentationVersion, 7);
   });
