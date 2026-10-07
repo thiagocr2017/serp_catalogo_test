@@ -23,6 +23,7 @@ class SalesConsignment {
     this.createdAt,
     this.updatedAt,
     this.confirmedAt,
+    this.lines = const [],
   });
 
   final String id;
@@ -39,6 +40,7 @@ class SalesConsignment {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? confirmedAt;
+  final List<SalesConsignmentLine> lines;
 }
 
 class SalesConsignmentLine {

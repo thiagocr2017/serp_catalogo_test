@@ -84,6 +84,8 @@ class ReturnLineInput {
     required this.invoiceLineId,
     required this.quantity,
     required this.unitPrice,
+    this.condition = 'GOOD',
+    this.locationId,
     this.productSku,
     this.productName,
   });
@@ -92,6 +94,8 @@ class ReturnLineInput {
   final String invoiceLineId;
   final int quantity;
   final double unitPrice;
+  final String condition;
+  final String? locationId;
   final String? productSku;
   final String? productName;
 }
@@ -134,6 +138,9 @@ class SalesInvoiceDto {
     this.createdAt,
     this.updatedAt,
     this.confirmedAt,
+    this.debtReductionAmount = 0,
+    this.financialResolution,
+    this.financialResolutionAmount = 0,
     this.cancelledAt,
   });
 
@@ -151,6 +158,9 @@ class SalesInvoiceDto {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? confirmedAt;
+  final double debtReductionAmount;
+  final String? financialResolution;
+  final double financialResolutionAmount;
   final DateTime? cancelledAt;
 
   @override
@@ -549,6 +559,9 @@ class SalesReturnDto {
     this.createdAt,
     this.updatedAt,
     this.confirmedAt,
+    this.debtReductionAmount = 0,
+    this.financialResolution,
+    this.financialResolutionAmount = 0,
   });
 
   final String id;
@@ -566,6 +579,9 @@ class SalesReturnDto {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? confirmedAt;
+  final double debtReductionAmount;
+  final String? financialResolution;
+  final double financialResolutionAmount;
 
   @override
   bool operator ==(Object other) =>
@@ -586,7 +602,10 @@ class SalesReturnDto {
           listEquals(lines, other.lines) &&
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt &&
-          confirmedAt == other.confirmedAt;
+          confirmedAt == other.confirmedAt &&
+          debtReductionAmount == other.debtReductionAmount &&
+          financialResolution == other.financialResolution &&
+          financialResolutionAmount == other.financialResolutionAmount;
 
   @override
   int get hashCode => Object.hashAll([
@@ -605,6 +624,9 @@ class SalesReturnDto {
     createdAt,
     updatedAt,
     confirmedAt,
+    debtReductionAmount,
+    financialResolution,
+    financialResolutionAmount,
   ]);
 }
 
@@ -620,6 +642,8 @@ class SalesReturnLineDto {
     required this.totalPrice,
     this.productSku,
     this.productName,
+    this.condition = 'GOOD',
+    this.inventoryLocationId,
   });
 
   final String id;
@@ -631,6 +655,8 @@ class SalesReturnLineDto {
   final double totalPrice;
   final String? productSku;
   final String? productName;
+  final String condition;
+  final String? inventoryLocationId;
 
   @override
   bool operator ==(Object other) =>
@@ -645,7 +671,9 @@ class SalesReturnLineDto {
           unitPrice == other.unitPrice &&
           totalPrice == other.totalPrice &&
           productSku == other.productSku &&
-          productName == other.productName;
+          productName == other.productName &&
+          condition == other.condition &&
+          inventoryLocationId == other.inventoryLocationId;
 
   @override
   int get hashCode => Object.hash(
@@ -657,6 +685,8 @@ class SalesReturnLineDto {
     totalPrice,
     productSku,
     productName,
+    condition,
+    inventoryLocationId,
   );
 }
 

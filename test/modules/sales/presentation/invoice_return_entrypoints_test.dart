@@ -93,9 +93,8 @@ void main() {
         ),
         GoRoute(
           path: '/sales/customers/:id',
-          builder: (_, state) => Scaffold(
-            body: Text('Perfil ${state.pathParameters['id']}'),
-          ),
+          builder: (_, state) =>
+              Scaffold(body: Text('Perfil ${state.pathParameters['id']}')),
         ),
       ]),
     );
@@ -233,6 +232,14 @@ class _QuoteApi implements QuoteApi {
 class _ReturnApi implements ReturnApi {
   @override
   Future<List<SalesReturnDto>> getReturns() async => const [];
+
+  @override
+  Future<SalesReturnPreviewDto> previewReturn(String invoiceId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<SalesReturnDto> confirmReturn(ConfirmSalesReturnCommand command) =>
+      throw UnimplementedError();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

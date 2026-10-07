@@ -74,8 +74,12 @@ class ReturnDetailPage extends ConsumerWidget {
               if (item.invoiceId != null)
                 ListTile(
                   leading: const Icon(Icons.receipt_long_outlined),
-                  title: const Text('Factura de origen'),
+                  title: const Text('Abrir factura de origen'),
                   subtitle: Text(item.invoiceId!),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => context.go(
+                    '/sales/invoices/${item.invoiceId}?returnTo=${Uri.encodeComponent('/sales/returns/$returnId')}',
+                  ),
                 ),
               ListTile(
                 leading: const Icon(Icons.payments_outlined),
@@ -84,6 +88,25 @@ class ReturnDetailPage extends ConsumerWidget {
                   '${item.currencyCode} ${item.totalAmount.toStringAsFixed(2)}',
                 ),
               ),
+              ListTile(
+                leading: const Icon(Icons.account_balance_wallet_outlined),
+                title: const Text('Aplicado al saldo pendiente'),
+                trailing: Text(
+                  '${item.currencyCode} ${item.debtReductionAmount.toStringAsFixed(2)}',
+                ),
+              ),
+              if (item.financialResolution != null)
+                ListTile(
+                  leading: const Icon(Icons.payments_outlined),
+                  title: Text(
+                    item.financialResolution == 'REFUND'
+                        ? 'Reembolso'
+                        : 'Crédito del cliente',
+                  ),
+                  trailing: Text(
+                    '${item.currencyCode} ${item.financialResolutionAmount.toStringAsFixed(2)}',
+                  ),
+                ),
               if (item.notes?.trim().isNotEmpty == true)
                 ListTile(
                   title: const Text('Notas'),
@@ -98,7 +121,8 @@ class ReturnDetailPage extends ConsumerWidget {
                   ),
                   subtitle: Text(
                     '${line.productSku ?? ''} · ${line.quantity} devuelta · '
-                    '${item.currencyCode} ${line.unitPrice.toStringAsFixed(2)} c/u',
+                    '${item.currencyCode} ${line.unitPrice.toStringAsFixed(2)} c/u · '
+                    '${line.condition == 'DAMAGED' ? 'Dañado · cuarentena' : 'Buen estado · vendible'}',
                   ),
                   trailing: Text(
                     '${item.currencyCode} ${line.totalPrice.toStringAsFixed(2)}',

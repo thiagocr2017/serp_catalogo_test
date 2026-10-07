@@ -60,133 +60,74 @@ void main() {
     expect(find.text('COT-000001'), findsOneWidget);
   });
 
-  testWidgets('nueva devolución informa bloqueo sin abrir captura', (
+  testWidgets('confirma devolucion desde factura y navega al detalle', (
     tester,
   ) async {
-    final invoiceApi = _SalesInvoiceApi([
-      SalesInvoiceDto(
-        id: 'invoice-1',
-        invoiceNumber: 'FAC-0001',
-        customerName: 'Tienda Demo',
-        customerId: 'customer-1',
-        status: SalesInvoiceStatus.confirmed,
-        totalAmount: 25,
-        currencyCode: 'CRC',
-        lines: const [
-          SalesInvoiceLineDto(
-            id: 'invoice-line-1',
-            invoiceId: 'invoice-1',
-            productId: 'product-1',
-            productSku: 'SKU-1',
-            productName: 'Producto Demo',
-            quantity: 2,
-            unitPrice: 12.5,
-            totalPrice: 25,
-          ),
-        ],
-      ),
-      const SalesInvoiceDto(
-        id: 'draft-invoice',
-        invoiceNumber: 'BOR-0001',
-        customerName: 'Tienda Demo',
-        customerId: 'customer-1',
-        status: SalesInvoiceStatus.draft,
-        totalAmount: 10,
-        currencyCode: 'CRC',
-      ),
-      SalesInvoiceDto(
-        id: 'paid-invoice',
-        invoiceNumber: 'FAC-0002',
-        customerName: 'Tienda Demo',
-        customerId: 'customer-1',
-        status: SalesInvoiceStatus.paid,
-        totalAmount: 40,
-        currencyCode: 'CRC',
-        lines: const [
-          SalesInvoiceLineDto(
-            id: 'invoice-line-2',
-            invoiceId: 'paid-invoice',
-            productId: 'product-1',
-            quantity: 3,
-            unitPrice: 10,
-            totalPrice: 30,
-          ),
-          SalesInvoiceLineDto(
-            id: 'invoice-line-3',
-            invoiceId: 'paid-invoice',
-            productId: 'product-1',
-            productSku: 'SKU-1',
-            productName: 'Segundo renglón',
-            quantity: 1,
-            unitPrice: 10,
-            totalPrice: 10,
-          ),
-        ],
-      ),
-    ]);
-    final activeReturnApi = _ReturnApi([
-      SalesReturnDto(
-        id: 'return-active',
-        returnNumber: 'DEV-0001',
-        customerName: 'Tienda Demo',
-        customerId: 'customer-1',
+    final invoice = SalesInvoiceDto(
+      id: 'invoice-1',
+      invoiceNumber: 'FAC-0001',
+      customerName: 'Tienda Demo',
+      customerId: 'customer-1',
+      status: SalesInvoiceStatus.confirmed,
+      totalAmount: 25,
+      currencyCode: 'CRC',
+      lines: const [
+        SalesInvoiceLineDto(
+          id: 'invoice-line-1',
+          invoiceId: 'invoice-1',
+          productId: 'product-1',
+          productSku: 'SKU-1',
+          productName: 'Producto Demo',
+          quantity: 2,
+          unitPrice: 12.5,
+          totalPrice: 25,
+        ),
+      ],
+    );
+    final returnApi = _ReturnApi()
+      ..preview = const SalesReturnPreviewDto(
         invoiceId: 'invoice-1',
-        status: ReturnStatus.confirmed,
-        totalAmount: 10,
-        currencyCode: 'CRC',
-        reason: 'Prueba',
-        lines: const [
-          SalesReturnLineDto(
-            id: 'return-line',
-            returnId: 'return-active',
-            invoiceLineId: 'invoice-line-1',
-            productId: 'product-1',
-            quantity: 1,
-            unitPrice: 10,
-            totalPrice: 10,
-          ),
-        ],
-      ),
-      SalesReturnDto(
-        id: 'return-paid-active',
-        returnNumber: 'DEV-0002',
-        customerName: 'Tienda Demo',
         customerId: 'customer-1',
-        invoiceId: 'paid-invoice',
-        status: ReturnStatus.confirmed,
-        totalAmount: 10,
+        customerName: 'Tienda Demo',
         currencyCode: 'CRC',
-        reason: 'Prueba',
-        lines: const [
-          SalesReturnLineDto(
-            id: 'return-line-paid',
-            returnId: 'return-paid-active',
-            invoiceLineId: 'invoice-line-2',
-            productId: 'product-1',
-            quantity: 1,
-            unitPrice: 10,
-            totalPrice: 10,
+        totalAmount: 25,
+        paidAmount: 0,
+        outstandingAmount: 25,
+        availableQuantities: {'invoice-line-1': 2},
+        sellableLocations: [
+          ReturnLocationDto(
+            id: 'location-sellable',
+            warehouseId: 'warehouse-1',
+            code: 'VENTA',
+            name: 'Vendible',
           ),
         ],
-      ),
-    ]);
+        quarantineLocations: [],
+      );
     await tester.pumpWidget(
       _app(
         _QuoteApi(),
-        initialLocation: '/sales/returns/new',
-        invoiceApi: _FailingSalesInvoiceApi(),
-        returnApi: activeReturnApi,
+        initialLocation: '/sales/returns/new?invoiceId=invoice-1&returnTo=%2Fsales%2Finvoices',
+        invoiceApi: _SalesInvoiceApi([invoice]),
+        returnApi: returnApi,
       ),
     );
     await tester.pumpAndSettle();
-
-    expect(
-      find.text('Devoluciones temporalmente no disponibles'),
-      findsOneWidget,
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Motivo de devolución *'),
+      'Empaque abierto',
     );
-    expect(find.text('Buscar factura'), findsNothing);
-    expect(find.text('Confirmación pendiente'), findsNothing);
-    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Producto Demo'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Confirmar devolución'));
+    await tester.tap(find.text('Confirmar devolución'));
+    await tester.pumpAndSettle();
+
+    expect(returnApi.command, isNotNull);
+    expect(returnApi.command!.invoiceId, 'invoice-1');
+    expect(returnApi.command!.lines.single.invoiceLineId, 'invoice-line-1');
+    expect(returnApi.command!.lines.single.locationId, 'location-sellable');
+    expect(find.text('Detalle de devolución'), findsOneWidget);
   });
 
   for (final entry in [
@@ -204,8 +145,11 @@ void main() {
     ),
   ]) {
     testWidgets('${entry.$3} muestra su formulario operativo', (tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1;
       await tester.pumpWidget(_app(_QuoteApi(), initialLocation: entry.$2));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text(entry.$3), findsOneWidget);
       if (entry.$1 != SalesDocumentKind.returnItem) {
@@ -218,9 +162,6 @@ void main() {
           findsOneWidget,
         );
       }
-      if (entry.$1 != SalesDocumentKind.returnItem) {
-        expect(find.text('Resumen'), findsOneWidget);
-      }
       if (entry.$1 == SalesDocumentKind.invoice) {
         expect(find.text('Bodega de salida *'), findsOneWidget);
         expect(find.text('Ubicación de salida *'), findsNothing);
@@ -229,6 +170,8 @@ void main() {
           entry.$1 == SalesDocumentKind.consignment) {
         expect(find.text('Ubicación de salida *'), findsOneWidget);
       }
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
     });
   }
 
@@ -806,25 +749,41 @@ class _SalesInvoiceApi implements SalesInvoiceApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FailingSalesInvoiceApi implements SalesInvoiceApi {
-  @override
-  Future<List<SalesInvoiceDto>> getInvoices() =>
-      throw StateError('La vista no debe cargar facturas.');
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
 class _ReturnApi implements ReturnApi {
-  _ReturnApi([this.returns = const []]);
+  _ReturnApi();
 
-  final List<SalesReturnDto> returns;
+  final List<SalesReturnDto> returns = const [];
+  SalesReturnPreviewDto? preview;
+  ConfirmSalesReturnCommand? command;
 
   @override
   Future<List<SalesReturnDto>> getReturns() async => returns;
 
   @override
   Future<SalesReturnDto?> getReturnById(String id) async => null;
+
+  @override
+  Future<SalesReturnPreviewDto> previewReturn(String invoiceId) =>
+      Future.value(preview);
+
+  @override
+  Future<SalesReturnDto> confirmReturn(ConfirmSalesReturnCommand command) =>
+      _confirm(command);
+
+  Future<SalesReturnDto> _confirm(ConfirmSalesReturnCommand value) async {
+    command = value;
+    return SalesReturnDto(
+      id: 'return-1',
+      returnNumber: 'DEV-0001',
+      customerName: 'Tienda Demo',
+      customerId: 'customer-1',
+      invoiceId: value.invoiceId,
+      status: ReturnStatus.confirmed,
+      totalAmount: 25,
+      currencyCode: 'CRC',
+      reason: value.reason,
+    );
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

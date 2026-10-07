@@ -157,7 +157,8 @@ class _BackToCustomersAction extends StatelessWidget {
   Widget build(BuildContext context) => IconButton(
     tooltip: path.startsWith('/sales/quotes/')
         ? 'Volver a cotización'
-        : path.startsWith('/sales/returns/') ||
+        : path.startsWith('/sales/invoices/') ||
+              path.startsWith('/sales/returns/') ||
               path.startsWith('/sales/consignments/')
         ? 'Volver al documento'
         : 'Volver a clientes',

@@ -86,6 +86,15 @@ class _ReturnApi implements ReturnApi {
       id == _return.id ? _return : null;
 
   @override
+  Future<SalesReturnPreviewDto> previewReturn(String invoiceId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<SalesReturnDto> confirmReturn(
+    ConfirmSalesReturnCommand command,
+  ) async => _return;
+
+  @override
   Future<SalesReturnDto> createReturn({
     required String invoiceId,
     required String customerId,

@@ -113,5 +113,21 @@ class SupabaseConsignmentDataSource {
     confirmedAt: row['confirmed_at'] == null
         ? null
         : DateTime.parse(row['confirmed_at'] as String),
+    lines: [
+      for (final line
+          in (row['sales_consignment_lines'] as List<dynamic>?) ??
+              const <dynamic>[])
+        SalesConsignmentLine(
+          id: line['id'] as String,
+          consignmentId: line['consignment_id'] as String,
+          productId: line['product_id'] as String,
+          quantity: line['quantity'] as int,
+          returnedQuantity: line['returned_quantity'] as int? ?? 0,
+          unitPrice: (line['unit_price'] as num).toDouble(),
+          totalPrice: (line['total_price'] as num).toDouble(),
+          productSku: line['product_sku'] as String?,
+          productName: line['product_name'] as String?,
+        ),
+    ],
   );
 }

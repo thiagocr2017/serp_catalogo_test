@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:serp/core/device/device_identity.dart';
 import 'package:serp/modules/sales/data/data_sources/supabase_return_data_source.dart';
 import 'package:serp/modules/sales/domain/repositories/return_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,6 +8,7 @@ void main() {
   test('no invoca la RPC heredada para crear devoluciones', () {
     final source = SupabaseReturnDataSource(
       SupabaseClient('http://localhost:54321', 'test-key'),
+      const DeviceIdentity(name: 'test-device', identifier: 'test-id'),
     );
 
     expect(

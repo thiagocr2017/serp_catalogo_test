@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../shared/navigation/unsaved_changes_guard.dart';
 import '../../../configuration/configuration_module.dart';
@@ -61,10 +62,13 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
   String? _hydratedQuoteId;
   DateTime? _validUntil;
   String? _error;
+  late final String _returnCommandId = const Uuid().v4();
   bool _saving = false;
   bool _dirty = false;
-  String? _hydratedInvoiceId;
   double? _appliedGeneralDiscount;
+  SalesReturnPreviewDto? _returnPreview;
+  ReturnFinancialResolution _returnResolution =
+      ReturnFinancialResolution.refund;
 
   String get _title => switch (widget.kind) {
     SalesDocumentKind.quote =>
@@ -175,6 +179,32 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
   void _markDirty() {
     _dirty = true;
     UnsavedChangesGuard.instance.markDirty();
+  }
+
+  Future<void> _loadReturnPreview(String invoiceId) async {
+    setState(() {
+      _returnPreview = null;
+      _returnProducts = null;
+      _error = null;
+    });
+    try {
+      final preview = await ref
+          .read(returnApiProvider)
+          .previewReturn(invoiceId);
+      final products = await ref
+          .read(productApiProvider)
+          .listProducts(const ProductListQuery(isActive: true));
+      if (mounted && _invoice?.id == invoiceId) {
+        setState(() {
+          _returnPreview = preview;
+          _returnProducts = products;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _error = 'No se pudo validar la factura: $error');
+      }
+    }
   }
 
   Future<void> _leave() async {
@@ -352,6 +382,11 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
     if (line.maxQuantity != null && quantity > line.maxQuantity!) {
       return 'La cantidad no puede superar ${line.maxQuantity}.';
     }
+    if (widget.kind == SalesDocumentKind.returnItem &&
+        line.maxQuantity != null &&
+        quantity != line.maxQuantity) {
+      return 'La línea se devuelve por su cantidad facturada completa.';
+    }
     if (price == null || price <= 0) {
       return 'El precio unitario debe ser mayor que cero.';
     }
@@ -451,7 +486,6 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
 
   Future<void> _save(_FormData data) async {
     FocusScope.of(context).unfocus();
-    if (widget.kind == SalesDocumentKind.returnItem) return;
     if (!_formKey.currentState!.validate()) return;
     if (widget.kind == SalesDocumentKind.returnItem) {
       if (_invoice == null) {
@@ -485,6 +519,20 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
     if (widget.kind == SalesDocumentKind.returnItem &&
         (_invoice?.customerId == null || _customer == null)) {
       setState(() => _error = 'La factura no tiene un cliente asociado.');
+      return;
+    }
+    if (widget.kind == SalesDocumentKind.returnItem && _returnPreview == null) {
+      setState(() => _error = 'Espere a que se valide la factura.');
+      return;
+    }
+    if (widget.kind == SalesDocumentKind.returnItem &&
+        _lines.any(
+          (line) =>
+              line.locationId == null ||
+              (line.returnCondition == 'DAMAGED' &&
+                  _returnPreview!.quarantineLocations.isEmpty),
+        )) {
+      setState(() => _error = 'Seleccione el destino de cada producto.');
       return;
     }
     if (_needsWarehouse && _warehouse == null) {
@@ -598,7 +646,38 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
               );
           ref.invalidate(salesInvoicesProvider);
         case SalesDocumentKind.returnItem:
-          throw StateError('Return confirmation is not implemented.');
+          final invoice = _invoice!;
+          final result = await ref
+              .read(returnApiProvider)
+              .confirmReturn(
+                ConfirmSalesReturnCommand(
+                  commandId: _returnCommandId,
+                  invoiceId: invoice.id,
+                  reason: _reason.text.trim(),
+                  resolution: _returnResolution,
+                  lines: [
+                    for (final line in _lines)
+                      ReturnLineInput(
+                        productId: line.product.id,
+                        invoiceLineId: line.invoiceLineId!,
+                        quantity: int.parse(line.quantity.text),
+                        unitPrice: _number(line.price.text),
+                        condition: line.returnCondition,
+                        locationId: line.locationId,
+                        productSku: line.product.sku,
+                        productName: line.product.name,
+                      ),
+                  ],
+                ),
+              );
+          ref.invalidate(returnsProvider);
+          if (!mounted) return;
+          _dirty = false;
+          UnsavedChangesGuard.instance.markClean();
+          context.go(
+            '/sales/returns/${result.id}?returnTo=${Uri.encodeQueryComponent(_safeReturnTo ?? _route)}',
+          );
+          return;
         case SalesDocumentKind.consignment:
           await ref
               .read(consignmentApiProvider)
@@ -652,64 +731,39 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
           child: Text(_title),
         ),
       ),
-      body: widget.kind == SalesDocumentKind.returnItem
-          ? _returnUnavailable(context)
-          : FutureBuilder<_FormData>(
-              future: _data,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text('No fue posible cargar: ${snapshot.error}'),
-                  );
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final loaded = snapshot.data!;
-                if (loaded.editingQuote != null &&
-                    _hydratedQuoteId != loaded.editingQuote!.id) {
-                  _hydrateQuote(loaded, loaded.editingQuote!);
-                }
-                return _form(context, loaded);
-              },
-            ),
-    ),
-  );
-
-  Widget _returnUnavailable(BuildContext context) => Center(
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 560),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.pause_circle_outline,
-              size: 48,
-              color: Theme.of(context).colorScheme.tertiary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Devoluciones temporalmente no disponibles',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'La confirmación requiere coordinación transaccional entre '
-              'Ventas, Inventario y Pagos. No se registrará ningún cambio '
-              'hasta completar esa operación de forma segura.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: _leave,
-              icon: const Icon(Icons.arrow_back),
-              label: const Text('Volver al documento'),
-            ),
-          ],
-        ),
+      body: FutureBuilder<_FormData>(
+        future: _data,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('No fue posible cargar: ${snapshot.error}'),
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final loaded = snapshot.data!;
+          if (loaded.editingQuote != null &&
+              _hydratedQuoteId != loaded.editingQuote!.id) {
+            _hydrateQuote(loaded, loaded.editingQuote!);
+          }
+          if (widget.kind == SalesDocumentKind.returnItem &&
+              widget.invoiceId != null &&
+              _invoice == null) {
+            _invoice = loaded.invoices
+                .where((item) => item.id == widget.invoiceId)
+                .firstOrNull;
+            if (_invoice != null) {
+              _customer = loaded.customers
+                  .where((item) => item.id == _invoice!.customerId)
+                  .firstOrNull;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _loadReturnPreview(_invoice!.id);
+              });
+            }
+          }
+          return _form(context, loaded);
+        },
       ),
     ),
   );
@@ -740,313 +794,93 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
               ),
         )
         .toList();
-    return Form(
-      key: _formKey,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 920;
-          final editor = SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_error != null) ...[
-                    MaterialBanner(
-                      content: Text(_error!),
-                      leading: const Icon(Icons.error_outline),
-                      actions: [
-                        TextButton(
-                          onPressed: () => setState(() => _error = null),
-                          child: const Text('Cerrar'),
-                        ),
-                      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 920;
+        final editorContent = Padding(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_error != null) ...[
+                  MaterialBanner(
+                    content: Text(_error!),
+                    leading: const Icon(Icons.error_outline),
+                    actions: [
+                      TextButton(
+                        onPressed: () => setState(() => _error = null),
+                        child: const Text('Cerrar'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                _sectionTitle('Datos del documento'),
+                const SizedBox(height: 12),
+                if (widget.kind == SalesDocumentKind.returnItem)
+                  _invoicePicker(eligibleInvoices, data.returns, data.customers)
+                else if (widget.kind == SalesDocumentKind.quote)
+                  _customerPicker(data)
+                else
+                  DropdownButtonFormField<CustomerDto>(
+                    initialValue: _customer,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Cliente *',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 16),
-                  ],
-                  _sectionTitle('Datos del documento'),
+                    items: [
+                      for (final customer in data.customers.where(
+                        (c) => c.isActive,
+                      ))
+                        DropdownMenuItem(
+                          value: customer,
+                          child: Text(
+                            customer.displayName?.trim().isNotEmpty == true
+                                ? '${customer.displayName} · ${customer.name}'
+                                : customer.name,
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() {
+                      _customer = value;
+                      if (_quote?.customerId != value?.id) _quote = null;
+                      _markDirty();
+                    }),
+                    validator: (value) =>
+                        value == null ? 'Seleccione un cliente.' : null,
+                  ),
+                if (widget.kind == SalesDocumentKind.returnItem) ...[
                   const SizedBox(height: 12),
-                  if (widget.kind == SalesDocumentKind.returnItem)
-                    _invoicePicker(eligibleInvoices, data.returns)
-                  else if (widget.kind == SalesDocumentKind.quote)
-                    _customerPicker(data)
-                  else
-                    DropdownButtonFormField<CustomerDto>(
-                      initialValue: _customer,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Cliente *',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        for (final customer in data.customers.where(
-                          (c) => c.isActive,
-                        ))
-                          DropdownMenuItem(
-                            value: customer,
-                            child: Text(
-                              customer.displayName?.trim().isNotEmpty == true
-                                  ? '${customer.displayName} · ${customer.name}'
-                                  : customer.name,
-                            ),
-                          ),
-                      ],
-                      onChanged: (value) => setState(() {
-                        _customer = value;
-                        if (_quote?.customerId != value?.id) _quote = null;
-                        _markDirty();
-                      }),
-                      validator: (value) =>
-                          value == null ? 'Seleccione un cliente.' : null,
+                  TextFormField(
+                    controller: _reason,
+                    decoration: const InputDecoration(
+                      labelText: 'Motivo de devolución *',
+                      border: OutlineInputBorder(),
                     ),
-                  if (widget.kind == SalesDocumentKind.returnItem) ...[
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _reason,
-                      decoration: const InputDecoration(
-                        labelText: 'Motivo de devolución *',
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (_) => _markDirty(),
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                          ? 'Indique el motivo.'
-                          : null,
-                    ),
-                  ],
-                  if (widget.kind != SalesDocumentKind.returnItem) ...[
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        if (widget.kind != SalesDocumentKind.quote)
-                          SizedBox(
-                            width: 210,
-                            child: TextFormField(
-                              controller: _exchangeRate,
-                              decoration: InputDecoration(
-                                labelText: 'Tipo de cambio *',
-                                helperText: 'Moneda: ${data.currency}',
-                                border: const OutlineInputBorder(),
-                              ),
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9.,]'),
-                                ),
-                              ],
-                              onChanged: (_) => _markDirty(),
-                              validator: (value) {
-                                final rate = double.tryParse(
-                                  (value ?? '').replaceAll(',', '.'),
-                                );
-                                return rate == null || rate <= 0
-                                    ? 'Ingrese un tipo de cambio válido.'
-                                    : null;
-                              },
-                            ),
-                          ),
-                        if (widget.kind == SalesDocumentKind.quote)
-                          OutlinedButton.icon(
-                            onPressed: _pickValidity,
-                            icon: const Icon(Icons.calendar_today_outlined),
-                            label: Text(
-                              _validUntil == null
-                                  ? 'Definir vigencia'
-                                  : 'Válida hasta ${_formatDate(_validUntil!)}',
-                            ),
-                          ),
-                        if (widget.kind == SalesDocumentKind.order &&
-                            customerQuotes.isNotEmpty)
-                          SizedBox(
-                            width: 300,
-                            child: DropdownButtonFormField<SalesQuoteDto>(
-                              initialValue: _quote,
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Cotización de origen',
-                                border: OutlineInputBorder(),
-                              ),
-                              items: [
-                                for (final quote in customerQuotes)
-                                  DropdownMenuItem(
-                                    value: quote,
-                                    child: Text(quote.quoteNumber),
-                                  ),
-                              ],
-                              onChanged: (value) => setState(() {
-                                _quote = value;
-                                _markDirty();
-                              }),
-                            ),
-                          ),
-                        if (widget.kind == SalesDocumentKind.quote ||
-                            widget.kind == SalesDocumentKind.order ||
-                            widget.kind == SalesDocumentKind.consignment)
-                          SizedBox(
-                            width: 260,
-                            child: DropdownButtonFormField<SalesAgentDto>(
-                              initialValue: _agent,
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Agente',
-                                border: OutlineInputBorder(),
-                              ),
-                              items: [
-                                for (final agent in data.agents)
-                                  DropdownMenuItem(
-                                    value: agent,
-                                    child: Text(agent.name),
-                                  ),
-                              ],
-                              onChanged: (value) => setState(() {
-                                _agent = value;
-                                _markDirty();
-                              }),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                  if (_needsWarehouse) ...[
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
+                    onChanged: (_) => _markDirty(),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Indique el motivo.'
+                        : null,
+                  ),
+                ],
+                if (widget.kind != SalesDocumentKind.returnItem) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      if (widget.kind != SalesDocumentKind.quote)
                         SizedBox(
-                          width: 280,
-                          child: DropdownButtonFormField<WarehouseDto>(
-                            initialValue: _warehouse,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Bodega de salida *',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: [
-                              for (final warehouse in data.warehouses)
-                                DropdownMenuItem(
-                                  value: warehouse,
-                                  child: Text(warehouse.name),
-                                ),
-                            ],
-                            onChanged: (value) => setState(() {
-                              _warehouse = value;
-                              final activeLocations = value?.locations
-                                  .where((l) => l.isActive)
-                                  .toList();
-                              _location =
-                                  activeLocations
-                                      ?.where((location) => location.isDefault)
-                                      .firstOrNull ??
-                                  activeLocations?.firstOrNull;
-                              _markDirty();
-                            }),
-                            validator: (value) =>
-                                value == null ? 'Seleccione una bodega.' : null,
-                          ),
-                        ),
-                        if (_needsLocation)
-                          SizedBox(
-                            width: 280,
-                            child:
-                                DropdownButtonFormField<InventoryLocationDto>(
-                                  initialValue: _location,
-                                  isExpanded: true,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Ubicación de salida *',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  items: [
-                                    for (final location
-                                        in _warehouse?.locations.where(
-                                              (l) => l.isActive,
-                                            ) ??
-                                            const <InventoryLocationDto>[])
-                                      DropdownMenuItem(
-                                        value: location,
-                                        child: Text(
-                                          '${location.code} · ${location.name}',
-                                        ),
-                                      ),
-                                  ],
-                                  onChanged: (value) => setState(() {
-                                    _location = value;
-                                    _markDirty();
-                                  }),
-                                  validator: (value) => value == null
-                                      ? 'Seleccione una ubicación.'
-                                      : null,
-                                ),
-                          ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  if (widget.kind == SalesDocumentKind.quote)
-                    _productPicker(data, compact)
-                  else if (widget.kind == SalesDocumentKind.returnItem)
-                    _invoice == null
-                        ? const SizedBox.shrink()
-                        : _returnInvoiceLines(data.returns)
-                  else
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _sectionTitle(
-                            widget.kind == SalesDocumentKind.returnItem
-                                ? 'Productos de la factura'
-                                : 'Productos',
-                          ),
-                        ),
-                        SizedBox(
-                          width: compact ? 220 : 320,
-                          child: DropdownButtonFormField<ProductSummaryDto>(
-                            initialValue: _productToAdd,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Agregar producto',
-                              border: OutlineInputBorder(),
-                              prefixIcon: Icon(Icons.search),
-                            ),
-                            items: [
-                              for (final product in _availableProducts(data))
-                                DropdownMenuItem(
-                                  value: product,
-                                  child: Text(
-                                    '${product.sku} · ${product.name}',
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                            ],
-                            onChanged: (value) =>
-                                setState(() => _productToAdd = value),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Agregar producto a las líneas',
-                          onPressed: _productToAdd == null ? null : _addLine,
-                          icon: const Icon(Icons.add),
-                        ),
-                      ],
-                    ),
-                  const SizedBox(height: 10),
-                  if (widget.kind == SalesDocumentKind.quote) ...[
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 190,
-                          child: TextField(
-                            controller: _generalDiscount,
-                            decoration: const InputDecoration(
-                              labelText: 'Descuento general %',
-                              helperText: 'No supera promociones',
-                              border: OutlineInputBorder(),
-                              isDense: true,
+                          width: 210,
+                          child: TextFormField(
+                            controller: _exchangeRate,
+                            decoration: InputDecoration(
+                              labelText: 'Tipo de cambio *',
+                              helperText: 'Moneda: ${data.currency}',
+                              border: const OutlineInputBorder(),
                             ),
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
@@ -1056,122 +890,336 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
                                 RegExp(r'[0-9.,]'),
                               ),
                             ],
-                            onChanged: (value) {
-                              final parsed = double.tryParse(
-                                value.replaceAll(',', '.'),
+                            onChanged: (_) => _markDirty(),
+                            validator: (value) {
+                              final rate = double.tryParse(
+                                (value ?? '').replaceAll(',', '.'),
                               );
-                              if (parsed != null &&
-                                  parsed >= 0 &&
-                                  parsed <= 100) {
-                                _applyGeneralDiscount(value);
-                              }
+                              return rate == null || rate <= 0
+                                  ? 'Ingrese un tipo de cambio válido.'
+                                  : null;
                             },
-                            onSubmitted: _applyGeneralDiscount,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          tooltip: 'Aplicar descuento general',
-                          onPressed: () =>
-                              _applyGeneralDiscount(_generalDiscount.text),
-                          icon: const Icon(Icons.done),
+                      if (widget.kind == SalesDocumentKind.quote)
+                        OutlinedButton.icon(
+                          onPressed: _pickValidity,
+                          icon: const Icon(Icons.calendar_today_outlined),
+                          label: Text(
+                            _validUntil == null
+                                ? 'Definir vigencia'
+                                : 'Válida hasta ${_formatDate(_validUntil!)}',
+                          ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  if (_lines.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 28),
-                      child: Center(
-                        child: Text(
-                          'Agregue al menos un producto para continuar.',
-                        ),
-                      ),
-                    )
-                  else
-                    for (var index = 0; index < _lines.length; index++)
-                      _lineEditor(_lines[index], index, data.currency),
-                  const SizedBox(height: 20),
-                  if (widget.kind != SalesDocumentKind.returnItem)
-                    TextFormField(
-                      controller: _notes,
-                      minLines: 2,
-                      maxLines: 4,
-                      decoration: const InputDecoration(
-                        labelText: 'Notas',
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (_) => _markDirty(),
-                    ),
-                ],
-              ),
-            ),
-          );
-          final summary = _summary(data);
-          return Column(
-            children: [
-              Expanded(
-                child: compact
-                    ? editor
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(flex: 7, child: editor),
-                          const VerticalDivider(width: 1),
-                          SizedBox(width: 310, child: summary),
-                        ],
-                      ),
-              ),
-              if (compact) summary,
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: _leave,
-                        child: const Text('Cancelar'),
-                      ),
-                      const SizedBox(width: 12),
-                      FilledButton.icon(
-                        onPressed:
-                            _saving ||
-                                widget.kind == SalesDocumentKind.returnItem
-                            ? null
-                            : () => _save(data),
-                        icon: _saving
-                            ? const SizedBox.square(
-                                dimension: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                      if (widget.kind == SalesDocumentKind.order &&
+                          customerQuotes.isNotEmpty)
+                        SizedBox(
+                          width: 300,
+                          child: DropdownButtonFormField<SalesQuoteDto>(
+                            initialValue: _quote,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Cotización de origen',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: [
+                              for (final quote in customerQuotes)
+                                DropdownMenuItem(
+                                  value: quote,
+                                  child: Text(quote.quoteNumber),
                                 ),
-                              )
-                            : widget.kind == SalesDocumentKind.returnItem
-                            ? const Icon(Icons.lock_outline)
-                            : const Icon(Icons.save_outlined),
-                        label: Text(
-                          _saving
-                              ? 'Guardando…'
-                              : widget.kind == SalesDocumentKind.quote
-                              ? widget.quoteId == null
-                                    ? 'Guardar borrador'
-                                    : 'Guardar cambios'
-                              : widget.kind == SalesDocumentKind.returnItem
-                              ? 'Confirmación pendiente'
-                              : 'Guardar documento',
+                            ],
+                            onChanged: (value) => setState(() {
+                              _quote = value;
+                              _markDirty();
+                            }),
+                          ),
                         ),
+                      if (widget.kind == SalesDocumentKind.quote ||
+                          widget.kind == SalesDocumentKind.order ||
+                          widget.kind == SalesDocumentKind.consignment)
+                        SizedBox(
+                          width: 260,
+                          child: DropdownButtonFormField<SalesAgentDto>(
+                            initialValue: _agent,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Agente',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: [
+                              for (final agent in data.agents)
+                                DropdownMenuItem(
+                                  value: agent,
+                                  child: Text(agent.name),
+                                ),
+                            ],
+                            onChanged: (value) => setState(() {
+                              _agent = value;
+                              _markDirty();
+                            }),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+                if (_needsWarehouse) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      SizedBox(
+                        width: 280,
+                        child: DropdownButtonFormField<WarehouseDto>(
+                          initialValue: _warehouse,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Bodega de salida *',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: [
+                            for (final warehouse in data.warehouses)
+                              DropdownMenuItem(
+                                value: warehouse,
+                                child: Text(warehouse.name),
+                              ),
+                          ],
+                          onChanged: (value) => setState(() {
+                            _warehouse = value;
+                            final activeLocations = value?.locations
+                                .where((l) => l.isActive)
+                                .toList();
+                            _location =
+                                activeLocations
+                                    ?.where((location) => location.isDefault)
+                                    .firstOrNull ??
+                                activeLocations?.firstOrNull;
+                            _markDirty();
+                          }),
+                          validator: (value) =>
+                              value == null ? 'Seleccione una bodega.' : null,
+                        ),
+                      ),
+                      if (_needsLocation)
+                        SizedBox(
+                          width: 280,
+                          child: DropdownButtonFormField<InventoryLocationDto>(
+                            initialValue: _location,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Ubicación de salida *',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: [
+                              for (final location
+                                  in _warehouse?.locations.where(
+                                        (l) => l.isActive,
+                                      ) ??
+                                      const <InventoryLocationDto>[])
+                                DropdownMenuItem(
+                                  value: location,
+                                  child: Text(
+                                    '${location.code} · ${location.name}',
+                                  ),
+                                ),
+                            ],
+                            onChanged: (value) => setState(() {
+                              _location = value;
+                              _markDirty();
+                            }),
+                            validator: (value) => value == null
+                                ? 'Seleccione una ubicación.'
+                                : null,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 24),
+                if (widget.kind == SalesDocumentKind.quote)
+                  _productPicker(data, compact)
+                else if (widget.kind == SalesDocumentKind.returnItem)
+                  _invoice == null
+                      ? const SizedBox.shrink()
+                      : _returnInvoiceLines(data.returns)
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _sectionTitle(
+                          widget.kind == SalesDocumentKind.returnItem
+                              ? 'Productos de la factura'
+                              : 'Productos',
+                        ),
+                      ),
+                      SizedBox(
+                        width: compact ? 220 : 320,
+                        child: DropdownButtonFormField<ProductSummaryDto>(
+                          initialValue: _productToAdd,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Agregar producto',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                          items: [
+                            for (final product in _availableProducts(data))
+                              DropdownMenuItem(
+                                value: product,
+                                child: Text(
+                                  '${product.sku} · ${product.name}',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => _productToAdd = value),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Agregar producto a las líneas',
+                        onPressed: _productToAdd == null ? null : _addLine,
+                        icon: const Icon(Icons.add),
                       ),
                     ],
                   ),
+                const SizedBox(height: 10),
+                if (widget.kind == SalesDocumentKind.quote) ...[
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 190,
+                        child: TextField(
+                          controller: _generalDiscount,
+                          decoration: const InputDecoration(
+                            labelText: 'Descuento general %',
+                            helperText: 'No supera promociones',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9.,]'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            final parsed = double.tryParse(
+                              value.replaceAll(',', '.'),
+                            );
+                            if (parsed != null &&
+                                parsed >= 0 &&
+                                parsed <= 100) {
+                              _applyGeneralDiscount(value);
+                            }
+                          },
+                          onSubmitted: _applyGeneralDiscount,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        tooltip: 'Aplicar descuento general',
+                        onPressed: () =>
+                            _applyGeneralDiscount(_generalDiscount.text),
+                        icon: const Icon(Icons.done),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                if (_lines.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 28),
+                    child: Center(
+                      child: Text(
+                        'Agregue al menos un producto para continuar.',
+                      ),
+                    ),
+                  )
+                else
+                  for (var index = 0; index < _lines.length; index++)
+                    _lineEditor(_lines[index], index, data.currency),
+                const SizedBox(height: 20),
+                if (widget.kind != SalesDocumentKind.returnItem)
+                  TextFormField(
+                    controller: _notes,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Notas',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => _markDirty(),
+                  ),
+              ],
+            ),
+          ),
+        );
+        final summary = _summary(data);
+        return Column(
+          children: [
+            Expanded(
+              child: compact
+                  ? ListView(children: [editorContent, summary])
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          flex: 7,
+                          child: SingleChildScrollView(child: editorContent),
+                        ),
+                        const VerticalDivider(width: 1),
+                        SizedBox(
+                          width: 310,
+                          child: SingleChildScrollView(child: summary),
+                        ),
+                      ],
+                    ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: _leave,
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton.icon(
+                      onPressed: _saving ? null : () => _save(data),
+                      icon: _saving
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : widget.kind == SalesDocumentKind.returnItem
+                          ? const Icon(Icons.assignment_return_outlined)
+                          : const Icon(Icons.save_outlined),
+                      label: Text(
+                        _saving
+                            ? 'Guardando…'
+                            : widget.kind == SalesDocumentKind.quote
+                            ? widget.quoteId == null
+                                  ? 'Guardar borrador'
+                                  : 'Guardar cambios'
+                            : widget.kind == SalesDocumentKind.returnItem
+                            ? 'Confirmar devolución'
+                            : 'Guardar documento',
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          );
-        },
-      ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1305,6 +1353,8 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
     SalesInvoiceDto invoice,
     List<SalesReturnDto> returns,
   ) {
+    final preview = _returnPreview;
+    if (preview == null || preview.invoiceId != invoice.id) return const [];
     final activeReturns = returns
         .where(
           (item) =>
@@ -1326,6 +1376,7 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
     return invoice.lines
         .where(
           (line) =>
+              (preview.availableQuantities[line.id] ?? 0) > 0 &&
               !previouslyReturnedLineIds.contains(line.id) &&
               !legacyReturnedProductIds.contains(line.productId),
         )
@@ -1335,6 +1386,7 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
   Widget _invoicePicker(
     List<SalesInvoiceDto> eligibleInvoices,
     List<SalesReturnDto> returns,
+    List<CustomerDto> customers,
   ) {
     final query = _invoiceSearch.text.trim().toLowerCase();
     final filtered = eligibleInvoices.where((invoice) {
@@ -1392,17 +1444,26 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
                     trailing: _invoice?.id == invoice.id
                         ? const Icon(Icons.check_circle_outline)
                         : const Icon(Icons.chevron_right),
-                    onTap: () => setState(() {
-                      _invoice = invoice;
-                      for (final line in _lines) {
-                        line.dispose();
-                      }
-                      _lines.clear();
-                      _dirty = false;
-                      UnsavedChangesGuard.instance.markClean();
-                      _error = null;
-                      _markDirty();
-                    }),
+                    onTap: () {
+                      setState(() {
+                        _invoice = invoice;
+                        _customer = customers
+                            .where(
+                              (customer) => customer.id == invoice.customerId,
+                            )
+                            .firstOrNull;
+                        _returnPreview = null;
+                        for (final line in _lines) {
+                          line.dispose();
+                        }
+                        _lines.clear();
+                        _dirty = false;
+                        UnsavedChangesGuard.instance.markClean();
+                        _error = null;
+                        _markDirty();
+                      });
+                      _loadReturnPreview(invoice.id);
+                    },
                   ),
                 );
               },
@@ -1432,6 +1493,16 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
     children: [
       _sectionTitle('Productos de la factura'),
       const SizedBox(height: 8),
+      if (_returnPreview == null)
+        const LinearProgressIndicator()
+      else if (_returnPreview!.sellableLocations.isEmpty)
+        const ListTile(
+          leading: Icon(Icons.warning_amber_outlined),
+          title: Text('Faltan ubicaciones de recepción'),
+          subtitle: Text(
+            'Configure una ubicación vendible y otra de cuarentena.',
+          ),
+        ),
       for (final line in _returnableInvoiceLines(_invoice!, returns))
         CheckboxListTile(
           value: _lines.any((draft) => draft.invoiceLineId == line.id),
@@ -1457,9 +1528,12 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
                   _DraftLine(
                     product,
                     invoiceLineId: line.id,
-                    quantity: line.quantity,
-                    price: line.unitPrice,
-                    maxQuantity: line.quantity,
+                    quantity: _returnPreview!.availableQuantities[line.id],
+                    price: line.totalPrice / line.quantity,
+                    maxQuantity: _returnPreview!.availableQuantities[line.id],
+                    initialLocationId:
+                        _returnPreview!.sellableLocations.firstOrNull?.id,
+                    returnCondition: 'GOOD',
                   ),
                 );
               } else {
@@ -1474,15 +1548,6 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
           },
         ),
       const SizedBox(height: 12),
-      const Material(
-        child: ListTile(
-          leading: Icon(Icons.info_outline),
-          title: Text('Confirmación todavía no disponible'),
-          subtitle: Text(
-            'La devolución debe esperar el control de cantidades previas, la condición del producto y la liquidación financiera atómica.',
-          ),
-        ),
-      ),
     ],
   );
 
@@ -1690,6 +1755,7 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
                     ),
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    readOnly: widget.kind == SalesDocumentKind.returnItem,
                     onChanged: (_) => setState(_markDirty),
                     onSubmitted: widget.kind == SalesDocumentKind.quote
                         ? (_) => _productSearchFocus?.requestFocus()
@@ -1723,6 +1789,7 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
                 border: OutlineInputBorder(),
                 isDense: true,
               ),
+              readOnly: widget.kind == SalesDocumentKind.returnItem,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -1732,6 +1799,68 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
               onChanged: (_) => setState(_markDirty),
             ),
           ),
+          if (widget.kind == SalesDocumentKind.returnItem) ...[
+            SizedBox(
+              width: 155,
+              child: DropdownButtonFormField<String>(
+                initialValue: line.returnCondition,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Condición',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'GOOD', child: Text('Buen estado')),
+                  DropdownMenuItem(value: 'DAMAGED', child: Text('Dañado')),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    line.returnCondition = value;
+                    final destinations = value == 'GOOD'
+                        ? _returnPreview?.sellableLocations ?? const []
+                        : _returnPreview?.quarantineLocations ?? const [];
+                    line.locationId = destinations.firstOrNull?.id;
+                    _markDirty();
+                  });
+                },
+              ),
+            ),
+            SizedBox(
+              width: 230,
+              child: DropdownButtonFormField<String>(
+                initialValue: line.locationId,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: line.returnCondition == 'GOOD'
+                      ? 'Destino vendible'
+                      : 'Destino cuarentena',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: [
+                  for (final location
+                      in line.returnCondition == 'GOOD'
+                          ? _returnPreview?.sellableLocations ?? const []
+                          : _returnPreview?.quarantineLocations ?? const [])
+                    DropdownMenuItem(
+                      value: location.id,
+                      child: Text(
+                        '${location.code} · ${location.name}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (value) => setState(() {
+                  line.locationId = value;
+                  _markDirty();
+                }),
+                validator: (value) =>
+                    value == null ? 'Seleccione un destino compatible.' : null,
+              ),
+            ),
+          ],
           if (_supportsDiscount)
             SizedBox(
               width: 110,
@@ -1795,6 +1924,65 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
           _summaryRow('Subtotal', _money(_subtotal, data.currency)),
           _summaryRow('Descuento', _money(_discountTotal, data.currency)),
           _summaryRow('Estado', 'Borrador'),
+        ],
+        if (widget.kind == SalesDocumentKind.returnItem) ...[
+          if (_returnPreview == null)
+            const LinearProgressIndicator()
+          else ...[
+            _summaryRow(
+              'Saldo pendiente',
+              _money(
+                _returnPreview!.outstandingAmount,
+                _returnPreview!.currencyCode,
+              ),
+            ),
+            _summaryRow(
+              'Reducción de deuda',
+              _money(
+                _total < _returnPreview!.outstandingAmount
+                    ? _total
+                    : _returnPreview!.outstandingAmount,
+                _returnPreview!.currencyCode,
+              ),
+            ),
+            _summaryRow(
+              'Excedente',
+              _money(
+                (_total - _returnPreview!.outstandingAmount).clamp(
+                  0,
+                  double.infinity,
+                ),
+                _returnPreview!.currencyCode,
+              ),
+            ),
+            DropdownButtonFormField<ReturnFinancialResolution>(
+              initialValue: _returnResolution,
+              decoration: const InputDecoration(
+                labelText: 'Resolver excedente',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: ReturnFinancialResolution.refund,
+                  child: Text('Reembolso'),
+                ),
+                DropdownMenuItem(
+                  value: ReturnFinancialResolution.customerCredit,
+                  child: Text('Crédito del cliente'),
+                ),
+              ],
+              onChanged: (value) => setState(() {
+                if (value != null) _returnResolution = value;
+                _markDirty();
+              }),
+            ),
+            Text(
+              _returnResolution == ReturnFinancialResolution.refund
+                  ? 'El reembolso se valida contra los pagos confirmados.'
+                  : 'El crédito se registra solo sobre dinero recibido.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
         ],
         const Divider(height: 28),
         Text('Total', style: Theme.of(context).textTheme.titleMedium),
@@ -1873,6 +2061,8 @@ class _DraftLine {
     this.maxQuantity,
     double? salePrice,
     double? initialDiscount,
+    this.returnCondition = 'GOOD',
+    String? initialLocationId,
   }) : quantity = TextEditingController(
          text: '${quantity ?? _initialUnits(product)}',
        ),
@@ -1880,6 +2070,7 @@ class _DraftLine {
          text: (price ?? salePrice)?.toStringAsFixed(2) ?? '',
        ),
        discount = TextEditingController(text: '${initialDiscount ?? 0}') {
+    locationId = initialLocationId;
     if (initialDiscount == null &&
         product.promotionalPriceInCents != null &&
         product.unitPriceInCents > 0) {
@@ -1897,6 +2088,8 @@ class _DraftLine {
   final TextEditingController quantity;
   final TextEditingController price;
   final TextEditingController discount;
+  String returnCondition;
+  String? locationId;
   late double lastValidDiscount;
   late _DiscountSource discountSource;
   bool hasManualDiscount = false;

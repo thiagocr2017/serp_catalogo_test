@@ -85,6 +85,26 @@ void main() {
     expect(find.text('Cliente de Prueba'), findsOneWidget);
   });
 
+  testWidgets('perfil abierto desde factura ofrece volver al documento', (
+    tester,
+  ) async {
+    final api = _FakeCustomerApi(
+      customers: const [
+        CustomerDto(id: 'customer-1', name: 'Cliente de Prueba'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      _shellRoutesApp(
+        api,
+        '/sales/customers/customer-1?returnTo=%2Fsales%2Finvoices%2Finvoice-1',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Volver al documento'), findsOneWidget);
+  });
+
   testWidgets('perfil muestra borrador y abre detalle con retorno al cliente', (
     tester,
   ) async {
@@ -581,6 +601,14 @@ class _EmptyReturnApi implements ReturnApi {
 
   @override
   Future<List<SalesReturnDto>> getReturns() async => const [];
+
+  @override
+  Future<SalesReturnPreviewDto> previewReturn(String invoiceId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<SalesReturnDto> confirmReturn(ConfirmSalesReturnCommand command) =>
+      throw UnimplementedError();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -1,12 +1,49 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/device/device_identity.dart';
+import '../../api/return_api.dart';
 import '../../domain/entities/sales_return.dart';
-import '../../domain/repositories/return_repository.dart';
+import '../../domain/repositories/return_repository.dart' as domain;
 
 class SupabaseReturnDataSource {
-  const SupabaseReturnDataSource(this._client);
+  const SupabaseReturnDataSource(this._client, this._device);
 
   final SupabaseClient _client;
+  final DeviceIdentity _device;
+
+  Future<Map<String, dynamic>> previewReturn(String invoiceId) async =>
+      await _client.rpc<Map<String, dynamic>>(
+        'sales_preview_return',
+        params: {'p_invoice_id': invoiceId},
+      );
+
+  Future<SalesReturn> confirmReturn(ConfirmSalesReturnCommand command) async {
+    final row = await _client.rpc<Map<String, dynamic>>(
+      'sales_confirm_return',
+      params: {
+        'p_command_id': command.commandId,
+        'p_invoice_id': command.invoiceId,
+        'p_reason': command.reason,
+        'p_resolution': command.resolution.name == 'refund'
+            ? 'REFUND'
+            : 'CUSTOMER_CREDIT',
+        'p_lines': [
+          for (final line in command.lines)
+            {
+              'invoice_line_id': line.invoiceLineId,
+              'product_id': line.productId,
+              'quantity': line.quantity,
+              'condition': line.condition,
+              'location_id': line.locationId,
+            },
+        ],
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
+    return _return({...row, 'sales_return_lines': <dynamic>[]});
+  }
 
   Future<List<SalesReturn>> getReturns() async {
     final rows = await _client
@@ -30,11 +67,8 @@ class SupabaseReturnDataSource {
     required String customerId,
     required String customerName,
     required String reason,
-    required List<ReturnLineInput> lines,
-  }) => throw UnsupportedError(
-    'La confirmacion de devoluciones requiere el contrato atomico '
-    'Sales/Inventory/Payments y no esta disponible.',
-  );
+    required List<domain.ReturnLineInput> lines,
+  }) => throw UnsupportedError('Use confirmReturn con commandId y destinos.');
 
   SalesReturn _return(Map<String, dynamic> row) => SalesReturn(
     id: row['id'] as String,
@@ -65,6 +99,11 @@ class SupabaseReturnDataSource {
     confirmedAt: row['confirmed_at'] == null
         ? null
         : DateTime.parse(row['confirmed_at'] as String),
+    debtReductionAmount:
+        (row['debt_reduction_amount'] as num?)?.toDouble() ?? 0,
+    financialResolution: row['financial_resolution'] as String?,
+    financialResolutionAmount:
+        (row['financial_resolution_amount'] as num?)?.toDouble() ?? 0,
   );
 
   SalesReturnLine _line(Map<String, dynamic> row) => SalesReturnLine(
@@ -77,5 +116,7 @@ class SupabaseReturnDataSource {
     totalPrice: (row['total_price'] as num).toDouble(),
     productSku: row['product_sku'] as String?,
     productName: row['product_name'] as String?,
+    condition: row['condition'] as String? ?? 'GOOD',
+    inventoryLocationId: row['inventory_location_id'] as String?,
   );
 }

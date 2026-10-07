@@ -17,6 +17,9 @@ class SalesReturn {
     this.createdAt,
     this.updatedAt,
     this.confirmedAt,
+    this.debtReductionAmount = 0,
+    this.financialResolution,
+    this.financialResolutionAmount = 0,
   });
 
   final String id;
@@ -34,6 +37,9 @@ class SalesReturn {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? confirmedAt;
+  final double debtReductionAmount;
+  final String? financialResolution;
+  final double financialResolutionAmount;
 }
 
 class SalesReturnLine {
@@ -47,6 +53,8 @@ class SalesReturnLine {
     required this.totalPrice,
     this.productSku,
     this.productName,
+    this.condition = 'GOOD',
+    this.inventoryLocationId,
   });
 
   final String id;
@@ -58,4 +66,6 @@ class SalesReturnLine {
   final double totalPrice;
   final String? productSku;
   final String? productName;
+  final String condition;
+  final String? inventoryLocationId;
 }

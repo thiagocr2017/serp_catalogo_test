@@ -195,6 +195,8 @@ extension SalesReturnLineMapper on SalesReturnLine {
     totalPrice: totalPrice,
     productSku: productSku,
     productName: productName,
+    condition: condition,
+    inventoryLocationId: inventoryLocationId,
   );
 }
 
@@ -215,6 +217,9 @@ extension SalesReturnMapper on SalesReturn {
     createdAt: createdAt,
     updatedAt: updatedAt,
     confirmedAt: confirmedAt,
+    debtReductionAmount: debtReductionAmount,
+    financialResolution: financialResolution,
+    financialResolutionAmount: financialResolutionAmount,
   );
 }
 
@@ -233,7 +238,7 @@ extension SalesConsignmentLineMapper on SalesConsignmentLine {
 }
 
 extension SalesConsignmentMapper on SalesConsignment {
-  SalesConsignmentDto toDto({List<SalesConsignmentLine> lines = const []}) =>
+  SalesConsignmentDto toDto({List<SalesConsignmentLine>? lines}) =>
       SalesConsignmentDto(
         id: id,
         consignmentNumber: consignmentNumber,
@@ -246,7 +251,7 @@ extension SalesConsignmentMapper on SalesConsignment {
         notes: notes,
         agentId: agentId,
         inventoryDocumentId: inventoryDocumentId,
-        lines: lines.map((l) => l.toDto()).toList(),
+        lines: (lines ?? this.lines).map((l) => l.toDto()).toList(),
         createdAt: createdAt,
         updatedAt: updatedAt,
         confirmedAt: confirmedAt,
