@@ -30,7 +30,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/products',
     refreshListenable: refreshNotifier,
     redirect: (context, state) {
-      final isAuth = repository.currentUser != null;
+      final user = repository.currentUser;
+      final isAuth = user != null && !user.isAnonymous;
       final hasTrailingSlash =
           state.uri.path.endsWith('/') && state.uri.path.length > 1;
       final path = hasTrailingSlash
@@ -39,11 +40,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isLoggingIn = path == '/login';
 
       if (!isAuth) {
-        if (!isLoggingIn || hasTrailingSlash) return '/login';
+        if (!isLoggingIn) {
+          final fromParam = Uri.encodeQueryComponent(state.uri.path);
+          return '/login?from=$fromParam';
+        }
+        if (hasTrailingSlash) return '/login';
         return null;
       }
 
-      if (isLoggingIn || path == '/') return '/products';
+      if (isLoggingIn || path == '/') {
+        final fromParam = state.uri.queryParameters['from'];
+        if (fromParam != null && fromParam.isNotEmpty && fromParam != '/login' && fromParam != '/') {
+          return fromParam;
+        }
+        return '/products';
+      }
+      
       if (hasTrailingSlash) return path;
 
       return null;
@@ -52,7 +64,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ...authorizationRoutes,
       ShellRoute(
         builder: (context, state, child) =>
-            DesktopShellWidget(currentLocation: state.uri.path, child: child),
+            DesktopShellWidget(
+              currentLocation: state.uri.path, 
+              onSignOut: () => repository.signOut(),
+              child: child,
+            ),
         routes: [
           ...productRoutes,
           ...inventoryRoutes,

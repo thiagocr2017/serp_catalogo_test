@@ -40,8 +40,10 @@ void main() {
           emailConfirm: true,
         ),
       );
-    } catch (_) {
-      // Usuario ya aprovisionado en Supabase local
+    } on AuthException catch (e) {
+      if (e.statusCode != '422' && e.message != 'User already exists') {
+        rethrow;
+      }
     }
 
     final textFields = find.byType(TextFormField);
@@ -83,7 +85,7 @@ void main() {
     if (existingCustomers.isEmpty) {
       await adminClient.from('customers').insert({
         'name': 'Cliente E2E $uniqueId',
-        'identification': 'E2E$uniqueId',
+        'tax_id': 'E2E$uniqueId',
         'is_active': true,
       });
     }

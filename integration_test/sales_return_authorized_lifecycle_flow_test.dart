@@ -90,8 +90,10 @@ void main() {
           emailConfirm: true,
         ),
       );
-    } catch (_) {
-      // Usuario ya aprovisionado en Supabase local
+    } on AuthException catch (e) {
+      if (e.statusCode != '422' && e.message != 'User already exists') {
+        rethrow;
+      }
     }
 
     // Sign out to ensure we are at the login page

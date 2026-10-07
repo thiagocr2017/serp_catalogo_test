@@ -7,11 +7,13 @@ class DesktopShellWidget extends StatelessWidget {
   const DesktopShellWidget({
     required this.currentLocation,
     required this.child,
+    this.onSignOut,
     super.key,
   });
 
   final String currentLocation;
   final Widget child;
+  final VoidCallback? onSignOut;
 
   bool _selected(String path) => currentLocation.startsWith(path);
   bool _moduleSelected(List<String> routes) => routes.any(_selected);
@@ -178,6 +180,24 @@ class DesktopShellWidget extends StatelessWidget {
                     'Configuración',
                     Icons.settings_outlined,
                   ),
+                  if (onSignOut != null) ...[
+                    const Divider(height: 32),
+                    ListTile(
+                      dense: true,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      leading: Icon(
+                        Icons.logout_outlined,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      title: Text(
+                        'Cerrar sesión',
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      ),
+                      onTap: onSignOut,
+                    ),
+                  ],
                 ],
               ),
             ),
