@@ -19,6 +19,31 @@ void main() {
 
     expect(products, hasLength(1));
     expect(products.single.sku, 'SKU-001');
+    expect(repository.lastQuery?.isActive, isTrue);
+  });
+
+  test('refresh conserva el filtro de estado aplicado', () async {
+    final repository = _InMemoryProductRepository();
+    final container = ProviderContainer(
+      overrides: [productRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    final controller = container.read(productListControllerProvider.notifier);
+
+    await controller.applyQuery(const ProductQuery(isActive: false));
+    expect(container.read(productListControllerProvider).value, hasLength(1));
+    expect(
+      container.read(productListControllerProvider).value!.single.isActive,
+      isFalse,
+    );
+
+    await controller.refresh();
+
+    expect(repository.lastQuery?.isActive, isFalse);
+    expect(
+      container.read(productListControllerProvider).value!.single.isActive,
+      isFalse,
+    );
   });
 
   test('keeps selections when products from another category are added', () {
@@ -58,7 +83,24 @@ class _InMemoryProductRepository implements ProductRepository {
       isActive: true,
       createdAt: DateTime.utc(2026),
     ),
+    Product(
+      id: 'inactive-product-id',
+      sku: 'SKU-002',
+      name: 'Inactive product',
+      description: 'Description',
+      categoryId: 'category-id',
+      unitPriceInCents: 100,
+      minimumOrderQuantity: 1,
+      packagingPresentationId: 'presentation-id',
+      cbmPerMoq: 0.01,
+      factoryCostInCents: 50,
+      currentStock: 10,
+      reorderPoint: 5,
+      isActive: false,
+      createdAt: DateTime.utc(2026),
+    ),
   ];
+  ProductQuery? lastQuery;
 
   @override
   Future<Product> createProduct(
@@ -91,7 +133,15 @@ class _InMemoryProductRepository implements ProductRepository {
       _products.where((product) => product.id == id).firstOrNull;
 
   @override
-  Future<List<Product>> getProducts(ProductQuery query) async => _products;
+  Future<List<Product>> getProducts(ProductQuery query) async {
+    lastQuery = query;
+    return _products
+        .where(
+          (product) =>
+              query.isActive == null || product.isActive == query.isActive,
+        )
+        .toList();
+  }
 
   @override
   Future<Product> updateProduct(Product product) async => product;

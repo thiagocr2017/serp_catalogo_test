@@ -3,6 +3,15 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:image/image.dart' as image;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+
+enum ProductImageFrame {
+  vertical(4 / 5),
+  horizontal(4 / 3);
+
+  const ProductImageFrame(this.aspectRatio);
+  final double aspectRatio;
+}
 
 class ProductImageService {
   const ProductImageService(this._client);
@@ -35,10 +44,21 @@ class ProductImageService {
     required double focalX,
     required double focalY,
     required double zoom,
+    ProductImageFrame? frame,
   }) {
     final z = zoom.clamp(1, 3).toDouble();
-    final width = (imageWidth / z).round().clamp(1, imageWidth);
-    final height = (imageHeight / z).round().clamp(1, imageHeight);
+    var baseWidth = imageWidth.toDouble();
+    var baseHeight = imageHeight.toDouble();
+    if (frame != null) {
+      final sourceAspect = imageWidth / imageHeight;
+      if (sourceAspect > frame.aspectRatio) {
+        baseWidth = imageHeight * frame.aspectRatio;
+      } else {
+        baseHeight = imageWidth / frame.aspectRatio;
+      }
+    }
+    final width = (baseWidth / z).round().clamp(1, imageWidth);
+    final height = (baseHeight / z).round().clamp(1, imageHeight);
     final x = (focalX * imageWidth - width / 2).round().clamp(
       0,
       imageWidth - width,
@@ -59,6 +79,7 @@ class ProductImageService {
     required double focalX,
     required double focalY,
     required double zoom,
+    ProductImageFrame? frame,
   }) {
     final decoded = _decoded(bytes);
     final window = cropWindow(
@@ -67,6 +88,7 @@ class ProductImageService {
       focalX: focalX,
       focalY: focalY,
       zoom: zoom,
+      frame: frame,
     );
     final cropped = image.copyCrop(
       decoded,
@@ -76,6 +98,24 @@ class ProductImageService {
       height: window.height,
     );
     return Uint8List.fromList(image.encodeJpg(cropped, quality: 82));
+  }
+
+  static Uint8List rotateQuarterTurn(Uint8List bytes, {required int turns}) {
+    final decoded = _decoded(bytes);
+    final normalizedTurns = turns % 4;
+    if (normalizedTurns == 0) return bytes;
+    final rotated = image.copyRotate(decoded, angle: normalizedTurns * 90);
+    return Uint8List.fromList(image.encodeJpg(rotated, quality: 82));
+  }
+
+  Future<Uint8List> loadExisting(String publicUrl) async {
+    final path = _storagePath(publicUrl);
+    if (path == null) {
+      throw const FormatException(
+        'La URL no corresponde a una imagen del almacenamiento de productos.',
+      );
+    }
+    return _client.storage.from('product-images').download(path);
   }
 
   Future<Uint8List?> selectAndCompress() async {
@@ -98,7 +138,6 @@ class ProductImageService {
   Future<String> replace({
     required String sku,
     required Uint8List bytes,
-    String? previousUrl,
   }) async {
     final safeSku = sku
         .trim()
@@ -109,14 +148,8 @@ class ProductImageService {
         'El SKU no permite crear un nombre de imagen.',
       );
     }
-    // Minúsculas obligatorias: las políticas RLS de product-images solo
-    // aceptan extensiones jpg|jpeg|png|webp en minúsculas (una extensión
-    // en mayúsculas devuelve 403).
-    final path = '$safeSku.jpg';
-    final previousPath = _storagePath(previousUrl);
-    if (previousPath != null) {
-      await _client.storage.from('product-images').remove([previousPath]);
-    }
+    final path =
+        '$safeSku-${DateTime.now().microsecondsSinceEpoch}-${const Uuid().v4()}.jpg';
     await _client.storage
         .from('product-images')
         .uploadBinary(
@@ -129,6 +162,12 @@ class ProductImageService {
         );
     final publicUrl = _client.storage.from('product-images').getPublicUrl(path);
     return '$publicUrl?v=${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  Future<void> delete(String publicUrl) async {
+    final path = _storagePath(publicUrl);
+    if (path == null) return;
+    await _client.storage.from('product-images').remove([path]);
   }
 
   String? _storagePath(String? publicUrl) {

@@ -16,6 +16,7 @@ import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_query.dart';
 import '../../services/catalog_pdf_service.dart';
+import '../controllers/product_list_controller.dart';
 
 class CatalogPdfPage extends ConsumerStatefulWidget {
   const CatalogPdfPage({super.key});
@@ -52,6 +53,14 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   bool _savePreferencesAgain = false;
   bool _preferencesSaved = true;
   bool _savingPdf = false;
+  bool _savingOrder = false;
+  bool _refreshingCatalog = false;
+  final ValueNotifier<bool> _previewReady = ValueNotifier(false);
+  bool _previewFailed = false;
+  int _previewGeneration = 0;
+  bool _orderDirty = false;
+  List<String> _savedCatalogOrder = [];
+  List<String> _savedCategoryOrder = [];
   int _tab = 0;
   static const double _kMinRailWidth = 410;
   double _railWidth = 410;
@@ -64,6 +73,10 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   final catalogOrder = <String>[];
   final categoryOrder = <String>[];
   final categoryReorderSelection = <String>{};
+  final _categorySelectionScrollController = ScrollController();
+  final _productSelectionScrollController = ScrollController();
+  final _categoryOrderScrollController = ScrollController();
+  final _productOrderScrollController = ScrollController();
 
   @override
   void initState() {
@@ -102,9 +115,9 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
               final category = categoryA.catalogSortOrder.compareTo(
                 categoryB.catalogSortOrder,
               );
-              return category != 0
-                  ? category
-                  : a.catalogSortOrder.compareTo(b.catalogSortOrder);
+              if (category != 0) return category;
+              final product = a.catalogSortOrder.compareTo(b.catalogSortOrder);
+              return product != 0 ? product : a.name.compareTo(b.name);
             });
       setState(() {
         products = eligible;
@@ -147,13 +160,19 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
         categoryOrder
           ..clear()
           ..addAll(
-            categories
-                .where(
-                  (category) =>
-                      eligible.any((p) => p.categoryId == category.id),
-                )
+            (categories
+                    .where(
+                      (category) =>
+                          eligible.any((p) => p.categoryId == category.id),
+                    )
+                    .toList()
+                  ..sort(
+                    (a, b) => a.catalogSortOrder.compareTo(b.catalogSortOrder),
+                  ))
                 .map((category) => category.id),
           );
+        _savedCatalogOrder = [...catalogOrder];
+        _savedCategoryOrder = [...categoryOrder];
         selected.addAll(
           sharedSelection.isEmpty
               ? eligible.map((p) => p.id)
@@ -173,6 +192,11 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     _preferencesTimer?.cancel();
     agent.dispose();
     phone.dispose();
+    _previewReady.dispose();
+    _categorySelectionScrollController.dispose();
+    _productSelectionScrollController.dispose();
+    _categoryOrderScrollController.dispose();
+    _productOrderScrollController.dispose();
     super.dispose();
   }
 
@@ -275,6 +299,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   @override
   Widget build(BuildContext context) {
     final data = products;
+    final previewGeneration = _previewGeneration;
     final rawMaxRail = MediaQuery.sizeOf(context).width - 480;
     final maxRail = rawMaxRail < _kMinRailWidth ? _kMinRailWidth : rawMaxRail;
     final railWidth = _railWidth.clamp(_kMinRailWidth, maxRail).toDouble();
@@ -310,6 +335,45 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                   const SizedBox(width: 16),
                 ],
         ),
+        bottomNavigationBar: _orderDirty
+            ? SafeArea(
+                top: false,
+                child: Material(
+                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text('Cambios de orden sin guardar'),
+                        ),
+                        TextButton.icon(
+                          onPressed: _savingOrder ? null : _discardOrderChanges,
+                          icon: const Icon(Icons.undo),
+                          label: const Text('Descartar'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          onPressed: _savingOrder ? null : _saveOrderChanges,
+                          icon: _savingOrder
+                              ? const SizedBox.square(
+                                  dimension: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.save),
+                          label: const Text('Guardar'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            : null,
         body: data == null
             ? const Center(child: CircularProgressIndicator())
             : Row(
@@ -691,7 +755,12 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                                   SizedBox(
                                     height: 220,
                                     child: Scrollbar(
+                                      controller:
+                                          _categorySelectionScrollController,
                                       child: ListView(
+                                        controller:
+                                            _categorySelectionScrollController,
+                                        primary: false,
                                         children: [
                                           for (final entry
                                               in categoryNames.entries)
@@ -788,7 +857,12 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                                   SizedBox(
                                     height: 320,
                                     child: Scrollbar(
+                                      controller:
+                                          _productSelectionScrollController,
                                       child: ListView(
+                                        controller:
+                                            _productSelectionScrollController,
+                                        primary: false,
                                         children: [
                                           for (final p in data)
                                             if (_matchesProduct(
@@ -821,6 +895,39 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                               ListView(
                                 padding: const EdgeInsets.all(20),
                                 children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'Orden del catálogo',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: _orderDirty
+                                            ? 'Guarda o descarta los cambios antes de actualizar'
+                                            : 'Actualizar catálogo',
+                                        onPressed:
+                                            _orderDirty ||
+                                                _savingOrder ||
+                                                _refreshingCatalog
+                                            ? null
+                                            : _refreshCatalog,
+                                        icon: _refreshingCatalog
+                                            ? const SizedBox.square(
+                                                dimension: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                            : const Icon(Icons.refresh),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
                                   Text(
                                     'Orden de categorías',
                                     style: Theme.of(context)
@@ -847,7 +954,12 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                                   SizedBox(
                                     height: 180,
                                     child: Scrollbar(
+                                      controller:
+                                          _categoryOrderScrollController,
                                       child: ListView(
+                                        controller:
+                                            _categoryOrderScrollController,
+                                        primary: false,
                                         children: [
                                           for (final categoryId
                                               in categoryOrder)
@@ -902,7 +1014,11 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                                   SizedBox(
                                     height: 340,
                                     child: Scrollbar(
+                                      controller: _productOrderScrollController,
                                       child: ListView(
+                                        controller:
+                                            _productOrderScrollController,
+                                        primary: false,
                                         children: [
                                           for (final product
                                               in _orderedProducts(data))
@@ -945,21 +1061,52 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
                   ),
                   _buildResizeHandle(maxRail),
                   Expanded(
-                    child: PdfPreview(
-                      allowPrinting: false,
-                      allowSharing: false,
-                      canChangePageFormat: false,
-                      canChangeOrientation: false,
-                      canDebug: false,
-                      pdfFileName: 'catalogo_serp.pdf',
-                      actions: [
-                        IconButton(
-                          tooltip: 'Guardar PDF',
-                          onPressed: () => _savePdf(data),
-                          icon: const Icon(Icons.download_outlined),
+                    child: Stack(
+                      children: [
+                        PdfPreview(
+                          key: ValueKey(previewGeneration),
+                          allowPrinting: false,
+                          allowSharing: false,
+                          canChangePageFormat: false,
+                          canChangeOrientation: false,
+                          canDebug: false,
+                          pdfFileName: 'catalogo_serp.pdf',
+                          loadingWidget: _CatalogRenderProgress(
+                            onReady: () =>
+                                _onCatalogPreviewReady(previewGeneration),
+                          ),
+                          onError: (_, error) {
+                            _previewFailed = true;
+                            return Center(
+                              child: Text(
+                                'No se pudo renderizar el catálogo: $error',
+                              ),
+                            );
+                          },
+                          actions: [
+                            IconButton(
+                              tooltip: 'Guardar PDF',
+                              onPressed: () => _savePdf(data),
+                              icon: const Icon(Icons.download_outlined),
+                            ),
+                          ],
+                          build: (_) => _generatePdf(data),
+                        ),
+                        ValueListenableBuilder<bool>(
+                          valueListenable: _previewReady,
+                          builder: (context, ready, _) => ready
+                              ? Positioned(
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  child: _CatalogReadyProgress(
+                                    onDismiss: () =>
+                                        _previewReady.value = false,
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
                         ),
                       ],
-                      build: (_) => _generatePdf(data),
                     ),
                   ),
                 ],
@@ -968,34 +1115,46 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     );
   }
 
-  Future<Uint8List> _generatePdf(List<Product> data) =>
-      CatalogPdfService().generate(
-        _orderedProducts(data)
-            .where((product) => selected.contains(product.id))
-            .toList(),
-        CatalogPdfOptions(
-          companyName: companyName,
-          paymentMethods: paymentMethods,
-          agentName: agent.text,
-          agentPhone: displayPhone(phone.text),
-          cardsPerPage: cards,
-          categoryNames: categoryNames,
-          logoBytes: logoBytes,
-          backgroundColor: backgroundColor,
-          cardColor: cardColor,
-          accentColor: designAccentColor,
-          textColor: textColor,
-          highlightTextColor: highlightTextColor,
-          secondaryTextColor: secondaryTextColor,
-          promotionColor: promotionColor,
-          promotionTextColor: promotionTextColor,
-          promotionPreviousPriceColor: promotionPreviousPriceColor,
-          promotionPriceColor: promotionPriceColor,
-          promotionDescriptionColor: promotionDescriptionColor,
-          imageFit: imageFit,
-        ),
-        fontLoader: rootBundle.load,
-      );
+  Future<Uint8List> _generatePdf(List<Product> data) async {
+    _previewFailed = false;
+    if (_previewReady.value) _previewReady.value = false;
+    return CatalogPdfService().generate(
+      _orderedProducts(data)
+          .where((product) => selected.contains(product.id))
+          .toList(),
+      CatalogPdfOptions(
+        companyName: companyName,
+        paymentMethods: paymentMethods,
+        agentName: agent.text,
+        agentPhone: displayPhone(phone.text),
+        cardsPerPage: cards,
+        categoryNames: categoryNames,
+        logoBytes: logoBytes,
+        backgroundColor: backgroundColor,
+        cardColor: cardColor,
+        accentColor: designAccentColor,
+        textColor: textColor,
+        highlightTextColor: highlightTextColor,
+        secondaryTextColor: secondaryTextColor,
+        promotionColor: promotionColor,
+        promotionTextColor: promotionTextColor,
+        promotionPreviousPriceColor: promotionPreviousPriceColor,
+        promotionPriceColor: promotionPriceColor,
+        promotionDescriptionColor: promotionDescriptionColor,
+        imageFit: imageFit,
+      ),
+      fontLoader: rootBundle.load,
+    );
+  }
+
+  void _onCatalogPreviewReady(int generation) {
+    if (mounted &&
+        generation == _previewGeneration &&
+        !_previewFailed &&
+        !_previewReady.value) {
+      _previewReady.value = true;
+    }
+  }
 
   Future<void> _savePdf(List<Product> data) async {
     if (_savingPdf) return;
@@ -1133,32 +1292,271 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
     ],
   );
 
-  Future<void> _persistOrder() async {
+  Future<void> _saveOrderChanges() async {
+    if (!_orderDirty || _savingOrder) return;
+    setState(() => _savingOrder = true);
     try {
+      final completeProductOrder = await _completeProductOrder();
+      final completeCategoryOrder = await _completeCategoryOrder();
       await ref
           .read(productRepositoryProvider)
           .saveCatalogOrder(
-            productIds: catalogOrder,
-            categoryIds: categoryOrder,
+            productIds: completeProductOrder,
+            categoryIds: completeCategoryOrder,
           );
+      if (mounted) {
+        setState(() {
+          _savedCatalogOrder = [...catalogOrder];
+          _savedCategoryOrder = [...categoryOrder];
+          _orderDirty = false;
+        });
+      }
       ref.invalidate(categoriesProvider);
+      await ref.read(productListControllerProvider.notifier).refresh();
+      try {
+        await _reloadCatalogOrder(preserveOrder: true);
+        if (mounted) {
+          setState(() {
+            _previewReady.value = false;
+            _previewGeneration++;
+          });
+        }
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'El orden se guardó, pero no se pudo actualizar el catálogo: $error',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Orden del catálogo guardado.')),
+        );
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('No se pudo guardar el orden: $error')),
         );
       }
+    } finally {
+      if (mounted) setState(() => _savingOrder = false);
     }
   }
 
-  Future<void> _moveCategories(int direction) async {
+  void _discardOrderChanges() {
     setState(() {
-      _moveSelectedItems(categoryOrder, categoryReorderSelection, direction);
+      catalogOrder
+        ..clear()
+        ..addAll(_savedCatalogOrder);
+      categoryOrder
+        ..clear()
+        ..addAll(_savedCategoryOrder);
+      _orderDirty = false;
+      reorderSelection.clear();
+      categoryReorderSelection.clear();
     });
-    await _persistOrder();
   }
 
-  Future<void> _moveMarked(List<Product> data, int direction) async {
+  bool _sameOrder(List<String> first, List<String> second) {
+    if (first.length != second.length) return false;
+    for (var index = 0; index < first.length; index++) {
+      if (first[index] != second[index]) return false;
+    }
+    return true;
+  }
+
+  Future<List<String>> _completeProductOrder() async {
+    final allProducts = await ref.read(getProductsProvider)(
+      const ProductQuery(),
+    );
+    final productById = {
+      for (final product in allProducts) product.id: product,
+    };
+    final visibleIndex = {
+      for (var index = 0; index < catalogOrder.length; index++)
+        catalogOrder[index]: index,
+    };
+    final categoryIndex = {
+      for (var index = 0; index < categoryOrder.length; index++)
+        categoryOrder[index]: index,
+    };
+    final categories = await ref.read(categoriesProvider.future);
+    final persistedCategoryIndex = {
+      for (final category in categories)
+        category.id: categoryIndex[category.id] ?? category.catalogSortOrder,
+    };
+    final productIndex = <String, int>{};
+    var nextProductIndex = 0;
+    for (final categoryId in categoryOrder) {
+      for (final productId in catalogOrder) {
+        final product = productById[productId];
+        if (product?.categoryId == categoryId) {
+          productIndex[productId] = nextProductIndex++;
+        }
+      }
+    }
+    allProducts.sort((a, b) {
+      final categoryOrder = (persistedCategoryIndex[a.categoryId] ?? 0)
+          .compareTo(persistedCategoryIndex[b.categoryId] ?? 0);
+      if (categoryOrder != 0) return categoryOrder;
+      final productOrder =
+          (productIndex[a.id] ?? visibleIndex[a.id] ?? a.catalogSortOrder)
+              .compareTo(
+                productIndex[b.id] ?? visibleIndex[b.id] ?? b.catalogSortOrder,
+              );
+      return productOrder != 0 ? productOrder : a.id.compareTo(b.id);
+    });
+    return allProducts.map((product) => product.id).toList();
+  }
+
+  Future<List<String>> _completeCategoryOrder() async {
+    final categories = await ref.read(categoriesProvider.future);
+    final visibleIds = categoryOrder.toSet();
+    final visibleOrder = {
+      for (var index = 0; index < categoryOrder.length; index++)
+        categoryOrder[index]: index,
+    };
+    categories.sort((a, b) {
+      final aVisible = visibleIds.contains(a.id);
+      final bVisible = visibleIds.contains(b.id);
+      if (aVisible != bVisible) return aVisible ? -1 : 1;
+      final aOrder = visibleOrder[a.id] ?? a.catalogSortOrder;
+      final bOrder = visibleOrder[b.id] ?? b.catalogSortOrder;
+      final order = aOrder.compareTo(bOrder);
+      return order != 0 ? order : a.id.compareTo(b.id);
+    });
+    return categories.map((category) => category.id).toList();
+  }
+
+  Future<void> _refreshCatalog() async {
+    if (_orderDirty || _savingOrder || _refreshingCatalog) return;
+    setState(() => _refreshingCatalog = true);
+    try {
+      ref.invalidate(categoriesProvider);
+      await ref.read(productListControllerProvider.notifier).refresh();
+      _previewReady.value = false;
+      await _reloadCatalogOrder();
+      if (mounted) {
+        setState(() {
+          _previewReady.value = false;
+          _previewGeneration++;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo actualizar el catálogo: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _refreshingCatalog = false);
+    }
+  }
+
+  Future<void> _reloadCatalogOrder({bool preserveOrder = false}) async {
+    final data = await ref.read(getProductsProvider)(
+      const ProductQuery(isActive: true),
+    );
+    final categories = await ref.read(categoriesProvider.future);
+    final eligibleCategories =
+        categories
+            .where(
+              (category) => data.any(
+                (product) =>
+                    product.isActive &&
+                    !product.isOutOfStock &&
+                    product.categoryId == category.id,
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final position = a.catalogSortOrder.compareTo(b.catalogSortOrder);
+            return position != 0 ? position : a.id.compareTo(b.id);
+          });
+    final persistedCategoryIndex = {
+      for (var index = 0; index < eligibleCategories.length; index++)
+        eligibleCategories[index].id: index,
+    };
+    final eligible =
+        data
+            .where((product) => product.isActive && !product.isOutOfStock)
+            .toList()
+          ..sort((a, b) {
+            final categoryPosition =
+                (preserveOrder
+                        ? categoryOrder.indexOf(a.categoryId)
+                        : persistedCategoryIndex[a.categoryId] ?? 0)
+                    .compareTo(
+                      preserveOrder
+                          ? categoryOrder.indexOf(b.categoryId)
+                          : persistedCategoryIndex[b.categoryId] ?? 0,
+                    );
+            if (categoryPosition != 0) return categoryPosition;
+            final productPosition = preserveOrder
+                ? catalogOrder
+                      .indexOf(a.id)
+                      .compareTo(catalogOrder.indexOf(b.id))
+                : a.catalogSortOrder.compareTo(b.catalogSortOrder);
+            return productPosition != 0
+                ? productPosition
+                : a.name.compareTo(b.name);
+          });
+    if (!mounted) return;
+    setState(() {
+      products = eligible;
+      categoryNames = {
+        for (final category in categories) category.id: category.name,
+      };
+      if (!preserveOrder) {
+        catalogOrder
+          ..clear()
+          ..addAll(eligible.map((product) => product.id));
+        categoryOrder
+          ..clear()
+          ..addAll(eligibleCategories.map((category) => category.id));
+        _savedCatalogOrder = [...catalogOrder];
+        _savedCategoryOrder = [...categoryOrder];
+        _orderDirty = false;
+      } else {
+        final eligibleIds = eligible.map((product) => product.id).toSet();
+        catalogOrder.removeWhere((id) => !eligibleIds.contains(id));
+        for (final product in eligible) {
+          if (!catalogOrder.contains(product.id)) catalogOrder.add(product.id);
+        }
+        final eligibleCategoryIds = categories
+            .where(
+              (category) =>
+                  eligible.any((product) => product.categoryId == category.id),
+            )
+            .map((category) => category.id)
+            .toSet();
+        categoryOrder.removeWhere((id) => !eligibleCategoryIds.contains(id));
+        for (final category in categories) {
+          if (eligibleCategoryIds.contains(category.id) &&
+              !categoryOrder.contains(category.id)) {
+            categoryOrder.add(category.id);
+          }
+        }
+      }
+    });
+  }
+
+  void _moveCategories(int direction) {
+    setState(() {
+      _moveSelectedItems(categoryOrder, categoryReorderSelection, direction);
+      _orderDirty =
+          !_sameOrder(categoryOrder, _savedCategoryOrder) ||
+          !_sameOrder(catalogOrder, _savedCatalogOrder);
+    });
+  }
+
+  void _moveMarked(List<Product> data, int direction) {
     final byId = {for (final product in data) product.id: product};
     setState(() {
       if (direction < 0) {
@@ -1184,8 +1582,10 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
           }
         }
       }
+      _orderDirty =
+          !_sameOrder(categoryOrder, _savedCategoryOrder) ||
+          !_sameOrder(catalogOrder, _savedCatalogOrder);
     });
-    await _persistOrder();
   }
 
   void _moveSelectedItems(
@@ -1210,6 +1610,106 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
         }
       }
     }
+  }
+}
+
+class _CatalogRenderProgress extends StatefulWidget {
+  const _CatalogRenderProgress({required this.onReady});
+
+  final VoidCallback onReady;
+
+  @override
+  State<_CatalogRenderProgress> createState() => _CatalogRenderProgressState();
+}
+
+class _CatalogRenderProgressState extends State<_CatalogRenderProgress> {
+  @override
+  void dispose() {
+    final onReady = widget.onReady;
+    WidgetsBinding.instance.addPostFrameCallback((_) => onReady());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Center(
+      child: Container(
+        width: 360,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          border: Border.all(color: colors.outlineVariant),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const LinearProgressIndicator(),
+            const SizedBox(height: 12),
+            Text(
+              'Renderizando catálogo...',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colors.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CatalogReadyProgress extends StatefulWidget {
+  const _CatalogReadyProgress({required this.onDismiss});
+
+  final VoidCallback onDismiss;
+
+  @override
+  State<_CatalogReadyProgress> createState() => _CatalogReadyProgressState();
+}
+
+class _CatalogReadyProgressState extends State<_CatalogReadyProgress> {
+  Timer? _dismissTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _dismissTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) widget.onDismiss();
+    });
+  }
+
+  @override
+  void dispose() {
+    _dismissTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const LinearProgressIndicator(value: 1),
+            const SizedBox(height: 4),
+            Text(
+              'Catálogo listo · 100%',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: colors.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

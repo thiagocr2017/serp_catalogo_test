@@ -185,7 +185,7 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
       await repository.updateCategory(existing.id, name);
     }
     ref.invalidate(categoriesProvider);
-    ref.invalidate(productListControllerProvider);
+    await ref.read(productListControllerProvider.notifier).refresh();
   }
 
   Future<void> _deleteCategory(
@@ -260,7 +260,7 @@ class _CategoryPageState extends ConsumerState<CategoryPage> {
           replacementCategoryId: destinationId,
         );
     ref.invalidate(categoriesProvider);
-    ref.invalidate(productListControllerProvider);
+    await ref.read(productListControllerProvider.notifier).refresh();
     await _loadProducts();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

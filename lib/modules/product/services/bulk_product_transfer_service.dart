@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 
 import '../domain/entities/category.dart';
 import '../domain/entities/product.dart';
+import '../domain/entities/product_query.dart';
 import '../domain/repositories/product_repository.dart';
 import '../../configuration/configuration_module.dart';
 import 'product_image_service.dart';
@@ -35,15 +36,29 @@ class BulkProductTransferService {
     'punto_reorden',
     'activo',
     'imagen',
+    'orden_categoria',
+    'orden_producto',
   ];
 
   String templateCsv() => excel.encode([headers]);
 
   String exportCsv(List<Product> products, List<Category> categories) {
     final categoryNames = {for (final c in categories) c.id: c.name};
+    final categoryOrders = {
+      for (final c in categories) c.id: c.catalogSortOrder,
+    };
+    final orderedProducts = [...products]
+      ..sort((a, b) {
+        final category = (categoryOrders[a.categoryId] ?? 0).compareTo(
+          categoryOrders[b.categoryId] ?? 0,
+        );
+        return category != 0
+            ? category
+            : a.catalogSortOrder.compareTo(b.catalogSortOrder);
+      });
     return excel.encode([
       headers,
-      for (final product in products)
+      for (final product in orderedProducts)
         [
           product.sku,
           product.name,
@@ -63,6 +78,8 @@ class BulkProductTransferService {
           product.reorderPoint,
           product.isActive ? 'SI' : 'NO',
           product.imageUrl == null ? '' : '${product.sku}.jpg',
+          categoryOrders[product.categoryId] ?? 0,
+          product.catalogSortOrder,
         ],
     ]);
   }
@@ -86,8 +103,11 @@ class BulkProductTransferService {
               value.toString().replaceFirst('\ufeff', '').trim().toLowerCase(),
         )
         .toList();
+    const optionalHeaders = {'orden_categoria', 'orden_producto'};
     final missing = headers.where(
-      (header) => !normalizedHeaders.contains(header),
+      (header) =>
+          !optionalHeaders.contains(header) &&
+          !normalizedHeaders.contains(header),
     );
     if (missing.isNotEmpty) {
       return BulkProductPreview(
@@ -96,7 +116,9 @@ class BulkProductTransferService {
       );
     }
     final indexes = {
-      for (final header in headers) header: normalizedHeaders.indexOf(header),
+      for (final header in headers)
+        if (normalizedHeaders.contains(header))
+          header: normalizedHeaders.indexOf(header),
     };
     final categoryByName = {
       for (final category in categories)
@@ -112,6 +134,7 @@ class BulkProductTransferService {
     };
     final parsed = <BulkProductRow>[];
     final errors = <String>[];
+    final categoryOrderById = <String, int>{};
     for (var index = 1; index < rows.length; index++) {
       final source = rows[index];
       String value(String header) {
@@ -130,6 +153,21 @@ class BulkProductTransferService {
         continue;
       }
       try {
+        final categoryOrder = _optionalNonNegativeInt(
+          indexes.containsKey('orden_categoria')
+              ? value('orden_categoria')
+              : '',
+          fallback: category.catalogSortOrder,
+        );
+        final previousCategoryOrder = categoryOrderById[category.id];
+        if (previousCategoryOrder != null &&
+            previousCategoryOrder != categoryOrder) {
+          errors.add(
+            'Fila $line: todas las filas de la categoría "${category.name}" deben usar el mismo orden_categoria.',
+          );
+          continue;
+        }
+        categoryOrderById[category.id] = categoryOrder;
         final presentation =
             presentationByName[value('presentacion').toLowerCase()];
         if (presentation == null) {
@@ -146,6 +184,7 @@ class BulkProductTransferService {
             name: name,
             description: value('descripcion'),
             categoryId: category.id,
+            categorySortOrder: categoryOrder,
             barcode: _nullable(value('codigo_barras')),
             unitPriceInCents: _cents(value('precio_unitario')),
             packagePriceInCents: value('precio_empaque').isEmpty
@@ -165,6 +204,14 @@ class BulkProductTransferService {
             factoryCostInCents: _cents(value('costo_fabrica'), fallback: 0),
             initialStock: int.tryParse(value('stock_inicial')) ?? 0,
             reorderPoint: int.tryParse(value('punto_reorden')) ?? 0,
+            catalogSortOrder: _optionalNonNegativeInt(
+              indexes.containsKey('orden_producto')
+                  ? value('orden_producto')
+                  : '',
+              fallback: parsed
+                  .where((row) => row.categoryId == category.id)
+                  .length,
+            ),
             isActive: !const {
               'NO',
               'FALSE',
@@ -209,17 +256,32 @@ class BulkProductTransferService {
     var created = 0;
     var updated = 0;
     final errors = <String>[];
+    final categoryOrders = <String, int>{};
+    final orderedRows = [...preview.rows]
+      ..sort((a, b) {
+        final category = a.categorySortOrder.compareTo(b.categorySortOrder);
+        if (category != 0) return category;
+        final product = a.catalogSortOrder.compareTo(b.catalogSortOrder);
+        return product != 0 ? product : a.line.compareTo(b.line);
+      });
+    final productPositionByLine = <int, int>{};
+    final nextProductPositionByCategory = <String, int>{};
+    for (final row in orderedRows) {
+      final position = nextProductPositionByCategory[row.categoryId] ?? 0;
+      productPositionByLine[row.line] = position;
+      nextProductPositionByCategory[row.categoryId] = position + 1;
+    }
     for (final row in preview.rows) {
+      String? uploadedImageUrl;
       try {
         final existing = row.existing;
         final imageKey = (row.imageName ?? '${row.sku}.jpg').toLowerCase();
         final imageBytes = images[imageKey];
         final imageUrl = imageBytes == null
             ? existing?.imageUrl
-            : await _imageService.replace(
+            : uploadedImageUrl = await _imageService.replace(
                 sku: row.sku,
                 bytes: imageBytes,
-                previousUrl: existing?.imageUrl,
               );
         final product = Product(
           id: existing?.id ?? const Uuid().v4(),
@@ -243,7 +305,7 @@ class BulkProductTransferService {
           imagePositionX: existing?.imagePositionX ?? .5,
           imagePositionY: existing?.imagePositionY ?? .5,
           imageScale: existing?.imageScale ?? 1,
-          catalogSortOrder: existing?.catalogSortOrder ?? 0,
+          catalogSortOrder: productPositionByLine[row.line]!,
           currentStock: existing?.currentStock ?? 0,
           reorderPoint: row.reorderPoint,
           promotionPriceInCents: existing?.promotionPriceInCents,
@@ -253,18 +315,92 @@ class BulkProductTransferService {
           createdAt: existing?.createdAt ?? DateTime.now().toUtc(),
           updatedAt: existing == null ? null : DateTime.now().toUtc(),
         );
-        if (existing == null) {
-          await _repository.createProduct(
-            product,
-            initialStock: row.initialStock,
-          );
-          created++;
-        } else {
-          await _repository.updateProduct(product);
-          updated++;
+        try {
+          if (existing == null) {
+            await _repository.createProduct(
+              product,
+              initialStock: row.initialStock,
+            );
+            created++;
+          } else {
+            await _repository.updateProduct(product);
+            updated++;
+          }
+        } catch (error) {
+          if (uploadedImageUrl != null) {
+            try {
+              await _imageService.delete(uploadedImageUrl);
+            } catch (cleanupError) {
+              throw Exception(
+                '$error. No se pudo limpiar la nueva imagen: $cleanupError',
+              );
+            }
+          }
+          rethrow;
         }
+        if (uploadedImageUrl != null && existing?.imageUrl != null) {
+          try {
+            await _imageService.delete(existing!.imageUrl!);
+          } catch (error) {
+            errors.add(
+              'Fila ${row.line} (${row.sku}): producto guardado, pero no se pudo eliminar la imagen anterior ($error).',
+            );
+          }
+        }
+        categoryOrders[row.categoryId] = row.categorySortOrder;
       } catch (error) {
         errors.add('Fila ${row.line} (${row.sku}): $error');
+      }
+    }
+    if (categoryOrders.isNotEmpty) {
+      final categories = await _repository.getCategories();
+      final orderedCategories = [...categories]
+        ..sort((a, b) {
+          final aOrder = categoryOrders[a.id] ?? a.catalogSortOrder;
+          final bOrder = categoryOrders[b.id] ?? b.catalogSortOrder;
+          return aOrder.compareTo(bOrder);
+        });
+      try {
+        final products = await _repository.getProducts(const ProductQuery());
+        final importedOrderBySku = {
+          for (final row in preview.rows)
+            row.sku.toLowerCase(): productPositionByLine[row.line]!,
+        };
+        final categoryPositionById = {
+          for (var index = 0; index < orderedCategories.length; index++)
+            orderedCategories[index].id: index,
+        };
+        final finalProducts = [...products]
+          ..sort((a, b) {
+            final categoryA =
+                categoryPositionById[a.categoryId] ??
+                categories
+                    .firstWhere((category) => category.id == a.categoryId)
+                    .catalogSortOrder;
+            final categoryB =
+                categoryPositionById[b.categoryId] ??
+                categories
+                    .firstWhere((category) => category.id == b.categoryId)
+                    .catalogSortOrder;
+            final categoryOrder = categoryA.compareTo(categoryB);
+            if (categoryOrder != 0) return categoryOrder;
+            final itemOrderA =
+                importedOrderBySku[a.sku.toLowerCase()] ??
+                a.catalogSortOrder + preview.rows.length;
+            final itemOrderB =
+                importedOrderBySku[b.sku.toLowerCase()] ??
+                b.catalogSortOrder + preview.rows.length;
+            final itemOrder = itemOrderA.compareTo(itemOrderB);
+            return itemOrder != 0 ? itemOrder : a.id.compareTo(b.id);
+          });
+        await _repository.saveCatalogOrder(
+          productIds: finalProducts.map((product) => product.id).toList(),
+          categoryIds: orderedCategories
+              .map((category) => category.id)
+              .toList(),
+        );
+      } catch (error) {
+        errors.add('No se pudo guardar el orden de categorías: $error');
       }
     }
     return BulkImportResult(created: created, updated: updated, errors: errors);
@@ -305,6 +441,15 @@ class BulkProductTransferService {
     return parsed;
   }
 
+  static int _optionalNonNegativeInt(String value, {required int fallback}) {
+    if (value.isEmpty) return fallback;
+    final parsed = int.parse(value);
+    if (parsed < 0) {
+      throw const FormatException('el orden no puede ser negativo');
+    }
+    return parsed;
+  }
+
   static bool _isImage(String name) =>
       RegExp(r'\.(jpg|jpeg|png|webp)$', caseSensitive: false).hasMatch(name);
   static String _baseName(String path) => path.split('/').last;
@@ -324,6 +469,7 @@ class BulkProductRow {
     required this.name,
     required this.description,
     required this.categoryId,
+    required this.categorySortOrder,
     required this.barcode,
     required this.unitPriceInCents,
     required this.packagePriceInCents,
@@ -335,6 +481,7 @@ class BulkProductRow {
     required this.factoryCostInCents,
     required this.initialStock,
     required this.reorderPoint,
+    required this.catalogSortOrder,
     required this.isActive,
     required this.imageName,
   });
@@ -344,6 +491,7 @@ class BulkProductRow {
   final String name;
   final String description;
   final String categoryId;
+  final int categorySortOrder;
   final String? barcode;
   final int unitPriceInCents;
   final int? packagePriceInCents;
@@ -355,6 +503,7 @@ class BulkProductRow {
   final int factoryCostInCents;
   final int initialStock;
   final int reorderPoint;
+  final int catalogSortOrder;
   final bool isActive;
   final String? imageName;
 }

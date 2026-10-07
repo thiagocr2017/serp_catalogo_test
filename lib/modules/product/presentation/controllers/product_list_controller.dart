@@ -11,7 +11,7 @@ final productListControllerProvider =
     );
 
 class ProductListController extends AsyncNotifier<List<Product>> {
-  ProductQuery _query = const ProductQuery();
+  ProductQuery _query = const ProductQuery(isActive: true);
 
   @override
   Future<List<Product>> build() {

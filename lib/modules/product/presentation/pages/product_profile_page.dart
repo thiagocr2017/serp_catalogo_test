@@ -613,7 +613,7 @@ class _Profile extends ConsumerWidget {
       );
       await ref.read(saveProductProvider).update(updated);
       ref.invalidate(productByIdProvider(product.id));
-      ref.invalidate(productListControllerProvider);
+      await ref.read(productListControllerProvider.notifier).refresh();
     }
     name.dispose();
     description.dispose();
@@ -682,7 +682,7 @@ class _Profile extends ConsumerWidget {
         await ref.read(deactivateProductProvider)(product.id);
       }
       ref.invalidate(productByIdProvider(product.id));
-      ref.invalidate(productListControllerProvider);
+      await ref.read(productListControllerProvider.notifier).refresh();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

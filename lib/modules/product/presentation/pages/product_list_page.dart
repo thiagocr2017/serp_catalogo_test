@@ -26,6 +26,7 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
   bool _onlyLowStock = false;
   bool? _activeStatus = true;
   String? _categoryId;
+  final _deactivatingProductIds = <String>{};
 
   @override
   void dispose() {
@@ -53,6 +54,49 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
   int? _toCents(String value) {
     final amount = double.tryParse(value.replaceAll(',', '.'));
     return amount == null ? null : (amount * 100).round();
+  }
+
+  Future<void> _deactivateProduct(Product product) async {
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Desactivar producto'),
+        content: Text(
+          '${product.name} dejará de aparecer entre los productos activos, pero conservará su historial.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Desactivar'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true || !mounted) return;
+    setState(() => _deactivatingProductIds.add(product.id));
+    try {
+      await ref.read(deactivateProductProvider)(product.id);
+      await ref.read(productListControllerProvider.notifier).refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Producto desactivado.')));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo desactivar el producto: $error')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _deactivatingProductIds.remove(product.id));
+      }
+    }
   }
 
   @override
@@ -150,6 +194,8 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
                         products: items,
                         categories: categories,
                         selectedIds: selectedIds,
+                        deactivatingProductIds: _deactivatingProductIds,
+                        onDeactivate: _deactivateProduct,
                         onSelectAll: (selected) => ref
                             .read(selectedProductIdsProvider.notifier)
                             .setMany(
@@ -163,6 +209,8 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
                     : _ProductGrid(
                         products: items,
                         selectedIds: selectedIds,
+                        deactivatingProductIds: _deactivatingProductIds,
+                        onDeactivate: _deactivateProduct,
                         onSelected: (id, selected) => ref
                             .read(selectedProductIdsProvider.notifier)
                             .toggle(id, selected: selected),
@@ -328,12 +376,16 @@ class _ProductTable extends StatelessWidget {
     required this.products,
     required this.categories,
     required this.selectedIds,
+    required this.deactivatingProductIds,
+    required this.onDeactivate,
     required this.onSelected,
     required this.onSelectAll,
   });
   final List<Product> products;
   final List<Category> categories;
   final Set<String> selectedIds;
+  final Set<String> deactivatingProductIds;
+  final ValueChanged<Product> onDeactivate;
   final void Function(String id, bool selected) onSelected;
   final ValueChanged<bool> onSelectAll;
 
@@ -429,7 +481,28 @@ class _ProductTable extends StatelessWidget {
                     onTap: () => context.go('/products/${product.id}'),
                   ),
                   DataCell(
-                    _StockBadge(product: product),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _StockBadge(product: product),
+                        if (product.isActive)
+                          IconButton(
+                            tooltip: 'Desactivar producto',
+                            onPressed:
+                                deactivatingProductIds.contains(product.id)
+                                ? null
+                                : () => onDeactivate(product),
+                            icon: deactivatingProductIds.contains(product.id)
+                                ? const SizedBox.square(
+                                    dimension: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.visibility_off_outlined),
+                          ),
+                      ],
+                    ),
                     onTap: () => context.go('/products/${product.id}'),
                   ),
                 ],
@@ -445,10 +518,14 @@ class _ProductGrid extends StatelessWidget {
   const _ProductGrid({
     required this.products,
     required this.selectedIds,
+    required this.deactivatingProductIds,
+    required this.onDeactivate,
     required this.onSelected,
   });
   final List<Product> products;
   final Set<String> selectedIds;
+  final Set<String> deactivatingProductIds;
+  final ValueChanged<Product> onDeactivate;
   final void Function(String id, bool selected) onSelected;
 
   @override
@@ -495,6 +572,31 @@ class _ProductGrid extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (product.isActive)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Material(
+                          color: Theme.of(context).colorScheme.surface,
+                          shape: const CircleBorder(),
+                          elevation: 2,
+                          child: IconButton(
+                            tooltip: 'Desactivar producto',
+                            onPressed:
+                                deactivatingProductIds.contains(product.id)
+                                ? null
+                                : () => onDeactivate(product),
+                            icon: deactivatingProductIds.contains(product.id)
+                                ? const SizedBox.square(
+                                    dimension: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.visibility_off_outlined),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 Expanded(
@@ -508,10 +610,12 @@ class _ProductGrid extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 product.sku,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.labelLarge,
                               ),
                             ),
-                            _StockBadge(product: product),
+                            Flexible(child: _StockBadge(product: product)),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -531,9 +635,18 @@ class _ProductGrid extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Venta mín. ${product.minimumSaleQuantity}'),
+                            Flexible(
+                              child: Text(
+                                'Venta mín. ${product.minimumSaleQuantity}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             Text(
                               '\$${(product.unitPriceInCents / 100).toStringAsFixed(2)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.titleLarge,
                             ),
                           ],

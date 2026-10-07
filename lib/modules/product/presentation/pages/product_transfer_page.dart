@@ -241,7 +241,7 @@ class _ProductTransferPageState extends ConsumerState<ProductTransferPage> {
     if (preview == null) return;
     await _run(() async {
       final result = await _service.import(preview, images: _images);
-      ref.invalidate(productListControllerProvider);
+      await ref.read(productListControllerProvider.notifier).refresh();
       ref.invalidate(categoriesProvider);
       if (!mounted) return;
       setState(() {

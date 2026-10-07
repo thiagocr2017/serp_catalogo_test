@@ -54,6 +54,56 @@ void main() {
     );
   });
 
+  test('vertical and horizontal frames crop to different aspect ratios', () {
+    final source = testJpg(300, 200);
+    final vertical = ProductImageService.cropWindow(
+      300,
+      200,
+      focalX: 0.5,
+      focalY: 0.5,
+      zoom: 1,
+      frame: ProductImageFrame.vertical,
+    );
+    final horizontal = ProductImageService.cropWindow(
+      300,
+      200,
+      focalX: 0.5,
+      focalY: 0.5,
+      zoom: 1,
+      frame: ProductImageFrame.horizontal,
+    );
+    expect(vertical.width / vertical.height, closeTo(4 / 5, 0.01));
+    expect(horizontal.width / horizontal.height, closeTo(4 / 3, 0.01));
+    expect(
+      decodedSize(
+        ProductImageService.applyFraming(
+          source,
+          focalX: 0.5,
+          focalY: 0.5,
+          zoom: 1,
+          frame: ProductImageFrame.vertical,
+        ),
+      ),
+      (width: vertical.width, height: vertical.height),
+    );
+  });
+
+  test('quarter turns rotate image orientation and preserve dimensions', () {
+    final source = testJpg(300, 200);
+    expect(
+      decodedSize(ProductImageService.rotateQuarterTurn(source, turns: 1)),
+      (width: 200, height: 300),
+    );
+    expect(
+      decodedSize(ProductImageService.rotateQuarterTurn(source, turns: -1)),
+      (width: 200, height: 300),
+    );
+    expect(
+      decodedSize(ProductImageService.rotateQuarterTurn(source, turns: 2)),
+      (width: 300, height: 200),
+    );
+  });
+
   test('invalid bytes throw a FormatException', () {
     expect(
       () => ProductImageService.applyFraming(

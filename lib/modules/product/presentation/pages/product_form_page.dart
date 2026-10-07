@@ -47,8 +47,10 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
   double _imagePositionX = 0.5;
   double _imagePositionY = 0.5;
   double _imageScale = 1;
+  ProductImageFrame _imageFrame = ProductImageFrame.horizontal;
   Uint8List? _imageBytes;
   ({int width, int height})? _imageSize;
+  bool _imageModified = false;
   Product? _existing;
   bool _loading = false;
 
@@ -259,28 +261,26 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       return;
     }
     setState(() => _saving = true);
+    String? uploadedImageUrl;
+    String? cleanupWarning;
+    var productPersisted = false;
     try {
       final productId = _existing?.id ?? const Uuid().v4();
-      // Con imagen nueva el encuadre se hornea en los bytes al guardar y se
-      // persisten parámetros neutros; la imagen existente conserva los suyos.
-      final framingNewImage = _imageBytes != null;
-      final uploadBytes = framingNewImage
+      final imageChanged = _imageModified && _imageBytes != null;
+      final uploadBytes = imageChanged
           ? ProductImageService.applyFraming(
               _imageBytes!,
               focalX: _imagePositionX,
               focalY: _imagePositionY,
               zoom: _imageScale,
+              frame: _imageFrame,
             )
           : null;
       final imageUrl = uploadBytes == null
           ? _existing?.imageUrl
-          : await ref
+          : uploadedImageUrl = await ref
                 .read(productImageServiceProvider)
-                .replace(
-                  sku: _sku.text,
-                  bytes: uploadBytes,
-                  previousUrl: _existing?.imageUrl,
-                );
+                .replace(sku: _sku.text, bytes: uploadBytes);
       final product = Product(
         id: productId,
         sku: _sku.text.trim(),
@@ -314,9 +314,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
         factoryCostInCents: _cents(_factoryCost.text),
         extraCostsInCents: _tryCents(_extraCosts.text) ?? 0,
         imageUrl: imageUrl,
-        imagePositionX: framingNewImage ? 0.5 : _imagePositionX,
-        imagePositionY: framingNewImage ? 0.5 : _imagePositionY,
-        imageScale: framingNewImage ? 1 : _imageScale,
+        imagePositionX: imageChanged ? 0.5 : _imagePositionX,
+        imagePositionY: imageChanged ? 0.5 : _imagePositionY,
+        imageScale: imageChanged ? 1 : _imageScale,
         catalogSortOrder: _existing?.catalogSortOrder ?? 0,
         currentStock: _existing?.currentStock ?? 0,
         reorderPoint: int.parse(_reorderPoint.text),
@@ -335,13 +335,24 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       );
       if (_isEditing) {
         await ref.read(saveProductProvider).update(product);
-        ref.invalidate(productByIdProvider(productId));
       } else {
         await ref
             .read(saveProductProvider)
             .create(product, initialStock: int.parse(_initialStock.text));
       }
-      ref.invalidate(productListControllerProvider);
+      productPersisted = true;
+      if (_isEditing) ref.invalidate(productByIdProvider(productId));
+      final previousImageUrl = _existing?.imageUrl;
+      if (imageChanged &&
+          previousImageUrl != null &&
+          previousImageUrl != imageUrl) {
+        try {
+          await ref.read(productImageServiceProvider).delete(previousImageUrl);
+        } catch (error) {
+          cleanupWarning = error.toString();
+        }
+      }
+      await ref.read(productListControllerProvider.notifier).refresh();
       ref
           .read(inventory.inventoryDataRevisionProvider.notifier)
           .notifyChanged();
@@ -349,13 +360,30 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       ref.invalidate(productAuditProvider(productId));
       if (mounted) {
         _markClean();
+        if (cleanupWarning != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Producto guardado, pero no se pudo eliminar la imagen anterior: $cleanupWarning',
+              ),
+            ),
+          );
+        }
         context.go(_isEditing ? '/products/$productId' : '/products');
       }
     } catch (error) {
+      var errorMessage = 'No fue posible guardar: $error';
+      if (uploadedImageUrl != null && !productPersisted) {
+        try {
+          await ref.read(productImageServiceProvider).delete(uploadedImageUrl);
+        } catch (cleanupError) {
+          errorMessage =
+              '$errorMessage. No se pudo limpiar la nueva imagen: $cleanupError';
+        }
+      }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No fue posible guardar: $error')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     } finally {
       if (mounted) {
@@ -682,7 +710,8 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                                   child: Text(
                                                     item.name,
                                                     maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                               )
@@ -937,6 +966,83 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
     );
   }
 
+  Future<void> _selectProductImage() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final bytes = await ref
+          .read(productImageServiceProvider)
+          .selectAndCompress();
+      if (bytes == null || !mounted) return;
+      setState(() {
+        _imageBytes = bytes;
+        _imageSize = ProductImageService.dimensionsOf(bytes);
+        _imageFrame = _frameFor(bytes);
+        _imagePositionX = 0.5;
+        _imagePositionY = 0.5;
+        _imageScale = 1;
+        _imageModified = true;
+        _markDirty();
+      });
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('No se pudo abrir la imagen: $error')),
+      );
+    }
+  }
+
+  Future<void> _editExistingImage() async {
+    final url = _existing?.imageUrl;
+    if (url == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final bytes = await ref
+          .read(productImageServiceProvider)
+          .loadExisting(url);
+      if (!mounted) return;
+      setState(() {
+        _imageBytes = bytes;
+        _imageSize = ProductImageService.dimensionsOf(bytes);
+        _imageFrame = _frameFor(bytes);
+        _imageModified = false;
+      });
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('No se pudo cargar la imagen actual: $error')),
+      );
+    }
+  }
+
+  ProductImageFrame _frameFor(Uint8List bytes) {
+    final size = ProductImageService.dimensionsOf(bytes);
+    return size.height > size.width
+        ? ProductImageFrame.vertical
+        : ProductImageFrame.horizontal;
+  }
+
+  void _rotateImage(int quarterTurns) {
+    final bytes = _imageBytes;
+    if (bytes == null) return;
+    try {
+      final rotated = ProductImageService.rotateQuarterTurn(
+        bytes,
+        turns: quarterTurns,
+      );
+      setState(() {
+        _imageBytes = rotated;
+        _imageSize = ProductImageService.dimensionsOf(rotated);
+        _imagePositionX = 0.5;
+        _imagePositionY = 0.5;
+        _imageScale = 1;
+        _imageModified = true;
+        _markDirty();
+      });
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo rotar la imagen: $error')),
+      );
+    }
+  }
+
   Widget _imageSection(double fullWidth) {
     return Card(
       margin: const EdgeInsets.only(top: 18),
@@ -955,41 +1061,28 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 18),
-            OutlinedButton.icon(
-              onPressed: _saving
-                  ? null
-                  : () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      try {
-                        final bytes = await ref
-                            .read(productImageServiceProvider)
-                            .selectAndCompress();
-                        if (bytes != null && mounted) {
-                          setState(() {
-                            _imageBytes = bytes;
-                            _imageSize = ProductImageService.dimensionsOf(
-                              bytes,
-                            );
-                            _imagePositionX = 0.5;
-                            _imagePositionY = 0.5;
-                            _imageScale = 1;
-                            _markDirty();
-                          });
-                        }
-                      } catch (error) {
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text('No se pudo abrir la imagen: $error'),
-                          ),
-                        );
-                      }
-                    },
-              icon: const Icon(Icons.image_outlined),
-              label: Text(
-                _imageBytes == null
-                    ? 'Seleccionar imagen'
-                    : 'Imagen lista (${(_imageBytes!.length / 1024).round()} KB)',
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _saving ? null : _selectProductImage,
+                  icon: const Icon(Icons.image_outlined),
+                  label: Text(
+                    _imageBytes == null
+                        ? (_existing?.imageUrl == null
+                              ? 'Seleccionar imagen'
+                              : 'Reemplazar imagen')
+                        : 'Cambiar imagen',
+                  ),
+                ),
+                if (_existing?.imageUrl != null && _imageBytes == null)
+                  OutlinedButton.icon(
+                    onPressed: _saving ? null : _editExistingImage,
+                    icon: const Icon(Icons.tune),
+                    label: const Text('Editar imagen actual'),
+                  ),
+              ],
             ),
             if (_imageBytes != null || _existing?.imageUrl != null) ...[
               Align(
@@ -1030,6 +1123,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                               focalX: _imagePositionX,
                               focalY: _imagePositionY,
                               zoom: _imageScale,
+                              frame: _imageFrame,
                               overlayColor: Colors.black54,
                               frameColor: Theme.of(context).colorScheme.primary,
                             ),
@@ -1051,16 +1145,58 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const Text(
-                        'La imagen se muestra completa. Mueve el punto focal o acerca para elegir el recorte; al guardar se corta así.',
+                        'Elige el formato del marco y ajusta el encuadre. La rotación es independiente.',
+                      ),
+                      const SizedBox(height: 8),
+                      SegmentedButton<ProductImageFrame>(
+                        segments: const [
+                          ButtonSegment(
+                            value: ProductImageFrame.vertical,
+                            icon: Icon(Icons.crop_portrait),
+                            label: Text('Vertical'),
+                          ),
+                          ButtonSegment(
+                            value: ProductImageFrame.horizontal,
+                            icon: Icon(Icons.crop_landscape),
+                            label: Text('Horizontal'),
+                          ),
+                        ],
+                        selected: {_imageFrame},
+                        onSelectionChanged: (value) => setState(() {
+                          _imageFrame = value.first;
+                          _imageModified = true;
+                          _markDirty();
+                        }),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Rotación',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          IconButton(
+                            tooltip: 'Rotar a la izquierda 90°',
+                            onPressed: _saving ? null : () => _rotateImage(-1),
+                            icon: const Icon(Icons.rotate_left),
+                          ),
+                          IconButton(
+                            tooltip: 'Rotar a la derecha 90°',
+                            onPressed: _saving ? null : () => _rotateImage(1),
+                            icon: const Icon(Icons.rotate_right),
+                          ),
+                        ],
                       ),
                       Row(
                         children: [
-                          const SizedBox(width: 82, child: Text('Horizontal')),
+                          const SizedBox(width: 82, child: Text('Foco X')),
                           Expanded(
                             child: Slider(
                               value: _imagePositionX,
                               onChanged: (value) => setState(() {
                                 _imagePositionX = value;
+                                _imageModified = true;
                                 _markDirty();
                               }),
                             ),
@@ -1078,6 +1214,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                     _imageScale = (_imageScale - 0.1)
                                         .clamp(1, 3)
                                         .toDouble();
+                                    _imageModified = true;
                                     _markDirty();
                                   }),
                             icon: const Icon(Icons.zoom_out),
@@ -1091,6 +1228,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                               value: _imageScale,
                               onChanged: (value) => setState(() {
                                 _imageScale = value;
+                                _imageModified = true;
                                 _markDirty();
                               }),
                             ),
@@ -1103,6 +1241,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                                     _imageScale = (_imageScale + 0.1)
                                         .clamp(1, 3)
                                         .toDouble();
+                                    _imageModified = true;
                                     _markDirty();
                                   }),
                             icon: const Icon(Icons.zoom_in),
@@ -1117,6 +1256,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                               value: _imagePositionY,
                               onChanged: (value) => setState(() {
                                 _imagePositionY = value;
+                                _imageModified = true;
                                 _markDirty();
                               }),
                             ),
@@ -1128,6 +1268,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                           _imagePositionX = 0.5;
                           _imagePositionY = 0.5;
                           _imageScale = 1;
+                          _imageModified = true;
                           _markDirty();
                         }),
                         icon: const Icon(
@@ -1224,6 +1365,7 @@ class _CropOverlayPainter extends CustomPainter {
     required this.focalX,
     required this.focalY,
     required this.zoom,
+    required this.frame,
     required this.overlayColor,
     required this.frameColor,
   });
@@ -1233,6 +1375,7 @@ class _CropOverlayPainter extends CustomPainter {
   final double focalX;
   final double focalY;
   final double zoom;
+  final ProductImageFrame frame;
   final Color overlayColor;
   final Color frameColor;
 
@@ -1252,6 +1395,7 @@ class _CropOverlayPainter extends CustomPainter {
       focalX: focalX,
       focalY: focalY,
       zoom: zoom,
+      frame: frame,
     );
     final crop = Rect.fromLTWH(
       offsetX + window.x / imageWidth * renderedWidth,
@@ -1293,6 +1437,7 @@ class _CropOverlayPainter extends CustomPainter {
       oldDelegate.focalX != focalX ||
       oldDelegate.focalY != focalY ||
       oldDelegate.zoom != zoom ||
+      oldDelegate.frame != frame ||
       oldDelegate.overlayColor != overlayColor ||
       oldDelegate.frameColor != frameColor;
 }
