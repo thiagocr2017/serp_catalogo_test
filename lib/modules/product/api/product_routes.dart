@@ -6,6 +6,7 @@ import '../presentation/pages/product_form_page.dart';
 import '../presentation/pages/product_list_page.dart';
 import '../presentation/pages/product_profile_page.dart';
 import '../presentation/pages/product_transfer_page.dart';
+import '../presentation/pages/promotion_form_page.dart';
 import '../presentation/pages/promotion_page.dart';
 
 final List<RouteBase> productRoutes = [
@@ -36,6 +37,17 @@ final List<RouteBase> productRoutes = [
   GoRoute(
     path: '/promotions',
     builder: (context, state) => const PromotionPage(),
+    routes: [
+      GoRoute(
+        path: 'new',
+        builder: (context, state) => const PromotionFormPage(),
+      ),
+      GoRoute(
+        path: ':id/edit',
+        builder: (context, state) =>
+            PromotionFormPage(id: state.pathParameters['id']!),
+      ),
+    ],
   ),
   GoRoute(
     path: '/catalog-export',

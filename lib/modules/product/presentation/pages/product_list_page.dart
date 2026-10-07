@@ -696,7 +696,7 @@ class _ProductThumbnail extends StatelessWidget {
               ),
               child: Transform.scale(
                 scale: product.imageScale,
-                child: _ProductThumbnail(
+                child: _LocalImageThumbnail(
                   sku: product.sku,
                   url: product.imageUrl!,
                 ),
@@ -730,16 +730,16 @@ class _StockBadge extends StatelessWidget {
   }
 }
 
-class _ProductThumbnail extends ConsumerStatefulWidget {
-  const _ProductThumbnail({required this.sku, required this.url});
+class _LocalImageThumbnail extends ConsumerStatefulWidget {
+  const _LocalImageThumbnail({required this.sku, required this.url});
   final String sku;
   final String url;
 
   @override
-  ConsumerState<_ProductThumbnail> createState() => _ProductThumbnailState();
+  ConsumerState<_LocalImageThumbnail> createState() => _LocalImageThumbnailState();
 }
 
-class _ProductThumbnailState extends ConsumerState<_ProductThumbnail> {
+class _LocalImageThumbnailState extends ConsumerState<_LocalImageThumbnail> {
   File? _file;
 
   @override
