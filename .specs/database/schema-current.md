@@ -275,3 +275,7 @@ No son tablas y no admiten escritura propia:
 `sales_invoices`, `sales_order_lines`, `sales_orders`, `sales_quote_lines`,
 `sales_quotes`, `sales_return_lines`, `sales_returns`, `unidentified_deposits`,
 `warehouses`.
+
+### Actualizaciones Pendientes
+- **RPC Bulk Insert:** `create_product_with_initial_stock` debe mapear `is_active = coalesce((p_product->>'is_active')::boolean, true)`.
+- **Indexación y optimización:** Faltan índices `pg_trgm` en `products` (`sku`, `name`) y `customers` (`name`, `tax_id`, `phone`).

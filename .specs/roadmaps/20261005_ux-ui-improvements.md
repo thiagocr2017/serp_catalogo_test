@@ -155,3 +155,12 @@ significa pagada: debe definirse separadamente.
   cambios de reglas/RPC/DB, agregar pruebas de integracion y pgTAP.
 - Preservar patrones exitosos existentes salvo peticion explicita de
   estandarizacion global; toda excepcion se documenta junto al patron.
+
+## Rediseño de Promociones a pantalla completa
+- Reemplazar modal `AlertDialog` comprimido por pantalla completa.
+- Registro: `.specs/screens/promotion-form/` (1 a 4).
+
+## Homologación del Icono de la Aplicación
+- Configurar `flutter_launcher_icons` en `pubspec.yaml` usando `assets/icon/SERP_logo_v2.png`.
+- Ejecutar regeneración de iconos nativos para macOS.
+- Registro: `.specs/architecture/theme-governance.md`

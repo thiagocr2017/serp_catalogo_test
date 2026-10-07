@@ -337,3 +337,13 @@ ningun consumidor lo necesitaba. Ver `01-document-consistency.md` T8.
 3. Cada deuda queda cerrada, o rechazada con motivo registrado aqui.
 4. `.specs/testing/form-coverage.md`, los SDD y `.specs/` reflejan el estado final.
 5. `flutter analyze`, `flutter test` y la suite pgTAP pasan.
+
+### D-9: Tratamiento, miniaturas locales y caché de imágenes
+- **Problema:** `Image.network` descarga imágenes originales (grandes) en cada render de lista, provocando parpadeo y consumo excesivo de red. No hay miniaturas.
+- **Solución:** Implementar pipeline Local-First con almacenamiento en disco de thumbnails 256x256 px JPG 80%.
+- **Registro:** `.specs/architecture/image-pipeline-and-thumbnails.spec.md`
+
+### D-10: Indexación y optimización de búsquedas y filtros
+- **Problema:** Búsquedas textuales (ILIKE) en `products` y `customers` realizan escaneos secuenciales (Seq Scan). Filtrado actual se hace en memoria de Dart tras descargar todos los registros.
+- **Solución:** Crear índices `pg_trgm` en base de datos. Mover el filtrado al backend usando consultas PostgREST.
+- **Registro:** `.specs/database/schema-current.md` y `.specs/architecture/list-patterns.md`

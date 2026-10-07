@@ -190,24 +190,25 @@ La devolucion tiene una frontera adicional, especificada en
 - Sales conserva la devolucion comercial, snapshot de factura y reduccion de
   deuda. Inventory conserva destinos/movimientos, y Payments conserva refunds y
   creditos.
-- Propuesta: la RPC transaccional propietaria de Sales orquesta las RPC
-  publicas de Inventory y Payments porque la devolucion es el agregado
-  solicitado. Cada modulo escribe unicamente sus tablas; confirmar esta
-  propiedad contra el mandato de orquestador unico antes de implementar.
+- Decision de esta implementacion: Sales es propietario del agregado devolucion
+  y `sales_confirm_return` orquesta en una transaccion las RPC publicas de
+  Inventory y Payments. Cada modulo escribe unicamente sus tablas; la frontera
+  se verifica con el test de arquitectura y pgTAP de atomicidad.
 - Se reduce primero la deuda impaga. Solo el excedente se devuelve como dinero
   o credito, elegido de forma excluyente una vez por devolucion. No se crea
   valor financiero por deuda no pagada.
-- Payments debe validar bajo bloqueo el dinero elegible por factura (pagos
-  confirmados menos reembolsos previos) y exponer comandos idempotentes para
-  refund o credito con referencia unica a devolucion.
-- `create_refund` existe, pero el contrato actual no limita explicitamente el
-  monto restante ni vincula el reembolso a una devolucion. Las capacidades de
-  credito/aplicacion tampoco estan implementadas; se requieren contratos y
-  pgTAP antes de UI de confirmacion.
+- Payments valida bajo bloqueo la capacidad financiera por factura (pagos
+  confirmados menos refunds no rechazados) y registra un refund/credito ligado
+  una sola vez a la devolucion. Los refunds conservan estado `PENDING` para no
+  omitir el flujo historico de autorizacion. El credito se limita igualmente a
+  dinero recibido y solo al excedente luego de reducir la deuda.
 - La misma transaccion incluye movimientos de Inventory; un fallo financiero o
   fisico revierte todos los efectos. Cuarentena y exclusion de stock vendible
   pertenecen a Inventory, no a una escritura de Sales.
-- Esta extension esta especificada, no implementada.
+- El alta transaccional esta implementada por
+  `20261007100000_atomic_sales_returns.sql`. No se implementan aun anulacion
+  compensatoria ni pruebas multi-sesion; por ello una devolucion confirmada no
+  se puede liberar/reutilizar desde la UI.
 
 ## Tareas
 
@@ -225,9 +226,11 @@ La devolucion tiene una frontera adicional, especificada en
 - [ ] Pruebas minimas: aplicacion valida, rechazo por factura anulada, rechazo
       por exceso de saldo, idempotencia por `commandId`, doble envio
       concurrente y reversion ante fallo intermedio.
-- [ ] Devoluciones: elegibilidad y refund/credito idempotentes, capacidad bajo
-      bloqueo, referencia unica y pgTAP conforme a
+- [x] Devoluciones: elegibilidad, refund/credito idempotentes, capacidad bajo
+      bloqueo, referencia unica y pgTAP base en
       `modules/sales/returns/2.database-contract.spec.md`.
+- [ ] Devoluciones: concurrencia multi-sesion y anulacion compensatoria antes
+      de permitir cancelar o reutilizar lineas devueltas.
 
 ## Criterio de listo
 

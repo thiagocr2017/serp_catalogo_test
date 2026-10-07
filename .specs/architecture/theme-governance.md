@@ -64,3 +64,6 @@ Este sistema pertenece a `shared/theme/`, no a un modulo de negocio. Un futuro
 gestor de temas solo se justifica si se desea que usuarios administren marcas,
 contraste o personalizacion dinamica; no es requisito para la estandarizacion
 actual.
+
+### Homologación del Icono
+- Utilizar `flutter_launcher_icons` con `assets/icon/SERP_logo_v2.png` para generar los assets `.appiconset` en Xcode (macOS).

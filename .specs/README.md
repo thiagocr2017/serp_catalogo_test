@@ -41,7 +41,8 @@ refactorizaciones complejas y pantallas/formularios.
 │       ├── 3.tasks.md
 │       └── 4.tests.spec.md
 └── testing/
-    └── form-coverage.md
+    ├── form-coverage.md
+    └── e2e.md
 ```
 
 ## Regla de uso
@@ -60,6 +61,9 @@ refactorizaciones complejas y pantallas/formularios.
 - Refactorizaciones necesarias: crear spec separada de refactorizacion en
   `refactors/`. Una spec de feature no esconde cambios de arquitectura.
 - Pruebas: toda pantalla o formulario debe tener `4.tests.spec.md`.
+- Pruebas E2E: ampliar por flujos verticales de un modulo en
+  `integration_test/`, contra servicios locales reales; registrar setup,
+  persistencia, aislamiento y comandos en `.specs/testing/e2e.md`.
 
 ## Contratos transversales
 
@@ -98,6 +102,18 @@ refactorizaciones complejas y pantallas/formularios.
   expuestos a DTO publicos estables.
 - `refactors/04-block-1b-contract-cleanup.md`: puentes heredados que hay que
   eliminar en el bloque 1B.3.
+- `refactors/05-anonymous-access-removal.md`: auditoría y plan gradual para
+  retirar acceso de negocio anónimo; etiquetas `seguridad`, `autorizacion`,
+  `anon`, `supabase`, `base-de-datos`, `e2e`, `puerta-produccion`,
+  `fase-1-identidad`. En progreso; bloqueante para producción y purga hasta
+  implementar y probar aprovisionamiento, sesión Auth y bootstrap del primer
+  superadministrador. El modelo aprobado excluye registro abierto; la
+  configuración local aún no está migrada. El reclamo superadmin por
+  dispositivo está revocado.
+- `refactors/06-code-cleanup-audit.md`: inventario inicial de código sin uso,
+  dependencias candidatas y documentación desactualizada; etiquetas
+  `mantenimiento`, `dead-code`, `documentacion-obsoleta`, `dependencias`,
+  `limpieza`, `backlog-futuro`.
 
 ## Especificaciones de Pantallas y Formularios
 
@@ -114,11 +130,14 @@ refactorizaciones complejas y pantallas/formularios.
 - `screens/product-profile/`: Perfil de producto y presentación adaptable de
   identificadores copiables.
 - `screens/product-list/`: Lista de productos y catálogo.
+- `screens/catalog-pdf/`: configuración, selección, orden diferido y preview
+  del catálogo PDF.
 - `screens/sales-commercial-operations/`: Operaciones de documentos comerciales de venta.
 - `screens/sales-quote-form/`: Alta y operación rápida de cotizaciones.
 - `screens/sales-quote-detail/`: detalle, estados y retorno contextual de cotizaciones.
-- `screens/sales-return-form/`: diseño de captura/liquidación de devoluciones,
-  pendiente de contratos DB/RPC y matriz pgTAP; su acceso actual es informativo.
+- `screens/sales-return-form/`: captura y liquidación de devoluciones con
+  contrato transaccional DB/RPC; incluye E2E de rechazo anónimo y de devolución
+  exitosa autenticada. La anulación compensatoria permanece fuera de alcance.
 
 Las rutas citadas en cualquier documento son relativas a la raiz del
 repositorio.
