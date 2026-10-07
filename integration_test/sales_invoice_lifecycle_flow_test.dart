@@ -64,6 +64,61 @@ void main() {
 
     await tester.pumpAndSettle();
 
+    // -------------------------------------------------------------------------
+    // APROVISIONAMIENTO DE FIXTURES (SELF-HEALING)
+    // -------------------------------------------------------------------------
+    // Nos aseguramos programáticamente de que siempre exista un producto y un
+    // cliente E2E con inventario antes de hacer la prueba.
+    // Usamos el service_role (adminClient) para esquivar políticas RLS 
+    // en tablas de solo-lectura para vendedores (como products o warehouses).
+    final uniqueId = const Uuid().v4().substring(0, 8).toUpperCase();
+    
+    // adminClient ya fue instanciado arriba
+    final adminClient = SupabaseClient(
+      configuration.supabaseUrl,
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU',
+    );
+
+    final existingCustomers = await adminClient.from('customers').select('id').like('name', 'Cliente E2E %').limit(1);
+    if (existingCustomers.isEmpty) {
+      await adminClient.from('customers').insert({
+        'name': 'Cliente E2E $uniqueId',
+        'identification': 'E2E$uniqueId',
+        'is_active': true,
+      });
+    }
+
+    final category = (await adminClient.from('categories').select('id').limit(1)).first;
+    final presentation = (await adminClient.from('packaging_presentations').select('id').limit(1)).first;
+    final productId = const Uuid().v4();
+    
+    await adminClient.from('products').insert({
+      'id': productId,
+      'sku': 'E2E-$uniqueId',
+      'name': 'Producto E2E $uniqueId',
+      'category_id': category['id'],
+      'packaging_presentation_id': presentation['id'],
+      'is_active': true,
+      'minimum_sale_quantity': 1,
+      'units_per_presentation': 1,
+      'factory_cost': 10.0,
+      'package_price': 15.0,
+      'unit_price': 15.0,
+      'cbm_per_moq': 0.1,
+    });
+
+    final defaultWarehouse = (await adminClient.from('warehouses').select('id').eq('is_active', true).order('is_default', ascending: false).limit(1)).first;
+    final sellableLocation = (await adminClient.from('inventory_locations').select('id').eq('warehouse_id', defaultWarehouse['id']).eq('stock_role', 'SELLABLE').limit(1)).first;
+
+    await adminClient.from('inventory_balances').upsert({
+      'product_id': productId,
+      'warehouse_id': defaultWarehouse['id'],
+      'location_id': sellableLocation['id'],
+      'quantity': 100,
+      'reserved_quantity': 0,
+    });
+    // -------------------------------------------------------------------------
+
     final customers = await client
         .from('customers')
         .select('id, name, display_name')
