@@ -376,9 +376,10 @@ begin
   );
 
   v_invoice := public.create_sale_invoice_with_dispatch(
-    '82000000-0000-0000-0000-000000000001', v_customer_name, 'USD', 1,
-    'DEMO: factura confirmada con salida de inventario. [DEMO-FAC-001]', v_sale_lines,
-    v_warehouse, v_location, 'demo-seed', 'Demo local', 'demo-seed'
+    '82000000-0000-0000-0000-000000000001'::uuid,
+    v_customer, v_customer_name, 'USD'::char(3), 1::numeric,
+    'DEMO: factura confirmada con salida de inventario. [DEMO-FAC-001]',
+    v_sale_lines, v_warehouse, 'demo-seed', 'Demo local', 'demo-seed'
   );
 
   if not exists (select 1 from public.sales_orders where notes like '%[DEMO-PED-001]%') then
@@ -404,15 +405,23 @@ begin
   end if;
 
   if not exists (select 1 from public.sales_returns where notes like '%[DEMO-DEV-001]%') then
-  perform public.create_return(
-    v_invoice.id, v_customer, v_customer_name, 'DEMO: devolución parcial por empaque.',
+  perform public.sales_confirm_return(
+    '86000000-0000-0000-0000-000000000001'::uuid,
+    v_invoice.id,
+    'DEMO: empaque abierto.',
     jsonb_build_array(jsonb_build_object(
-      'product_id', v_p2, 'quantity', 1, 'unit_price', (select unit_price from public.products where id = v_p2),
-      'product_sku', (select sku from public.products where id = v_p2),
-      'product_name', (select name from public.products where id = v_p2))),
-    'demo-seed', 'Demo local', 'demo-seed'
+      'invoice_line_id', (select id from public.sales_invoice_lines
+        where invoice_id = v_invoice.id and product_id = v_p2),
+      'product_id', v_p2,
+      'quantity', (select quantity from public.sales_invoice_lines
+        where invoice_id = v_invoice.id and product_id = v_p2),
+      'condition', 'GOOD',
+      'location_id', v_location
+    )),
+    'CUSTOMER_CREDIT', 'demo-seed', 'Demo local', 'demo-seed'
   );
-  update public.sales_returns set notes = '[DEMO-DEV-001]' where reason = 'DEMO: devolución parcial por empaque.' and notes is null;
+  update public.sales_returns set notes = '[DEMO-DEV-001]'
+   where command_id = '86000000-0000-0000-0000-000000000001' and notes is null;
   end if;
 
   if not exists (select 1 from public.payments where notes like '%[DEMO-REC-001]%') then
@@ -496,20 +505,28 @@ begin
     ));
     v_invoice := public.create_sale_invoice_with_dispatch(
       ('82000000-0000-0000-0000-' || lpad((2000 + i)::text, 12, '0'))::uuid,
-      v_customer_loop_name, 'USD', 1,
+      v_customer_loop, v_customer_loop_name, 'USD'::char(3), 1::numeric,
       'DEMO: factura confirmada ' || i || ' [DEMO-FAC-' || lpad(i::text, 3, '0') || ']',
-      v_lines, v_warehouse, v_location, 'demo-seed', 'Demo local', 'demo-seed');
+      v_lines, v_warehouse, 'demo-seed', 'Demo local', 'demo-seed');
     if not exists (select 1 from public.sales_returns where notes like '%[DEMO-DEV-' || lpad(i::text, 3, '0') || ']%') then
-      perform public.create_return(v_invoice.id, v_customer_loop, v_customer_loop_name,
-        'DEMO: devolución parcial de factura ' || i,
+      perform public.sales_confirm_return(
+        ('86000000-0000-0000-0000-' || lpad(i::text, 12, '0'))::uuid,
+        v_invoice.id,
+        'DEMO: devolución de factura ' || i,
         jsonb_build_array(jsonb_build_object(
-          'product_id', v_p1, 'quantity', 1,
-          'unit_price', (select unit_price from public.products where id = v_p1),
-          'product_sku', (select sku from public.products where id = v_p1),
-          'product_name', (select name from public.products where id = v_p1)
-        )), 'demo-seed', 'Demo local', 'demo-seed');
+          'invoice_line_id', (select id from public.sales_invoice_lines
+            where invoice_id = v_invoice.id and product_id = v_p1),
+          'product_id', v_p1,
+          'quantity', (select quantity from public.sales_invoice_lines
+            where invoice_id = v_invoice.id and product_id = v_p1),
+          'condition', 'GOOD',
+          'location_id', v_location
+        )),
+        'CUSTOMER_CREDIT', 'demo-seed', 'Demo local', 'demo-seed'
+      );
       update public.sales_returns set notes = '[DEMO-DEV-' || lpad(i::text, 3, '0') || ']'
-       where reason = 'DEMO: devolución parcial de factura ' || i and notes is null;
+       where command_id = ('86000000-0000-0000-0000-' || lpad(i::text, 12, '0'))::uuid
+         and notes is null;
     end if;
   end loop;
 

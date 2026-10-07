@@ -1,5 +1,5 @@
 begin;
-select plan(7);
+select plan(11);
 
 select has_column(
   'public', 'packaging_presentations', 'units_per_presentation',
@@ -44,6 +44,33 @@ select is(
    where name = 'Caja pgTAP'),
   6,
   'persiste seis unidades por caja'
+);
+select is(
+  (public.update_packaging_presentation(
+    (select id from public.packaging_presentations where name = 'Caja pgTAP'),
+    'Caja de 12 unidades', 12, 1, 'pgTAP', 'device', 'device-id'
+  )).name,
+  'Caja de 12 unidades',
+  'actualiza nombre y devuelve el resultado compuesto correctamente'
+);
+select is(
+  (select units_per_presentation from public.packaging_presentations
+   where name = 'Caja de 12 unidades'),
+  12,
+  'edicion persiste el factor que coincide con el nombre'
+);
+select is(
+  (select version from public.packaging_presentations
+   where name = 'Caja de 12 unidades'),
+  2,
+  'edicion incrementa la version una vez'
+);
+select throws_ok(
+  $$select public.update_packaging_presentation(
+    (select id from public.packaging_presentations where name = 'Caja de 12 unidades'),
+    'Caja de 12 unidades', 12, 1, 'pgTAP', 'device', 'device-id'
+  )$$,
+  'P0001', 'VERSION_CONFLICT', 'edicion obsoleta no sobrescribe el factor'
 );
 
 select * from finish();

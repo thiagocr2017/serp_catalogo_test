@@ -368,6 +368,7 @@ class SupabaseInventoryRepository implements InventoryRepository {
     name: row['name'] as String,
     isDefault: row['is_default'] as bool? ?? false,
     isActive: row['is_active'] as bool? ?? true,
+    stockRole: row['stock_role'] as String? ?? 'SELLABLE',
   );
 
   // Advanced inventory implementation

@@ -24,6 +24,7 @@ class InventoryLocation {
     required this.name,
     required this.isDefault,
     required this.isActive,
+    this.stockRole = 'SELLABLE',
   });
 
   final String id;
@@ -32,4 +33,5 @@ class InventoryLocation {
   final String name;
   final bool isDefault;
   final bool isActive;
+  final String stockRole;
 }

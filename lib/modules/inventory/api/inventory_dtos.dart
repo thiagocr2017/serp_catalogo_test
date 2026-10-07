@@ -177,6 +177,7 @@ class InventoryLocationDto {
     required this.name,
     required this.isDefault,
     required this.isActive,
+    this.stockRole = 'SELLABLE',
   });
 
   final String id;
@@ -185,6 +186,7 @@ class InventoryLocationDto {
   final String name;
   final bool isDefault;
   final bool isActive;
+  final String stockRole;
 
   @override
   bool operator ==(Object other) =>
@@ -194,11 +196,12 @@ class InventoryLocationDto {
       other.code == code &&
       other.name == name &&
       other.isDefault == isDefault &&
-      other.isActive == isActive;
+      other.isActive == isActive &&
+      other.stockRole == stockRole;
 
   @override
   int get hashCode =>
-      Object.hash(id, warehouseId, code, name, isDefault, isActive);
+      Object.hash(id, warehouseId, code, name, isDefault, isActive, stockRole);
 
   @override
   String toString() => 'InventoryLocationDto($code · $name)';

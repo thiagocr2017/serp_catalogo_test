@@ -53,6 +53,7 @@ extension InventoryLocationMapper on InventoryLocation {
     name: name,
     isDefault: isDefault,
     isActive: isActive,
+    stockRole: stockRole,
   );
 }
 
