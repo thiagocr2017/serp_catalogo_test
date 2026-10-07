@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -695,11 +696,9 @@ class _ProductThumbnail extends StatelessWidget {
               ),
               child: Transform.scale(
                 scale: product.imageScale,
-                child: Image.network(
-                  product.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) =>
-                      Icon(Icons.broken_image_outlined, size: size * .45),
+                child: _ProductThumbnail(
+                  sku: product.sku,
+                  url: product.imageUrl!,
                 ),
               ),
             ),
@@ -728,5 +727,43 @@ class _StockBadge extends StatelessWidget {
         ? StatusTone.warning
         : StatusTone.success;
     return StatusChip(label: label, tone: tone);
+  }
+}
+
+class _ProductThumbnail extends ConsumerStatefulWidget {
+  const _ProductThumbnail({required this.sku, required this.url});
+  final String sku;
+  final String url;
+
+  @override
+  ConsumerState<_ProductThumbnail> createState() => _ProductThumbnailState();
+}
+
+class _ProductThumbnailState extends ConsumerState<_ProductThumbnail> {
+  File? _file;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final service = ref.read(productImageServiceProvider);
+      final file = await service.getLocalThumbnail(widget.sku, widget.url);
+      if (mounted) setState(() => _file = file);
+    } catch (_) { }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_file == null) {
+      // While loading locally, we can just show a placeholder or try network directly
+      // but to avoid flickering on scroll, returning a network image immediately is okay,
+      // or we can just show a shimmer.
+      return Image.network(widget.url, fit: BoxFit.cover, errorBuilder: (_,_,_) => const Icon(Icons.broken_image_outlined));
+    }
+    return Image.file(_file!, fit: BoxFit.cover, errorBuilder: (_,_,_) => const Icon(Icons.broken_image_outlined));
   }
 }
