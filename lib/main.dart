@@ -47,6 +47,9 @@ import 'modules/sales/sales_module.dart';
 import 'modules/payments/data/data_sources/supabase_payment_data_source.dart';
 import 'modules/payments/data/repositories/supabase_payment_repository.dart';
 import 'modules/payments/data/repositories/supabase_payment_api.dart';
+import 'modules/authorization/data/auth_repository.dart';
+
+import 'modules/authorization/authorization_module.dart';
 import 'modules/payments/di/payment_providers.dart';
 import 'modules/payments/payments_module.dart';
 import 'shared/theme/app_theme.dart';
@@ -59,6 +62,7 @@ Future<void> main() async {
     url: configuration.supabaseUrl,
     publishableKey: configuration.supabaseKey,
   );
+  final authRepository = SupabaseAuthRepository(Supabase.instance.client.auth);
   final device = await DeviceIdentity.detect();
   final repository = SupabaseProductRepository(
     SupabaseProductDataSource(Supabase.instance.client, device),
@@ -104,7 +108,10 @@ Future<void> main() async {
   );
   final orderApi = SupabaseOrderApi(orderDataSource);
 
-  final returnDataSource = SupabaseReturnDataSource(Supabase.instance.client);
+  final returnDataSource = SupabaseReturnDataSource(
+    Supabase.instance.client,
+    device,
+  );
   final returnApi = SupabaseReturnApi(returnDataSource);
 
   final consignmentDataSource = SupabaseConsignmentDataSource(
@@ -127,6 +134,7 @@ Future<void> main() async {
   runApp(
     ProviderScope(
       overrides: [
+        authRepositoryProvider.overrideWithValue(authRepository),
         identityContextProvider.overrideWithValue(
           IdentityContext(
             actorName: device.actorName,
@@ -169,10 +177,11 @@ class SerpApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider).value ?? ThemeMode.dark;
+    final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
       title: 'SERP',
       debugShowCheckedModeBanner: false,
-      routerConfig: appRouter,
+      routerConfig: router,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,

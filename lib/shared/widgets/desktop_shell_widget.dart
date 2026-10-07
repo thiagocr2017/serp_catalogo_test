@@ -49,8 +49,9 @@ class DesktopShellWidget extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(14),
                       child: Image.asset(
-                        'assets/icon/serp_logo_mini.png',
+                        'assets/icon/SERP_logo_v2.png',
                         height: 64,
+                        semanticLabel: 'Logo de SERP',
                       ),
                     ),
                   ),

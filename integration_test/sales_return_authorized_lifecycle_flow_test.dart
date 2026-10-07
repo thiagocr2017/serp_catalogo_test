@@ -75,12 +75,41 @@ void main() {
     };
 
     final marker = const Uuid().v4();
-    final email = 'e2e-return-$marker@example.test';
-    final password = 'E2e-${const Uuid().v4()}aA1!';
-    final signUp = await client.auth.signUp(email: email, password: password);
-    if (signUp.session == null) {
-      await client.auth.signInWithPassword(email: email, password: password);
+    final email = 'e2e-fixture@example.test';
+    final password = 'E2e-Password123!';
+
+    try {
+      final adminClient = SupabaseClient(
+        AppConfiguration.local().supabaseUrl,
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU',
+      );
+      await adminClient.auth.admin.createUser(
+        AdminUserAttributes(
+          email: email,
+          password: password,
+          emailConfirm: true,
+        ),
+      );
+    } catch (_) {
+      // Usuario ya aprovisionado en Supabase local
     }
+
+    // Sign out to ensure we are at the login page
+    await client.auth.signOut();
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    final textFields = find.byType(TextFormField);
+    expect(textFields, findsWidgets, reason: 'Debería haber campos de texto en el login');
+    await tester.enterText(textFields.first, email);
+    await tester.enterText(textFields.last, password);
+    await tester.tap(find.widgetWithText(FilledButton, 'Iniciar Sesión'));
+
+    var loginTries = 50;
+    while (find.text('Ventas').evaluate().isEmpty && loginTries-- > 0) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.pumpAndSettle();
+
     expect(client.auth.currentUser, isNotNull);
     expect(client.auth.currentUser!.isAnonymous, isFalse);
     addTearDown(client.auth.signOut);

@@ -53,6 +53,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   flutter_launcher_icons: ^0.14.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -74,7 +76,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/icon/serp_logo_mini.png
+    - assets/icon/SERP_logo_v2.png
     - assets/fonts/
 
   # To add assets to your application, add an assets section, like this:
