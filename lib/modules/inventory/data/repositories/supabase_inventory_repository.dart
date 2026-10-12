@@ -57,6 +57,7 @@ class SupabaseInventoryRepository implements InventoryRepository {
           warehouseId: row['warehouse_id'] as String,
           locationId: row['location_id'] as String,
           quantity: row['quantity'] as int,
+          reservedQuantity: row['reserved_quantity'] as int? ?? 0,
           productSku:
               (row['products'] as Map<String, dynamic>?)?['sku'] as String?,
           warehouseName:
@@ -235,8 +236,12 @@ class SupabaseInventoryRepository implements InventoryRepository {
                     [row['old_value'], row['new_value']].whereType<String>(),
               ),
         );
-    final products = await _source.productLabels(productIds);
-    final categories = await _source.categoryLabels(categoryIds);
+    final labels = await Future.wait<Map<String, String>>([
+      _source.productLabels(productIds),
+      _source.categoryLabels(categoryIds),
+    ]);
+    final products = labels[0];
+    final categories = labels[1];
     return rows.map((row) {
       final table = row['table_name'] as String;
       final recordId = row['record_id'] as String;

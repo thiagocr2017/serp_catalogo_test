@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/inventory_api.dart';
 import '../../di/inventory_providers.dart';
-import '../../../../shared/widgets/status_chip.dart';
+import '../../../../shared/utilities/search_query.dart';
 
 class InventoryPage extends ConsumerStatefulWidget {
   const InventoryPage({super.key, this.productId, this.productSku});
@@ -101,12 +101,13 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
                 child: TextField(
                   controller: _search,
-                  onChanged: (value) => setState(() => _query = value),
+                  onChanged: (value) =>
+                      setState(() => _query = effectiveSearchQuery(value)),
                   decoration: InputDecoration(
                     labelText: 'Buscar movimientos',
                     hintText: 'Código, documento, motivo, cantidad o fecha',
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _query.isEmpty
+                    suffixIcon: _search.text.isEmpty
                         ? null
                         : IconButton(
                             tooltip: 'Limpiar búsqueda',
@@ -135,23 +136,29 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
                         separatorBuilder: (_, _) => const Divider(),
                         itemBuilder: (context, index) {
                           final item = filtered[index];
-                          final (background, foreground) = resolveStatusColors(
-                            context,
-                            item.quantity > 0
-                                ? StatusTone.success
-                                : StatusTone.danger,
-                          );
+                          final colors = Theme.of(context).colorScheme;
                           final description = describeInventoryTransaction(
                             item,
                             items,
                           );
                           final notes = item.notes?.trim();
                           return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: background,
-                              child: Icon(
-                                item.quantity > 0 ? Icons.add : Icons.remove,
-                                color: foreground,
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: colors.outlineVariant,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  item.quantity > 0 ? Icons.add : Icons.remove,
+                                  color: colors.onSurfaceVariant,
+                                  size: 20,
+                                ),
                               ),
                             ),
                             title: Text(

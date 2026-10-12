@@ -23,8 +23,11 @@ final warehousesProvider = FutureProvider<List<WarehouseDto>>((ref) {
 });
 final auditEntriesProvider = FutureProvider<List<AuditEntryDto>>((ref) {
   ref.watch(inventoryDataRevisionProvider);
-  return ref.watch(inventoryApiProvider).getAuditEntries();
-});
+  return ref
+      .watch(inventoryApiProvider)
+      .getAuditEntries()
+      .timeout(const Duration(seconds: 20));
+}, retry: (retryCount, error) => null);
 final inventoryProductTransactionsProvider =
     FutureProvider.family<List<InventoryTransactionDto>, String>((
       ref,

@@ -70,7 +70,10 @@ revisión, sin importar providers o controladores internos.
 
 ## 6. Stock actual y atomicidad
 
-`inventory_balances.quantity` conserva el saldo físico por producto y ubicación.
+`inventory_balances.quantity` conserva el saldo físico por producto y ubicación;
+`reserved_quantity` registra unidades reservadas y no disponibles para nuevas
+salidas. La API pública expone ambas cantidades para que los módulos
+consumidores puedan calcular disponibilidad sin usar el stock global.
 `products.current_stock` es la suma global persistida de solo lectura:
 
 ```text

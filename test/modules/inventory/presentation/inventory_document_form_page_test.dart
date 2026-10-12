@@ -24,6 +24,14 @@ void main() {
     await _pumpForm(tester, inventory);
     await _showLines(tester);
 
+    await tester.enterText(_field('Producto'), 'SK');
+    await tester.pumpAndSettle();
+    expect(find.text('SKU-1 · Producto uno'), findsNothing);
+
+    await tester.enterText(_field('Producto'), 'SKU');
+    await tester.pumpAndSettle();
+    expect(find.text('SKU-1 · Producto uno'), findsOneWidget);
+
     await tester.enterText(_field('Producto'), 'SKU-1');
     await tester.pumpAndSettle();
     await tester.tap(find.text('SKU-1 · Producto uno'));

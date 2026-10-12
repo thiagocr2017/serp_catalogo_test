@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:serp/modules/inventory/api/inventory_dtos.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../di/inventory_providers.dart';
+import '../../../../shared/utilities/search_query.dart';
 
 class AuditPage extends ConsumerStatefulWidget {
   const AuditPage({super.key});
@@ -29,10 +32,41 @@ class _AuditPageState extends ConsumerState<AuditPage> {
   Widget build(BuildContext context) {
     final entries = ref.watch(auditEntriesProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Auditoría')),
+      appBar: AppBar(
+        title: const Text('Auditoría'),
+        actions: [
+          IconButton(
+            tooltip: 'Actualizar auditoría',
+            onPressed: () => ref.invalidate(auditEntriesProvider),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
       body: entries.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('No fue posible cargar: $e')),
+        error: (error, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off_outlined),
+              const SizedBox(height: 12),
+              const Text('No fue posible cargar la auditoría.'),
+              const SizedBox(height: 4),
+              Text(
+                error is TimeoutException
+                    ? 'La consulta tardó demasiado. Revisa la conexión e inténtalo de nuevo.'
+                    : error.toString(),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () => ref.invalidate(auditEntriesProvider),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        ),
         data: (items) {
           final query = _query.trim().toLowerCase();
           final events = _group(items).where((event) {
@@ -57,13 +91,14 @@ class _AuditPageState extends ConsumerState<AuditPage> {
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
                 child: TextField(
                   controller: _search,
-                  onChanged: (value) => setState(() => _query = value),
+                  onChanged: (value) =>
+                      setState(() => _query = effectiveSearchQuery(value)),
                   decoration: InputDecoration(
                     labelText: 'Buscar en auditoría',
                     hintText:
                         'Tabla, operación, campo, valor, usuario o equipo',
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _query.isEmpty
+                    suffixIcon: _search.text.isEmpty
                         ? null
                         : IconButton(
                             tooltip: 'Limpiar búsqueda',

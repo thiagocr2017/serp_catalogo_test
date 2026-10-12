@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,35 @@ import 'package:serp/modules/inventory/di/inventory_providers.dart';
 import 'package:serp/modules/inventory/presentation/pages/audit_page.dart';
 
 void main() {
+  testWidgets('un timeout muestra error y permite reintentar', (tester) async {
+    var requests = 0;
+    final router = GoRouter(
+      initialLocation: '/audit',
+      routes: [GoRoute(path: '/audit', builder: (_, _) => const AuditPage())],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          auditEntriesProvider.overrideWith((ref) {
+            requests++;
+            return Future.error(
+              TimeoutException('La consulta excedió el tiempo.'),
+            );
+          }),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('No fue posible cargar la auditoría.'), findsOneWidget);
+    expect(find.textContaining('La consulta tardó demasiado'), findsOneWidget);
+
+    await tester.tap(find.text('Reintentar'));
+    await tester.pumpAndSettle();
+    expect(requests, 2);
+    expect(find.text('No fue posible cargar la auditoría.'), findsOneWidget);
+  });
+
   testWidgets('auditoria identifica recurso y muestra quien/cuando', (
     tester,
   ) async {

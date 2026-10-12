@@ -6,6 +6,7 @@ import '../../domain/entities/inventory_document.dart';
 class SupabaseInventoryDataSource {
   const SupabaseInventoryDataSource(this._client);
   final SupabaseClient _client;
+  static const _labelQueryBatchSize = 100;
 
   Future<List<Map<String, dynamic>>> transactions({String? productId}) async {
     var query = _client
@@ -206,12 +207,17 @@ class SupabaseInventoryDataSource {
   Future<Map<String, String>> productLabels(Iterable<String> ids) async {
     final values = ids.toSet().toList();
     if (values.isEmpty) return const {};
-    final rows = await _client
-        .from('products')
-        .select('id, sku, name')
-        .inFilter('id', values);
+    final batches = _splitIds(values);
+    final resultBatches = await Future.wait(
+      batches.map(
+        (batch) => _client
+            .from('products')
+            .select('id, sku, name')
+            .inFilter('id', batch),
+      ),
+    );
     return {
-      for (final row in rows)
+      for (final row in resultBatches.expand((rows) => rows))
         row['id'] as String:
             '${row['sku'] as String} · ${row['name'] as String}',
     };
@@ -220,12 +226,28 @@ class SupabaseInventoryDataSource {
   Future<Map<String, String>> categoryLabels(Iterable<String> ids) async {
     final values = ids.toSet().toList();
     if (values.isEmpty) return const {};
-    final rows = await _client
-        .from('categories')
-        .select('id, name')
-        .inFilter('id', values);
-    return {for (final row in rows) row['id'] as String: row['name'] as String};
+    final batches = _splitIds(values);
+    final resultBatches = await Future.wait(
+      batches.map(
+        (batch) =>
+            _client.from('categories').select('id, name').inFilter('id', batch),
+      ),
+    );
+    return {
+      for (final row in resultBatches.expand((rows) => rows))
+        row['id'] as String: row['name'] as String,
+    };
   }
+
+  List<List<String>> _splitIds(List<String> ids) => [
+    for (var start = 0; start < ids.length; start += _labelQueryBatchSize)
+      ids.sublist(
+        start,
+        start + _labelQueryBatchSize < ids.length
+            ? start + _labelQueryBatchSize
+            : ids.length,
+      ),
+  ];
 
   // Advanced inventory
 

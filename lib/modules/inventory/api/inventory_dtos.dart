@@ -126,6 +126,7 @@ class InventoryBalanceDto {
     required this.warehouseId,
     required this.locationId,
     required this.quantity,
+    this.reservedQuantity = 0,
     this.productSku,
     this.warehouseName,
     this.locationName,
@@ -135,6 +136,9 @@ class InventoryBalanceDto {
   final String warehouseId;
   final String locationId;
   final int quantity;
+  final int reservedQuantity;
+  int get availableQuantity =>
+      (quantity - reservedQuantity).clamp(0, quantity).toInt();
   final String? productSku;
   final String? warehouseName;
   final String? locationName;
@@ -146,6 +150,7 @@ class InventoryBalanceDto {
       other.warehouseId == warehouseId &&
       other.locationId == locationId &&
       other.quantity == quantity &&
+      other.reservedQuantity == reservedQuantity &&
       other.productSku == productSku &&
       other.warehouseName == warehouseName &&
       other.locationName == locationName;
@@ -156,6 +161,7 @@ class InventoryBalanceDto {
     warehouseId,
     locationId,
     quantity,
+    reservedQuantity,
     productSku,
     warehouseName,
     locationName,

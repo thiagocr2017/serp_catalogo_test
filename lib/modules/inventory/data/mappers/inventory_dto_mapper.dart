@@ -39,6 +39,7 @@ extension InventoryBalanceMapper on InventoryBalance {
     warehouseId: warehouseId,
     locationId: locationId,
     quantity: quantity,
+    reservedQuantity: reservedQuantity,
     productSku: productSku,
     warehouseName: warehouseName,
     locationName: locationName,

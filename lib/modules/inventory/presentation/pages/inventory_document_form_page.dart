@@ -8,6 +8,7 @@ import '../../../../shared/navigation/unsaved_changes_guard.dart';
 import '../../../product/product_module.dart';
 import '../../api/inventory_api.dart';
 import '../../di/inventory_providers.dart';
+import '../../../../shared/utilities/search_query.dart';
 
 class InventoryDocumentFormPage extends ConsumerStatefulWidget {
   const InventoryDocumentFormPage({super.key});
@@ -661,7 +662,7 @@ class _InventoryDocumentFormPageState
     focusNode: line.productFocus,
     displayStringForOption: (product) => '${product.sku} · ${product.name}',
     optionsBuilder: (value) {
-      final query = value.text.trim().toLowerCase();
+      final query = effectiveSearchQuery(value.text).toLowerCase();
       if (query.isEmpty) return const Iterable<ProductSummaryDto>.empty();
       return products.where(
         (product) =>
