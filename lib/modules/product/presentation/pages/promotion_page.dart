@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../di/promotion_providers.dart';
+import '../../../../shared/utilities/search_query.dart';
 
 class PromotionPage extends ConsumerStatefulWidget {
   const PromotionPage({super.key});
@@ -35,7 +36,7 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('No fue posible cargar: $e')),
         data: (items) {
-          final query = _query.trim().toLowerCase();
+          final query = effectiveSearchQuery(_query).toLowerCase();
           final filtered = items.where((promotion) {
             if (query.isEmpty) return true;
             return promotion.name.toLowerCase().contains(query) ||
@@ -110,7 +111,8 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
                                 ),
                                 IconButton(
                                   tooltip: 'Editar promoción',
-                                  onPressed: () => context.go('/promotions/${p.id}/edit'),
+                                  onPressed: () =>
+                                      context.go('/promotions/${p.id}/edit'),
                                   icon: const Icon(Icons.edit_outlined),
                                 ),
                               ],
@@ -125,5 +127,4 @@ class _PromotionPageState extends ConsumerState<PromotionPage> {
       ),
     );
   }
-
 }
