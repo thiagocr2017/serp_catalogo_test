@@ -1,6 +1,6 @@
 begin;
 
-select plan(46);
+select plan(52);
 
 -- Integridad del documento de inventario: atomicidad, idempotencia y reversión.
 --
@@ -24,6 +24,8 @@ select plan(46);
 -- Fixtures dentro de la transaccion que se revierte al final.
 insert into public.warehouses (id, code, name)
 values ('11111111-1111-1111-1111-111111111111', 'B-PG', 'Bodega pgTAP');
+insert into public.categories (id, name)
+values ('99999999-0000-0000-0000-000000000002', 'Categoria descuentos pgTAP');
 insert into public.inventory_locations (id, warehouse_id, code, name)
 values ('22222222-2222-2222-2222-222222222222',
         '11111111-1111-1111-1111-111111111111', 'L-PG', 'Ubicacion pgTAP');
@@ -35,19 +37,79 @@ insert into public.products (id, sku, name, description, category_id, unit_price
                              cbm_per_moq, factory_cost, current_stock,
                              reorder_point)
 select '33333333-3333-3333-3333-333333333333', 'SKU-PG-1', 'Producto pgTAP 1', '',
-       c.id, 100, 1, p.id, 1, 50, 0, 0
-  from public.categories c, public.packaging_presentations p limit 1;
+       '99999999-0000-0000-0000-000000000002', 100, 1, p.id, 1, 50, 0, 0
+  from public.packaging_presentations p limit 1;
 
 insert into public.products (id, sku, name, description, category_id, unit_price,
                              min_order_quantity, packaging_presentation_id,
-                             cbm_per_moq, factory_cost, current_stock,
+                             cbm_per_moq, factory_cost, current_stock, promo_price,
                              reorder_point)
 select '44444444-4444-4444-4444-444444444444', 'SKU-PG-2', 'Producto pgTAP 2', '',
-       c.id, 100, 1, p.id, 1, 50, 0, 0
-  from public.categories c, public.packaging_presentations p limit 1;
+       '99999999-0000-0000-0000-000000000002', 100, 1, p.id, 1, 50, 0, 80, 0
+  from public.packaging_presentations p limit 1;
+
+insert into public.products (id, sku, name, description, category_id, unit_price,
+                             min_order_quantity, packaging_presentation_id,
+                             cbm_per_moq, factory_cost, current_stock, promo_price,
+                             reorder_point)
+select '77777777-7777-7777-7777-777777777777', 'SKU-PG-3', 'Producto pgTAP 3', '',
+       '99999999-0000-0000-0000-000000000002', 100, 1, p.id, 1, 50, 0, 0, 0
+  from public.packaging_presentations p limit 1;
 
 insert into public.customers(id, name, is_active)
 values ('55555555-5555-5555-5555-555555555555', 'Cliente pgTAP', true);
+
+insert into public.sales_invoices(id, invoice_number, customer_id, customer_name,
+  status, total_amount, currency_code)
+values ('88888888-0000-0000-0000-000000000001', 'FAC-DISCOUNT-PG',
+  '55555555-5555-5555-5555-555555555555', 'Cliente pgTAP', 'CONFIRMED', 0, 'USD');
+
+select throws_ok(
+  $$insert into public.sales_invoice_lines(invoice_id, product_id, quantity,
+      unit_price, discount_percent, total_price, product_sku, product_name)
+    values ('88888888-0000-0000-0000-000000000001',
+      '33333333-3333-3333-3333-333333333333', 1, 100, 100, 0, 'SKU-PG-1', 'Producto pgTAP 1')$$,
+  'P0001', 'DISCOUNT_EXCEEDS_APPROVED_PROMOTION',
+  'I1 una factura rechaza 100 por ciento sin promocion aprobada'
+);
+select throws_ok(
+  $$insert into public.sales_invoice_lines(invoice_id, product_id, quantity,
+      unit_price, discount_percent, total_price, product_sku, product_name)
+    values ('88888888-0000-0000-0000-000000000001',
+      '44444444-4444-4444-4444-444444444444', 1, 100, 21, 79, 'SKU-PG-2', 'Producto pgTAP 2')$$,
+  'P0001', 'DISCOUNT_EXCEEDS_APPROVED_PROMOTION',
+  'I2 una factura rechaza descuento superior a la promocion aprobada'
+);
+select lives_ok(
+  $$insert into public.sales_invoice_lines(invoice_id, product_id, quantity,
+      unit_price, discount_percent, total_price, product_sku, product_name)
+    values ('88888888-0000-0000-0000-000000000001',
+      '44444444-4444-4444-4444-444444444444', 1, 100, 20, 80, 'SKU-PG-2', 'Producto pgTAP 2')$$,
+  'I3 una factura acepta exactamente el descuento promocional aprobado'
+);
+select throws_ok(
+  $$insert into public.sales_invoice_lines(invoice_id, product_id, quantity,
+      unit_price, discount_percent, total_price, product_sku, product_name)
+    values ('88888888-0000-0000-0000-000000000001',
+      '44444444-4444-4444-4444-444444444444', 1, 200, 20, 160, 'SKU-PG-2', 'Producto pgTAP 2')$$,
+  'P0001', 'INVALID_UNIT_PRICE',
+  'I4 no se puede evitar el tope manipulando el precio base de factura'
+);
+select throws_ok(
+  $$insert into public.sales_invoice_lines(invoice_id, product_id, quantity,
+      unit_price, discount_percent, total_price, product_sku, product_name)
+    values ('88888888-0000-0000-0000-000000000001',
+      '77777777-7777-7777-7777-777777777777', 1, 100, 100, 0, 'SKU-PG-3', 'Producto pgTAP 3')$$,
+  'P0001', 'DISCOUNT_EXCEEDS_APPROVED_PROMOTION',
+  'I5 incluso una promoción del 100 por ciento no permite una línea gratuita en factura'
+);
+select lives_ok(
+  $$insert into public.sales_invoice_lines(invoice_id, product_id, quantity,
+      unit_price, discount_percent, total_price, product_sku, product_name)
+    values ('88888888-0000-0000-0000-000000000001',
+      '77777777-7777-7777-7777-777777777777', 1, 100, 99.99, 0.01, 'SKU-PG-3', 'Producto pgTAP 3')$$,
+  'I6 una promoción del 100 por ciento se limita a 99.99 por ciento en factura'
+);
 
 set local role authenticated;
 

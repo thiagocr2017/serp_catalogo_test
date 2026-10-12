@@ -34,6 +34,7 @@ class SupabaseReturnDataSource {
               'product_id': line.productId,
               'quantity': line.quantity,
               'condition': line.condition,
+              'condition_note': line.conditionNote,
               'location_id': line.locationId,
             },
         ],
@@ -117,6 +118,7 @@ class SupabaseReturnDataSource {
     productSku: row['product_sku'] as String?,
     productName: row['product_name'] as String?,
     condition: row['condition'] as String? ?? 'GOOD',
+    conditionNote: row['condition_note'] as String?,
     inventoryLocationId: row['inventory_location_id'] as String?,
   );
 }

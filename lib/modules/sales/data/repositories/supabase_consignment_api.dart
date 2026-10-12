@@ -29,7 +29,7 @@ class SupabaseConsignmentApi implements ConsignmentApi {
     String? agentId,
     required List<ConsignmentLineInput> lines,
     required String warehouseId,
-    required String locationId,
+    required String? locationId,
   }) async {
     final consignment = await _source.createConsignment(
       customerId: customerId,

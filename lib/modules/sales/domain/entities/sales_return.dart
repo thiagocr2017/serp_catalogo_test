@@ -54,6 +54,7 @@ class SalesReturnLine {
     this.productSku,
     this.productName,
     this.condition = 'GOOD',
+    this.conditionNote,
     this.inventoryLocationId,
   });
 
@@ -67,5 +68,6 @@ class SalesReturnLine {
   final String? productSku;
   final String? productName;
   final String condition;
+  final String? conditionNote;
   final String? inventoryLocationId;
 }

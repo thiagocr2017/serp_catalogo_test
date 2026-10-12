@@ -196,6 +196,7 @@ extension SalesReturnLineMapper on SalesReturnLine {
     productSku: productSku,
     productName: productName,
     condition: condition,
+    conditionNote: conditionNote,
     inventoryLocationId: inventoryLocationId,
   );
 }

@@ -44,6 +44,10 @@ class SupabaseReturnApi implements ReturnApi {
         for (final line in row['lines'] as List<dynamic>)
           line['id'] as String: line['available_quantity'] as int,
       },
+      returnedQuantities: {
+        for (final line in row['lines'] as List<dynamic>)
+          line['id'] as String: line['returned_quantity'] as int? ?? 0,
+      },
       sellableLocations: locations('sellable_locations'),
       quarantineLocations: locations('quarantine_locations'),
     );

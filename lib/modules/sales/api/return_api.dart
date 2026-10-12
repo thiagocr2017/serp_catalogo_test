@@ -50,6 +50,7 @@ class SalesReturnPreviewDto {
     required this.paidAmount,
     required this.outstandingAmount,
     required this.availableQuantities,
+    this.returnedQuantities = const {},
     required this.sellableLocations,
     required this.quarantineLocations,
   });
@@ -62,6 +63,7 @@ class SalesReturnPreviewDto {
   final double paidAmount;
   final double outstandingAmount;
   final Map<String, int> availableQuantities;
+  final Map<String, int> returnedQuantities;
   final List<ReturnLocationDto> sellableLocations;
   final List<ReturnLocationDto> quarantineLocations;
 }

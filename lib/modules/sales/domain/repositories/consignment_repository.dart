@@ -11,7 +11,7 @@ abstract interface class ConsignmentRepository {
     String? agentId,
     required List<ConsignmentLineInput> lines,
     required String warehouseId,
-    required String locationId,
+    required String? locationId,
   });
   Future<SalesConsignment> registerReturn({
     required String consignmentId,

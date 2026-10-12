@@ -23,7 +23,7 @@ class SupabaseConsignmentRepository implements ConsignmentRepository {
     String? agentId,
     required List<ConsignmentLineInput> lines,
     required String warehouseId,
-    required String locationId,
+    required String? locationId,
   }) => _source.createConsignment(
     customerId: customerId,
     customerName: customerName,

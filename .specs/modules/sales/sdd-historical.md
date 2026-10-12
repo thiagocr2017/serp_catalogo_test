@@ -135,6 +135,12 @@ El módulo de Ventas administra agentes, clientes, cotizaciones, pedidos, factur
 | `exchange_rate` | Numeric(18,6) | Tipo de cambio. |
 | `inventory_document_id` | UUID | Documento de inventario vinculado. |
 
+Las columnas `exchange_rate` anteriores se conservan por compatibilidad con el
+esquema y los registros historicos. Por la regla vigente, los formularios y
+detalles comerciales no capturan ni muestran tipo de cambio; hasta retirar el
+parametro heredado de las RPC, Ventas escribe `1.0`. Solo Pagos aplica tipo de
+cambio al recibir dinero en otra moneda.
+
 ### `sales_returns`
 | Campo | Tipo | Descripción |
 |---|---|---|
