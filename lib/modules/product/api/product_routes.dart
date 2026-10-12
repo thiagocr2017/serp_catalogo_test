@@ -20,8 +20,10 @@ final List<RouteBase> productRoutes = [
       ),
       GoRoute(
         path: ':productId/edit',
-        builder: (context, state) =>
-            ProductFormPage(productId: state.pathParameters['productId']!),
+        builder: (context, state) => ProductFormPage(
+          productId: state.pathParameters['productId']!,
+          returnToList: state.uri.queryParameters['returnTo'] == 'list',
+        ),
       ),
       GoRoute(
         path: ':productId',

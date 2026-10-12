@@ -206,6 +206,53 @@ void main() {
     expect(repository.lastSavedProduct?.name, 'Producto actualizado');
     expect(repository.lastSavedProduct?.unitPriceInCents, 2250);
     expect(repository.lastSavedProduct?.unitsPerPresentation, 6);
+    expect(find.text('Producto product-1'), findsOneWidget);
+  });
+
+  testWidgets('guardar edicion iniciada desde lista regresa al indice', (
+    tester,
+  ) async {
+    final repository = _RecordingProductRepository(
+      existingProduct: Product(
+        id: 'product-1',
+        sku: 'SKU-OLD',
+        name: 'Producto anterior',
+        description: 'Descripción',
+        categoryId: 'category-1',
+        unitPriceInCents: 1500,
+        minimumOrderQuantity: 1,
+        minimumSaleQuantity: 1,
+        packagingPresentationId: 'presentation-1',
+        cbmPerMoq: 0,
+        factoryCostInCents: 500,
+        currentStock: 4,
+        reorderPoint: 1,
+        isActive: true,
+        createdAt: DateTime.utc(2026),
+      ),
+    );
+
+    await tester.pumpWidget(
+      _app(
+        repository,
+        const ProductFormPage(productId: 'product-1', returnToList: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nombre'),
+      'Producto actualizado',
+    );
+    await tester.scrollUntilVisible(
+      find.text('Guardar producto'),
+      600,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Guardar producto'));
+    await tester.pumpAndSettle();
+
+    expect(repository.updatedProducts, 1);
+    expect(find.text('Productos'), findsOneWidget);
   });
 }
 

@@ -15,8 +15,9 @@ import '../../services/product_image_service.dart';
 import '../controllers/product_list_controller.dart';
 
 class ProductFormPage extends ConsumerStatefulWidget {
-  const ProductFormPage({this.productId, super.key});
+  const ProductFormPage({this.productId, this.returnToList = false, super.key});
   final String? productId;
+  final bool returnToList;
   @override
   ConsumerState<ProductFormPage> createState() => _ProductFormPageState();
 }
@@ -251,7 +252,13 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
     if (_saving) return;
     if (_dirty && mounted && !await _confirmDiscard()) return;
     _markClean();
-    if (mounted) context.go('/products');
+    if (mounted) {
+      context.go(
+        _isEditing && !widget.returnToList
+            ? '/products/${widget.productId}'
+            : '/products',
+      );
+    }
   }
 
   Future<void> _save() async {
@@ -369,7 +376,11 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
             ),
           );
         }
-        context.go(_isEditing ? '/products/$productId' : '/products');
+        context.go(
+          _isEditing && !widget.returnToList
+              ? '/products/$productId'
+              : '/products',
+        );
       }
     } catch (error) {
       var errorMessage = 'No fue posible guardar: $error';

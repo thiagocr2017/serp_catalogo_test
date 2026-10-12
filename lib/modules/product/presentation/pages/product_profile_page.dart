@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utilities/phone_number.dart';
 import '../../../../shared/navigation/unsaved_changes_guard.dart';
+import '../../../../shared/utilities/search_query.dart';
 import '../../../inventory/inventory_module.dart';
 import '../../../sales/sales_module.dart';
 import '../../di/product_providers.dart';
@@ -76,7 +77,9 @@ class _Profile extends ConsumerWidget {
                   tooltip: 'Acciones del producto',
                   onSelected: (value) {
                     if (value == 'edit') {
-                      context.go('/products/${product.id}/edit');
+                      context.go(
+                        '/products/${product.id}/edit?returnTo=profile',
+                      );
                     } else {
                       _changeStatus(context, ref);
                     }
@@ -92,7 +95,9 @@ class _Profile extends ConsumerWidget {
               ]
             : [
                 TextButton.icon(
-                  onPressed: () => context.go('/products/${product.id}/edit'),
+                  onPressed: () => context.go(
+                    '/products/${product.id}/edit?returnTo=profile',
+                  ),
                   icon: const Icon(Icons.edit),
                   label: const Text('Editar'),
                 ),
@@ -855,7 +860,10 @@ class _ProductBuyersState extends ConsumerState<_ProductBuyers> {
         loading: () => const LinearProgressIndicator(),
         error: (e, _) => Text('No fue posible cargar compradores: $e'),
         data: (items) {
-          final filtered = filterProductBuyers(items, _query);
+          final filtered = filterProductBuyers(
+            items,
+            effectiveSearchQuery(_query),
+          );
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -866,7 +874,7 @@ class _ProductBuyersState extends ConsumerState<_ProductBuyers> {
                   labelText: 'Buscar comprador',
                   hintText: 'Negocio, contacto, provincia o gira',
                   prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _query.isEmpty
+                  suffixIcon: _search.text.isEmpty
                       ? null
                       : IconButton(
                           tooltip: 'Limpiar búsqueda',
@@ -1418,7 +1426,7 @@ class _SearchableHistoryState<T> extends State<_SearchableHistory<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final query = _query.trim().toLowerCase();
+    final query = effectiveSearchQuery(_query).toLowerCase();
     final filtered = widget.items
         .where(
           (item) =>
@@ -1434,7 +1442,7 @@ class _SearchableHistoryState<T> extends State<_SearchableHistory<T>> {
           decoration: InputDecoration(
             labelText: widget.searchLabel,
             prefixIcon: const Icon(Icons.search),
-            suffixIcon: _query.isEmpty
+            suffixIcon: _search.text.isEmpty
                 ? null
                 : IconButton(
                     tooltip: 'Limpiar búsqueda',

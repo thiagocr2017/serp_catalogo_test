@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,7 +10,8 @@ import '../../domain/entities/category.dart';
 import '../../domain/entities/product_query.dart';
 import '../../di/product_providers.dart';
 import '../controllers/product_list_controller.dart';
-import '../../../../shared/widgets/status_chip.dart';
+import '../../../../shared/utilities/search_query.dart';
+import '../widgets/product_status_badge.dart';
 
 enum ProductView { list, grid }
 
@@ -27,22 +30,25 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
   bool _onlyLowStock = false;
   bool? _activeStatus = true;
   String? _categoryId;
-  final _deactivatingProductIds = <String>{};
+  Timer? _searchDebounce;
+  final _changingProductStatusIds = <String>{};
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchDebounce?.cancel();
     _minimumPriceController.dispose();
     _maximumPriceController.dispose();
     super.dispose();
   }
 
   void _applyFilters() {
+    _searchDebounce?.cancel();
     ref
         .read(productListControllerProvider.notifier)
         .applyQuery(
           ProductQuery(
-            searchTerm: _searchController.text,
+            searchTerm: effectiveSearchQuery(_searchController.text),
             isActive: _activeStatus,
             onlyLowStock: _onlyLowStock,
             categoryId: _categoryId,
@@ -52,18 +58,30 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
         );
   }
 
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    if (effectiveSearchQuery(value).isEmpty) {
+      _applyFilters();
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 150), _applyFilters);
+  }
+
   int? _toCents(String value) {
     final amount = double.tryParse(value.replaceAll(',', '.'));
     return amount == null ? null : (amount * 100).round();
   }
 
-  Future<void> _deactivateProduct(Product product) async {
+  Future<void> _changeProductStatus(Product product) async {
+    final activating = !product.isActive;
     final accepted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Desactivar producto'),
+        title: Text(activating ? 'Activar producto' : 'Desactivar producto'),
         content: Text(
-          '${product.name} dejará de aparecer entre los productos activos, pero conservará su historial.',
+          activating
+              ? '${product.name} volverá a aparecer entre los productos activos.'
+              : '${product.name} dejará de aparecer entre los productos activos, pero conservará su historial.',
         ),
         actions: [
           TextButton(
@@ -72,33 +90,82 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Desactivar'),
+            child: Text(activating ? 'Activar' : 'Desactivar'),
           ),
         ],
       ),
     );
     if (accepted != true || !mounted) return;
-    setState(() => _deactivatingProductIds.add(product.id));
+    setState(() => _changingProductStatusIds.add(product.id));
     try {
-      await ref.read(deactivateProductProvider)(product.id);
+      if (activating) {
+        await ref.read(saveProductProvider).update(_withActiveStatus(product));
+      } else {
+        await ref.read(deactivateProductProvider)(product.id);
+      }
       await ref.read(productListControllerProvider.notifier).refresh();
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Producto desactivado.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              activating ? 'Producto activado.' : 'Producto desactivado.',
+            ),
+          ),
+        );
       }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo desactivar el producto: $error')),
+          SnackBar(
+            content: Text(
+              'No se pudo ${activating ? 'activar' : 'desactivar'} el producto: $error',
+            ),
+          ),
         );
       }
     } finally {
       if (mounted) {
-        setState(() => _deactivatingProductIds.remove(product.id));
+        setState(() => _changingProductStatusIds.remove(product.id));
       }
     }
   }
+
+  Product _withActiveStatus(Product product) => Product(
+    id: product.id,
+    sku: product.sku,
+    barcode: product.barcode,
+    name: product.name,
+    description: product.description,
+    categoryId: product.categoryId,
+    unitPriceInCents: product.unitPriceInCents,
+    packagePriceInCents: product.packagePriceInCents,
+    minimumOrderQuantity: product.minimumOrderQuantity,
+    minimumSaleQuantity: product.minimumSaleQuantity,
+    unitsPerPresentation: product.unitsPerPresentation,
+    packagingPresentationId: product.packagingPresentationId,
+    packagingPresentationName: product.packagingPresentationName,
+    cbmPerMoq: product.cbmPerMoq,
+    factoryCostInCents: product.factoryCostInCents,
+    extraCostsInCents: product.extraCostsInCents,
+    imageUrl: product.imageUrl,
+    imagePositionX: product.imagePositionX,
+    imagePositionY: product.imagePositionY,
+    imageScale: product.imageScale,
+    catalogSortOrder: product.catalogSortOrder,
+    currentStock: product.currentStock,
+    reorderPoint: product.reorderPoint,
+    promotionPriceInCents: product.promotionPriceInCents,
+    promotionText: product.promotionText,
+    promotionType: product.promotionType,
+    bulkPromotionId: product.bulkPromotionId,
+    bulkPromotionName: product.bulkPromotionName,
+    bulkPromotionConditions: product.bulkPromotionConditions,
+    bulkProductConditions: product.bulkProductConditions,
+    isActive: true,
+    createdAt: product.createdAt,
+    updatedAt: DateTime.now().toUtc(),
+    deletedAt: product.deletedAt,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -144,6 +211,7 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
               activeStatus: _activeStatus,
               onlyLowStock: _onlyLowStock,
               onSearch: _applyFilters,
+              onSearchChanged: _onSearchChanged,
               onCategoryChanged: (categoryId) {
                 setState(() => _categoryId = categoryId);
                 _applyFilters();
@@ -179,43 +247,61 @@ class _ProductListPageState extends ConsumerState<ProductListPage> {
               const SizedBox(height: 12),
             ],
             Expanded(
-              child: products.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stackTrace) => Center(
-                  child: Text('No fue posible cargar los productos.\n$error'),
-                ),
-                data: (items) => items.isEmpty
-                    ? const Center(
+              child: Column(
+                children: [
+                  if (products.isLoading && products.hasValue)
+                    Semantics(
+                      label: 'Buscando productos',
+                      liveRegion: true,
+                      child: const LinearProgressIndicator(minHeight: 2),
+                    ),
+                  Expanded(
+                    child: products.when(
+                      skipLoadingOnReload: true,
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (error, stackTrace) => Center(
                         child: Text(
-                          'No hay productos que coincidan con los filtros.',
+                          'No fue posible cargar los productos.\n$error',
                         ),
-                      )
-                    : _view == ProductView.list
-                    ? _ProductTable(
-                        products: items,
-                        categories: categories,
-                        selectedIds: selectedIds,
-                        deactivatingProductIds: _deactivatingProductIds,
-                        onDeactivate: _deactivateProduct,
-                        onSelectAll: (selected) => ref
-                            .read(selectedProductIdsProvider.notifier)
-                            .setMany(
-                              items.map((product) => product.id),
-                              selected: selected,
-                            ),
-                        onSelected: (id, selected) => ref
-                            .read(selectedProductIdsProvider.notifier)
-                            .toggle(id, selected: selected),
-                      )
-                    : _ProductGrid(
-                        products: items,
-                        selectedIds: selectedIds,
-                        deactivatingProductIds: _deactivatingProductIds,
-                        onDeactivate: _deactivateProduct,
-                        onSelected: (id, selected) => ref
-                            .read(selectedProductIdsProvider.notifier)
-                            .toggle(id, selected: selected),
                       ),
+                      data: (items) => items.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No hay productos que coincidan con los filtros.',
+                              ),
+                            )
+                          : _view == ProductView.list
+                          ? _ProductTable(
+                              products: items,
+                              categories: categories,
+                              selectedIds: selectedIds,
+                              changingProductStatusIds:
+                                  _changingProductStatusIds,
+                              onStatusChange: _changeProductStatus,
+                              onSelectAll: (selected) => ref
+                                  .read(selectedProductIdsProvider.notifier)
+                                  .setMany(
+                                    items.map((product) => product.id),
+                                    selected: selected,
+                                  ),
+                              onSelected: (id, selected) => ref
+                                  .read(selectedProductIdsProvider.notifier)
+                                  .toggle(id, selected: selected),
+                            )
+                          : _ProductGrid(
+                              products: items,
+                              selectedIds: selectedIds,
+                              changingProductStatusIds:
+                                  _changingProductStatusIds,
+                              onStatusChange: _changeProductStatus,
+                              onSelected: (id, selected) => ref
+                                  .read(selectedProductIdsProvider.notifier)
+                                  .toggle(id, selected: selected),
+                            ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -236,6 +322,7 @@ class _Toolbar extends StatelessWidget {
     required this.activeStatus,
     required this.onlyLowStock,
     required this.onSearch,
+    required this.onSearchChanged,
     required this.onCategoryChanged,
     required this.onViewChanged,
     required this.onStatusChanged,
@@ -251,6 +338,7 @@ class _Toolbar extends StatelessWidget {
   final bool? activeStatus;
   final bool onlyLowStock;
   final VoidCallback onSearch;
+  final ValueChanged<String> onSearchChanged;
   final ValueChanged<String?> onCategoryChanged;
   final ValueChanged<ProductView> onViewChanged;
   final ValueChanged<bool?> onStatusChanged;
@@ -267,9 +355,7 @@ class _Toolbar extends StatelessWidget {
           width: 360,
           child: TextField(
             controller: searchController,
-            onChanged: (value) {
-              if (value.isEmpty) onSearch();
-            },
+            onChanged: onSearchChanged,
             onSubmitted: (_) => onSearch(),
             decoration: InputDecoration(
               hintText: 'Buscar por nombre, SKU o descripción',
@@ -377,22 +463,23 @@ class _ProductTable extends StatelessWidget {
     required this.products,
     required this.categories,
     required this.selectedIds,
-    required this.deactivatingProductIds,
-    required this.onDeactivate,
+    required this.changingProductStatusIds,
+    required this.onStatusChange,
     required this.onSelected,
     required this.onSelectAll,
   });
   final List<Product> products;
   final List<Category> categories;
   final Set<String> selectedIds;
-  final Set<String> deactivatingProductIds;
-  final ValueChanged<Product> onDeactivate;
+  final Set<String> changingProductStatusIds;
+  final ValueChanged<Product> onStatusChange;
   final void Function(String id, bool selected) onSelected;
   final ValueChanged<bool> onSelectAll;
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 88),
       child: SizedBox(
         width: double.infinity,
         child: DataTable(
@@ -485,23 +572,17 @@ class _ProductTable extends StatelessWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _StockBadge(product: product),
-                        if (product.isActive)
-                          IconButton(
-                            tooltip: 'Desactivar producto',
-                            onPressed:
-                                deactivatingProductIds.contains(product.id)
-                                ? null
-                                : () => onDeactivate(product),
-                            icon: deactivatingProductIds.contains(product.id)
-                                ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.visibility_off_outlined),
+                        _ProductActionsMenu(
+                          product: product,
+                          isChanging: changingProductStatusIds.contains(
+                            product.id,
                           ),
+                          onStatusChange: onStatusChange,
+                        ),
+                        ProductStatusBadge(
+                          product: product,
+                          showStockStatus: false,
+                        ),
                       ],
                     ),
                     onTap: () => context.go('/products/${product.id}'),
@@ -519,19 +600,20 @@ class _ProductGrid extends StatelessWidget {
   const _ProductGrid({
     required this.products,
     required this.selectedIds,
-    required this.deactivatingProductIds,
-    required this.onDeactivate,
+    required this.changingProductStatusIds,
+    required this.onStatusChange,
     required this.onSelected,
   });
   final List<Product> products;
   final Set<String> selectedIds;
-  final Set<String> deactivatingProductIds;
-  final ValueChanged<Product> onDeactivate;
+  final Set<String> changingProductStatusIds;
+  final ValueChanged<Product> onStatusChange;
   final void Function(String id, bool selected) onSelected;
 
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
+      padding: const EdgeInsets.only(bottom: 88),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 360,
         mainAxisExtent: 390,
@@ -573,31 +655,22 @@ class _ProductGrid extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (product.isActive)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Material(
-                          color: Theme.of(context).colorScheme.surface,
-                          shape: const CircleBorder(),
-                          elevation: 2,
-                          child: IconButton(
-                            tooltip: 'Desactivar producto',
-                            onPressed:
-                                deactivatingProductIds.contains(product.id)
-                                ? null
-                                : () => onDeactivate(product),
-                            icon: deactivatingProductIds.contains(product.id)
-                                ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.visibility_off_outlined),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Material(
+                        color: Theme.of(context).colorScheme.surface,
+                        shape: const CircleBorder(),
+                        elevation: 2,
+                        child: _ProductActionsMenu(
+                          product: product,
+                          isChanging: changingProductStatusIds.contains(
+                            product.id,
                           ),
+                          onStatusChange: onStatusChange,
                         ),
                       ),
+                    ),
                   ],
                 ),
                 Expanded(
@@ -616,7 +689,9 @@ class _ProductGrid extends StatelessWidget {
                                 style: Theme.of(context).textTheme.labelLarge,
                               ),
                             ),
-                            Flexible(child: _StockBadge(product: product)),
+                            Flexible(
+                              child: ProductStatusBadge(product: product),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -706,28 +781,66 @@ class _ProductThumbnail extends StatelessWidget {
   );
 }
 
-class _StockBadge extends StatelessWidget {
-  const _StockBadge({required this.product});
+class _ProductActionsMenu extends StatelessWidget {
+  const _ProductActionsMenu({
+    required this.product,
+    required this.isChanging,
+    required this.onStatusChange,
+  });
+
   final Product product;
+  final bool isChanging;
+  final ValueChanged<Product> onStatusChange;
 
   @override
   Widget build(BuildContext context) {
-    final label = !product.isActive
-        ? 'Inactivo'
-        : product.isOutOfStock
-        ? 'Agotado'
-        : product.requiresRestock
-        ? 'Stock bajo'
-        : 'Disponible';
-    final tone = !product.isActive
-        ? StatusTone.neutral
-        : product.isOutOfStock
-        ? StatusTone.danger
-        : product.requiresRestock
-        ? StatusTone.warning
-        : StatusTone.success;
-    return StatusChip(label: label, tone: tone);
+    final scheme = Theme.of(context).colorScheme;
+    return PopupMenuButton<String>(
+      tooltip: 'Acciones del producto',
+      enabled: !isChanging,
+      icon: isChanging
+          ? const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(Icons.more_horiz, color: scheme.onSurfaceVariant),
+      onSelected: (action) {
+        if (action == 'edit') {
+          context.go('/products/${product.id}/edit?returnTo=list');
+        } else {
+          onStatusChange(product);
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'edit',
+          child: _ProductMenuAction(icon: Icons.edit_outlined, label: 'Editar'),
+        ),
+        PopupMenuItem(
+          value: 'status',
+          child: _ProductMenuAction(
+            icon: product.isActive
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
+            label: product.isActive ? 'Desactivar' : 'Activar',
+          ),
+        ),
+      ],
+    );
   }
+}
+
+class _ProductMenuAction extends StatelessWidget {
+  const _ProductMenuAction({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [Icon(icon, size: 18), const SizedBox(width: 12), Text(label)],
+  );
 }
 
 class _LocalImageThumbnail extends ConsumerStatefulWidget {
@@ -736,11 +849,14 @@ class _LocalImageThumbnail extends ConsumerStatefulWidget {
   final String url;
 
   @override
-  ConsumerState<_LocalImageThumbnail> createState() => _LocalImageThumbnailState();
+  ConsumerState<_LocalImageThumbnail> createState() =>
+      _LocalImageThumbnailState();
 }
 
 class _LocalImageThumbnailState extends ConsumerState<_LocalImageThumbnail> {
   File? _file;
+  bool _failed = false;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -748,22 +864,53 @@ class _LocalImageThumbnailState extends ConsumerState<_LocalImageThumbnail> {
     _load();
   }
 
+  @override
+  void didUpdateWidget(covariant _LocalImageThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sku != widget.sku || oldWidget.url != widget.url) {
+      _file = null;
+      _failed = false;
+      _load();
+    }
+  }
+
   Future<void> _load() async {
+    final generation = ++_loadGeneration;
     try {
       final service = ref.read(productImageServiceProvider);
       final file = await service.getLocalThumbnail(widget.sku, widget.url);
-      if (mounted) setState(() => _file = file);
-    } catch (_) { }
+      if (mounted && generation == _loadGeneration) {
+        setState(() {
+          _file = file;
+          _failed = false;
+        });
+      }
+    } catch (_) {
+      if (mounted && generation == _loadGeneration) {
+        setState(() => _failed = true);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_file == null) {
-      // While loading locally, we can just show a placeholder or try network directly
-      // but to avoid flickering on scroll, returning a network image immediately is okay,
-      // or we can just show a shimmer.
-      return Image.network(widget.url, fit: BoxFit.cover, errorBuilder: (_,_,_) => const Icon(Icons.broken_image_outlined));
+    final file = _file;
+    if (file == null) {
+      if (_failed) return const Icon(Icons.broken_image_outlined);
+      return ColoredBox(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: const Center(
+          child: SizedBox.square(
+            dimension: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
     }
-    return Image.file(_file!, fit: BoxFit.cover, errorBuilder: (_,_,_) => const Icon(Icons.broken_image_outlined));
+    return Image.file(
+      file,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined),
+    );
   }
 }

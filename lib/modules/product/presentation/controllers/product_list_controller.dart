@@ -21,12 +21,20 @@ class ProductListController extends AsyncNotifier<List<Product>> {
 
   Future<void> applyQuery(ProductQuery query) async {
     _query = query;
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() => ref.read(getProductsProvider)(query));
+    ref.invalidateSelf();
+    try {
+      await future;
+    } catch (_) {
+      // The provider exposes request errors through its AsyncValue state.
+    }
   }
 
   Future<void> refresh() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() => ref.read(getProductsProvider)(_query));
+    ref.invalidateSelf();
+    try {
+      await future;
+    } catch (_) {
+      // The provider exposes request errors through its AsyncValue state.
+    }
   }
 }

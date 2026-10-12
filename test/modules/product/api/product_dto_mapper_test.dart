@@ -29,6 +29,8 @@ void main() {
     promotionPriceInCents: 1000,
     isActive: true,
     createdAt: DateTime(2026, 1, 1),
+    imageUrl: 'https://example.test/product.png',
+    barcode: '1234567890123',
   );
 
   group('ProductSummaryDto', () {
@@ -104,6 +106,8 @@ void main() {
       expect(dto.name, 'Nombre');
       expect(dto.description, 'Descripcion');
       expect(dto.currentStock, 34);
+      expect(dto.imageUrl, 'https://example.test/product.png');
+      expect(dto.barcode, '1234567890123');
       expect(dto.promotionalPriceInCents, 1000);
       expect(dto.reorderPoint, 5);
       expect(dto.unitPriceInCents, 1250);

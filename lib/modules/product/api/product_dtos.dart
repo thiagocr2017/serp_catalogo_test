@@ -46,6 +46,8 @@ class ProductSummaryDto {
     required this.name,
     required this.description,
     required this.currentStock,
+    this.imageUrl,
+    this.barcode,
     this.unitPriceInCents = 0,
     this.promotionalPriceInCents,
     this.reorderPoint = 0,
@@ -62,6 +64,8 @@ class ProductSummaryDto {
   final String name;
   final String description;
   final int currentStock;
+  final String? imageUrl;
+  final String? barcode;
   final int unitPriceInCents;
   final int? promotionalPriceInCents;
   final int reorderPoint;
@@ -80,6 +84,8 @@ class ProductSummaryDto {
       other.name == name &&
       other.description == description &&
       other.currentStock == currentStock &&
+      other.imageUrl == imageUrl &&
+      other.barcode == barcode &&
       other.unitPriceInCents == unitPriceInCents &&
       other.promotionalPriceInCents == promotionalPriceInCents &&
       other.reorderPoint == reorderPoint &&
@@ -97,6 +103,8 @@ class ProductSummaryDto {
     name,
     description,
     currentStock,
+    imageUrl,
+    barcode,
     unitPriceInCents,
     promotionalPriceInCents,
     reorderPoint,
@@ -112,6 +120,7 @@ class ProductSummaryDto {
   String toString() =>
       'ProductSummaryDto(id: $id, sku: $sku, name: $name, '
       'description: $description, currentStock: $currentStock, '
+      'imageUrl: $imageUrl, barcode: $barcode, '
       'unitPriceInCents: $unitPriceInCents, '
       'promotionalPriceInCents: $promotionalPriceInCents, '
       'reorderPoint: $reorderPoint, '

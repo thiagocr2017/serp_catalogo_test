@@ -13,6 +13,8 @@ extension ProductPublicMapper on Product {
     name: name,
     description: description,
     currentStock: currentStock,
+    imageUrl: imageUrl,
+    barcode: barcode,
     unitPriceInCents: unitPriceInCents,
     promotionalPriceInCents: promotionPriceInCents,
     reorderPoint: reorderPoint,
