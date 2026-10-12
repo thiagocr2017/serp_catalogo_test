@@ -13,7 +13,7 @@ abstract interface class OrderRepository {
     String? quoteId,
     required List<OrderLineInput> lines,
     required String warehouseId,
-    required String locationId,
+    required String? locationId,
   });
   Future<SalesOrder> cancelOrder(String id);
 }

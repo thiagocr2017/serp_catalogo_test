@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../api/customer_summary_dtos.dart';
 import '../../api/quote_api.dart';
+import '../widgets/sales_document_detail_widgets.dart';
 
 class QuoteDetailPage extends ConsumerWidget {
   const QuoteDetailPage({required this.quoteId, this.returnTo, super.key});
@@ -16,6 +17,20 @@ class QuoteDetailPage extends ConsumerWidget {
     if (value == '/sales/quotes') return value!;
     if (value != null && RegExp(r'^/sales/customers/[^/]+$').hasMatch(value)) {
       return value;
+    }
+    if (value != null) {
+      final uri = Uri.tryParse(value);
+      final nested = uri?.queryParameters['returnTo'];
+      final validList =
+          nested == '/sales/orders' ||
+          (nested != null &&
+              Uri.tryParse(nested)?.path == '/sales/orders' &&
+              Uri.parse(nested).queryParameters.keys.every(
+                (key) => key == 'customerId' || key == 'customerName',
+              ));
+      if (uri?.path.startsWith('/sales/orders/') == true && validList) {
+        return uri.toString();
+      }
     }
     return '/sales/quotes';
   }
@@ -108,46 +123,37 @@ class _QuoteDetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          runSpacing: 12,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(quote.quoteNumber, style: theme.textTheme.headlineMedium),
-                const SizedBox(height: 4),
-                Text('Creada ${_date(quote.createdAt)}'),
-              ],
-            ),
-            StatusChip(
-              label: _status,
-              tone: switch (quote.status) {
-                QuoteStatus.accepted => StatusTone.success,
-                QuoteStatus.rejected => StatusTone.danger,
-                QuoteStatus.expired => StatusTone.warning,
-                QuoteStatus.converted => StatusTone.info,
-                _ => StatusTone.neutral,
-              },
-            ),
+        SalesDocumentHeader(
+          number: quote.quoteNumber,
+          numberStyle: Theme.of(context).textTheme.headlineSmall,
+          status: _status,
+          statusTone: switch (quote.status) {
+            QuoteStatus.accepted => StatusTone.success,
+            QuoteStatus.rejected => StatusTone.danger,
+            QuoteStatus.expired => StatusTone.warning,
+            QuoteStatus.converted => StatusTone.info,
+            _ => StatusTone.neutral,
+          },
+          facts: [
+            if (quote.createdAt != null) 'Creada ${_date(quote.createdAt)}',
+            if (quote.updatedAt != null && quote.updatedAt != quote.createdAt)
+              'Actualizada ${_date(quote.updatedAt)}',
+            if (quote.validUntil != null)
+              'Vigente hasta ${_date(quote.validUntil)}',
           ],
         ),
         const SizedBox(height: 24),
-        Text('Cliente', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 8),
+        Semantics(
+          header: true,
+          child: const SalesDocumentSectionTitle('Cliente'),
+        ),
         Card(
           margin: EdgeInsets.zero,
           child: ListTile(
-            leading: Semantics(
-              label: 'Cliente',
-              child: CircleAvatar(child: Icon(Icons.person_outline)),
-            ),
+            leading: const CircleAvatar(child: Icon(Icons.person_outline)),
             title: Text(quote.customerName),
             subtitle: Text(
               quote.customerId == null
@@ -156,10 +162,7 @@ class _QuoteDetailContent extends StatelessWidget {
             ),
             trailing: quote.customerId == null
                 ? null
-                : Semantics(
-                    label: 'Abrir perfil del cliente',
-                    child: Icon(Icons.open_in_new),
-                  ),
+                : const Icon(Icons.open_in_new),
             onTap: quote.customerId == null
                 ? null
                 : () => context.go(
@@ -179,96 +182,31 @@ class _QuoteDetailContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        Text('Productos cotizados', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 8),
+        const SalesDocumentSectionTitle('Productos cotizados'),
         if (quote.lines.isEmpty)
           const ListTile(title: Text('El documento no tiene líneas guardadas.'))
         else
           for (final line in quote.lines)
-            Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                line.productName ?? 'Producto',
-                                style: theme.textTheme.titleSmall,
-                              ),
-                              if (line.productSku?.isNotEmpty == true)
-                                Text('SKU ${line.productSku}'),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          '${quote.currencyCode} ${line.totalPrice.toStringAsFixed(2)}',
-                          style: theme.textTheme.titleSmall,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 20,
-                      runSpacing: 8,
-                      children: [
-                    Text('Cantidad: ${line.quantity} unidades'),
-                        Text(
-                          'Precio unitario: ${quote.currencyCode} ${line.unitPrice.toStringAsFixed(2)}',
-                        ),
-                        Text(
-                          'Descuento: ${line.discountPercent.toStringAsFixed(2)}%',
-                        ),
-                    if (line.unitsPerPresentation > 1)
-                      Text(
-                        '${line.quantity ~/ line.unitsPerPresentation} ${line.presentationName ?? 'presentaciones'} · ${line.unitsPerPresentation} unidades c/u',
-                      ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+            SalesDocumentLineCard(
+              productName: line.productName ?? 'Producto',
+              productSku: line.productSku,
+              quantityLabel: 'Cantidad: ${line.quantity} unidades',
+              unitPrice: line.unitPrice,
+              currencyCode: quote.currencyCode,
+              total: line.totalPrice,
+              discountPercent: line.discountPercent,
+              additionalDetails: line.unitsPerPresentation > 1
+                  ? '${line.quantity ~/ line.unitsPerPresentation} ${line.presentationName ?? 'presentaciones'} · ${line.unitsPerPresentation} unidades c/u'
+                  : null,
             ),
         const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.centerRight,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 280),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (quote.validUntil != null)
-                  ListTile(
-                    dense: true,
-                    title: const Text('Vigencia'),
-                    trailing: Text(_date(quote.validUntil!)),
-                  ),
-                const Divider(height: 1),
-                ListTile(
-                  title: const Text('Total'),
-                  titleTextStyle: theme.textTheme.titleLarge,
-                  trailing: Text(
-                    '${quote.currencyCode} ${quote.totalAmount.toStringAsFixed(2)}',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: colors.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        SalesDocumentTotalCard(
+          amount: quote.totalAmount,
+          currencyCode: quote.currencyCode,
         ),
         if (quote.notes?.trim().isNotEmpty == true) ...[
-          const SizedBox(height: 20),
-          Text('Notas', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: 24),
+          const SalesDocumentSectionTitle('Notas'),
           Card(
             margin: EdgeInsets.zero,
             child: Padding(
@@ -280,8 +218,7 @@ class _QuoteDetailContent extends StatelessWidget {
         if (quote.status == QuoteStatus.draft ||
             quote.status == QuoteStatus.sent) ...[
           const SizedBox(height: 24),
-          Text('Acciones', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SalesDocumentSectionTitle('Acciones'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -308,8 +245,8 @@ class _QuoteDetailContent extends StatelessWidget {
       ],
     );
   }
-
-  String _date(DateTime? value) => value == null
-      ? 'No disponible'
-      : '${value.day}/${value.month}/${value.year}';
 }
+
+String _date(DateTime? value) => value == null
+    ? 'No disponible'
+    : '${value.day}/${value.month}/${value.year}';

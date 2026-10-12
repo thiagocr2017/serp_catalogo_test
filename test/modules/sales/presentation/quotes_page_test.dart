@@ -16,7 +16,7 @@ void main() {
     expect(find.text('USD 40.00'), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'sku-blue');
     await tester.pumpAndSettle();
-    expect(find.text('COT-101'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'COT-101'), findsOneWidget);
     expect(find.text('COT-102'), findsNothing);
   });
 
@@ -28,7 +28,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'sku-blue');
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(DropdownButton<QuoteStatus?>));
+    await tester.tap(find.byType(DropdownButtonFormField<String>).last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Aceptada').last);
     await tester.pumpAndSettle();
@@ -37,6 +37,39 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('No hay cotizaciones registradas.'), findsNothing);
+  });
+
+  testWidgets('muestra KPI y filtra mientras se escribe sin Enter', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Total'), findsOneWidget);
+    expect(find.text('Borradores'), findsOneWidget);
+    expect(find.text('Aceptadas'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'COT-101');
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(ListTile, 'COT-101'), findsOneWidget);
+    expect(find.text('COT-102'), findsNothing);
+  });
+
+  testWidgets('limpiar a menos de tres caracteres restaura cotizaciones', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    final search = find.byType(TextField);
+    await tester.enterText(search, 'sku-blue');
+    await tester.pumpAndSettle();
+    expect(find.text('COT-101'), findsOneWidget);
+    expect(find.text('COT-102'), findsNothing);
+
+    await tester.enterText(search, 'sk');
+    await tester.pumpAndSettle();
+    expect(find.text('COT-101'), findsOneWidget);
+    expect(find.text('COT-102'), findsOneWidget);
   });
 
   testWidgets('abrir una fila navega al detalle de esa cotizacion', (

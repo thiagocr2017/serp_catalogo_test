@@ -20,15 +20,18 @@ void main() {
         ),
         GoRoute(
           path: '/sales/customers/:id',
-          builder: (context, state) => const Scaffold(body: Text('Perfil cliente')),
+          builder: (context, state) =>
+              const Scaffold(body: Text('Perfil cliente')),
         ),
         GoRoute(
           path: '/sales/quotes',
-          builder: (context, state) => const Scaffold(body: Text('Cotizaciones')),
+          builder: (context, state) =>
+              const Scaffold(body: Text('Cotizaciones')),
         ),
         GoRoute(
           path: '/sales/quotes/:id/edit',
-          builder: (context, state) => const Scaffold(body: Text('Editar documento')),
+          builder: (context, state) =>
+              const Scaffold(body: Text('Editar documento')),
         ),
       ],
     );
@@ -45,6 +48,7 @@ void main() {
     expect(find.text('Set de utensilios'), findsOneWidget);
     expect(find.textContaining('Caja · 6 unidades c/u'), findsOneWidget);
     expect(find.text('CRC 25.00'), findsWidgets);
+    expect(find.textContaining('Tipo de cambio'), findsNothing);
     await tester.tap(find.widgetWithText(ListTile, 'Tienda Demo'));
     await tester.pumpAndSettle();
     expect(find.text('Perfil cliente'), findsOneWidget);
@@ -62,9 +66,8 @@ class _QuoteApi implements QuoteApi {
   Future<List<SalesQuoteDto>> getQuotes() async => [_quote];
 
   @override
-  Future<SalesQuoteDto?> getQuoteById(String id) async => id == _quote.id
-      ? _quote
-      : null;
+  Future<SalesQuoteDto?> getQuoteById(String id) async =>
+      id == _quote.id ? _quote : null;
 
   @override
   Future<SalesQuoteDto> createQuote({
@@ -79,8 +82,10 @@ class _QuoteApi implements QuoteApi {
   }) async => _quote;
 
   @override
-  Future<SalesQuoteDto> updateQuoteStatus(String id, QuoteStatus status) async =>
-      _quote;
+  Future<SalesQuoteDto> updateQuoteStatus(
+    String id,
+    QuoteStatus status,
+  ) async => _quote;
 
   @override
   Future<SalesQuoteDto> updateQuote({
@@ -102,6 +107,7 @@ final _quote = SalesQuoteDto(
   status: QuoteStatus.draft,
   totalAmount: 25,
   currencyCode: 'CRC',
+  exchangeRate: 2,
   lines: const [
     SalesQuoteLineDto(
       id: 'line-1',

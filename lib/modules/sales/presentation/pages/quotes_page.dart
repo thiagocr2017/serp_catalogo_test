@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../api/customer_summary_dtos.dart';
 import '../../api/quote_api.dart';
 import '../../../../shared/widgets/status_chip.dart';
+import '../../../../shared/utilities/search_query.dart';
+import '../../../../shared/widgets/document_list_controls.dart';
+import '../../../../shared/widgets/list_kpi_strip.dart';
 
 class QuotesPage extends ConsumerStatefulWidget {
   const QuotesPage({super.key});
@@ -62,7 +65,7 @@ class _QuotesPageState extends ConsumerState<QuotesPage> {
               ),
             );
           }
-          final normalizedQuery = _query.trim().toLowerCase();
+          final normalizedQuery = effectiveSearchQuery(_query).toLowerCase();
           final filteredQuotes = quotes.where((quote) {
             if (_status != null && quote.status != _status) return false;
             if (normalizedQuery.isEmpty) return true;
@@ -88,51 +91,57 @@ class _QuotesPageState extends ConsumerState<QuotesPage> {
               if (index == 0) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 420,
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (value) => setState(() => _query = value),
-                          decoration: InputDecoration(
-                            labelText: 'Buscar cotizaciones',
-                            hintText: 'Número, cliente, producto o SKU',
-                            prefixIcon: const Icon(Icons.search),
-                            suffixIcon: _query.isEmpty
-                                ? null
-                                : IconButton(
-                                    tooltip: 'Limpiar búsqueda',
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() => _query = '');
-                                    },
-                                    icon: const Icon(Icons.close),
-                                  ),
-                          ),
-                        ),
-                      ),
-                      DropdownButton<QuoteStatus?>(
-                        value: _status,
-                        hint: const Text('Todos los estados'),
-                        items: [
-                          const DropdownMenuItem<QuoteStatus?>(
-                            value: null,
-                            child: Text('Todos los estados'),
-                          ),
-                          for (final status in QuoteStatus.values)
-                            DropdownMenuItem(
-                              value: status,
-                              child: Text(_statusLabel(status)),
-                            ),
-                        ],
-                        onChanged: (value) => setState(() => _status = value),
-                      ),
-                      Text('${filteredQuotes.length} de ${quotes.length}'),
+                  child: DocumentListControls(
+                    searchController: _searchController,
+                    searchLabel: 'Buscar cotizaciones',
+                    searchHint: 'Número, cliente, producto o SKU',
+                    onSearchChanged: (value) => setState(() => _query = value),
+                    statusValue: _status?.name ?? 'ALL',
+                    statusOptions: [
+                      (value: 'ALL', label: 'Todos los estados'),
+                      for (final status in QuoteStatus.values)
+                        (value: status.name, label: _statusLabel(status)),
                     ],
+                    onStatusChanged: (value) => setState(() {
+                      _status = value == 'ALL'
+                          ? null
+                          : QuoteStatus.values.byName(value);
+                    }),
+                    kpis: [
+                      ListKpi(
+                        label: 'Total',
+                        value: quotes.length,
+                        icon: Icons.request_quote_outlined,
+                      ),
+                      ListKpi(
+                        label: 'Borradores',
+                        value: quotes
+                            .where((q) => q.status == QuoteStatus.draft)
+                            .length,
+                        icon: Icons.edit_note_outlined,
+                      ),
+                      ListKpi(
+                        label: 'Pendientes',
+                        value: quotes
+                            .where((q) => q.status == QuoteStatus.sent)
+                            .length,
+                        icon: Icons.outgoing_mail,
+                      ),
+                      ListKpi(
+                        label: 'Aceptadas',
+                        value: quotes
+                            .where((q) => q.status == QuoteStatus.accepted)
+                            .length,
+                        icon: Icons.check_circle_outline,
+                      ),
+                    ],
+                    resultCount: filteredQuotes.length,
+                    totalCount: quotes.length,
+                    onClear: () => setState(() {
+                      _searchController.clear();
+                      _query = '';
+                      _status = null;
+                    }),
                   ),
                 );
               }

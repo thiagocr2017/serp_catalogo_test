@@ -24,7 +24,7 @@ class SupabaseOrderRepository implements OrderRepository {
     String? quoteId,
     required List<OrderLineInput> lines,
     required String warehouseId,
-    required String locationId,
+    required String? locationId,
   }) => _source.createOrder(
     customerId: customerId,
     customerName: customerName,

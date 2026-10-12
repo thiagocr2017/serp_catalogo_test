@@ -4,29 +4,49 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/order_api.dart';
 import '../../../../shared/widgets/status_chip.dart';
+import '../../../../shared/utilities/search_query.dart';
+import '../../../../shared/widgets/document_list_controls.dart';
+import '../../../../shared/widgets/list_kpi_strip.dart';
 
-class OrdersPage extends ConsumerWidget {
+class OrdersPage extends ConsumerStatefulWidget {
   const OrdersPage({this.customerId, this.customerName, super.key});
 
   final String? customerId;
   final String? customerName;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrdersPage> createState() => _OrdersPageState();
+}
+
+class _OrdersPageState extends ConsumerState<OrdersPage> {
+  final _search = TextEditingController();
+  String _status = 'ALL';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ordersAsync = ref.watch(ordersProvider);
 
     return Scaffold(
       appBar: AppBar(
-        leading: customerId == null
+        leading: widget.customerId == null
             ? null
             : IconButton(
                 tooltip: 'Volver al cliente',
-                onPressed: () => context.go('/sales/customers/$customerId'),
+                onPressed: () =>
+                    context.go('/sales/customers/${widget.customerId}'),
                 icon: const Icon(Icons.arrow_back),
               ),
         title: Semantics(
           header: true,
-          child: Text(customerId == null ? 'Pedidos' : 'Pedidos del cliente'),
+          child: Text(
+            widget.customerId == null ? 'Pedidos' : 'Pedidos del cliente',
+          ),
         ),
         actions: [
           FilledButton.icon(
@@ -41,19 +61,33 @@ class OrdersPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (orders) {
-          final visibleOrders = customerId == null
+          final customerOrders = widget.customerId == null
               ? orders
               : orders
                     .where(
                       (order) =>
-                          order.customerId == customerId ||
+                          order.customerId == widget.customerId ||
                           (order.customerId == null &&
-                              customerName != null &&
+                              widget.customerName != null &&
                               order.customerName.trim().toLowerCase() ==
-                                  customerName!.trim().toLowerCase()),
+                                  widget.customerName!.trim().toLowerCase()),
                     )
                     .toList();
-          if (visibleOrders.isEmpty) {
+          final visibleOrders = customerOrders.where((order) {
+            if (_status != 'ALL' && order.status.name != _status) return false;
+            final query = effectiveSearchQuery(_search.text).toLowerCase();
+            if (query.isEmpty) return true;
+            return [
+              order.orderNumber,
+              order.customerName,
+              order.status.name,
+              order.notes ?? '',
+              ...order.lines.expand(
+                (line) => [line.productName ?? '', line.productSku ?? ''],
+              ),
+            ].join(' ').toLowerCase().contains(query);
+          }).toList();
+          if (customerOrders.isEmpty) {
             return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -61,12 +95,12 @@ class OrdersPage extends ConsumerWidget {
                   const Icon(Icons.shopping_bag_outlined, size: 40),
                   const SizedBox(height: 12),
                   Text(
-                    orders.isEmpty
+                    customerOrders.isEmpty
                         ? 'No hay pedidos registrados.'
                         : 'Este cliente no tiene pedidos registrados.',
                   ),
                   const SizedBox(height: 12),
-                  if (customerId == null)
+                  if (widget.customerId == null)
                     FilledButton.icon(
                       onPressed: () => context.go('/sales/orders/new'),
                       icon: const Icon(Icons.add),
@@ -77,14 +111,88 @@ class OrdersPage extends ConsumerWidget {
             );
           }
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: visibleOrders.length,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+            itemCount: visibleOrders.isEmpty ? 2 : visibleOrders.length + 1,
             itemBuilder: (context, index) {
-              final order = visibleOrders[index];
+              if (index == 0) {
+                int count(OrderStatus status) =>
+                    customerOrders.where((o) => o.status == status).length;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: DocumentListControls(
+                    searchController: _search,
+                    searchLabel: 'Buscar pedidos',
+                    searchHint: 'Número, cliente, producto o SKU',
+                    onSearchChanged: (_) => setState(() {}),
+                    statusValue: _status,
+                    statusOptions: [
+                      (value: 'ALL', label: 'Todos los estados'),
+                      for (final status in OrderStatus.values)
+                        (value: status.name, label: _orderStatusLabel(status)),
+                    ],
+                    onStatusChanged: (value) => setState(() => _status = value),
+                    kpis: [
+                      ListKpi(
+                        label: 'Total',
+                        value: customerOrders.length,
+                        icon: Icons.shopping_bag_outlined,
+                      ),
+                      ListKpi(
+                        label: 'Borradores',
+                        value: count(OrderStatus.draft),
+                        icon: Icons.edit_note_outlined,
+                      ),
+                      ListKpi(
+                        label: 'Activos',
+                        value:
+                            count(OrderStatus.confirmed) +
+                            count(OrderStatus.reserved) +
+                            count(OrderStatus.dispatched),
+                        icon: Icons.local_shipping_outlined,
+                      ),
+                      ListKpi(
+                        label: 'Entregados',
+                        value: count(OrderStatus.delivered),
+                        icon: Icons.check_circle_outline,
+                      ),
+                    ],
+                    resultCount: visibleOrders.length,
+                    totalCount: customerOrders.length,
+                    onClear: () => setState(() {
+                      _search.clear();
+                      _status = 'ALL';
+                    }),
+                  ),
+                );
+              }
+              if (visibleOrders.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text('No hay pedidos para esos criterios.'),
+                  ),
+                );
+              }
+              final order = visibleOrders[index - 1];
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
                   title: Text(order.orderNumber),
+                  onTap: () {
+                    final listPath = widget.customerId == null
+                        ? '/sales/orders'
+                        : Uri(
+                            path: '/sales/orders',
+                            queryParameters: {
+                              'customerId': widget.customerId!,
+                              if (widget.customerName != null)
+                                'customerName': widget.customerName!,
+                            },
+                          ).toString();
+                    context.go(
+                      '/sales/orders/${order.id}?returnTo=${Uri.encodeQueryComponent(listPath)}',
+                    );
+                  },
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -179,4 +287,13 @@ class OrdersPage extends ConsumerWidget {
       ),
     );
   }
+
+  String _orderStatusLabel(OrderStatus status) => switch (status) {
+    OrderStatus.draft => 'Borrador',
+    OrderStatus.confirmed => 'Confirmado',
+    OrderStatus.reserved => 'Reservado',
+    OrderStatus.dispatched => 'Despachado',
+    OrderStatus.delivered => 'Entregado',
+    OrderStatus.cancelled => 'Cancelado',
+  };
 }

@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utilities/phone_number.dart';
 import '../../../../shared/navigation/unsaved_changes_guard.dart';
+import '../../../../shared/utilities/search_query.dart';
 import '../../../../shared/widgets/status_chip.dart';
+import '../../../../shared/widgets/list_kpi_strip.dart';
 import '../../../configuration/configuration_module.dart';
 import '../../api/customer_api.dart';
 
@@ -22,7 +24,7 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
   String _typeFilter = 'ALL';
 
   bool get _hasActiveFilters =>
-      _search.text.trim().isNotEmpty ||
+      effectiveSearchQuery(_search.text).isNotEmpty ||
       _statusFilter != 'ALL' ||
       _typeFilter != 'ALL';
 
@@ -45,7 +47,16 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
     final customersAsync = ref.watch(customersProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Clientes')),
+      appBar: AppBar(
+        title: const Text('Clientes'),
+        actions: [
+          IconButton(
+            tooltip: 'Importar clientes',
+            onPressed: () => context.go('/sales/customers/import'),
+            icon: const Icon(Icons.upload_file_outlined),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.go('/sales/customers/new'),
         tooltip: 'Crear nuevo cliente',
@@ -65,7 +76,7 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
               onPressed: () => context.go('/sales/customers/new'),
             );
           }
-          final query = _search.text.trim().toLowerCase();
+          final query = effectiveSearchQuery(_search.text).toLowerCase();
           final filtered = customers.where((customer) {
             final matchesStatus =
                 _statusFilter == 'ALL' ||
@@ -93,6 +104,33 @@ class _CustomersPageState extends ConsumerState<CustomersPage> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              ListKpiStrip(
+                items: [
+                  ListKpi(
+                    label: 'Total',
+                    value: customers.length,
+                    icon: Icons.groups_outlined,
+                  ),
+                  ListKpi(
+                    label: 'Activos',
+                    value: customers.where((c) => c.isActive).length,
+                    icon: Icons.person_outline,
+                  ),
+                  ListKpi(
+                    label: 'Inactivos',
+                    value: customers.where((c) => !c.isActive).length,
+                    icon: Icons.person_off_outlined,
+                  ),
+                  ListKpi(
+                    label: 'Crédito',
+                    value: customers
+                        .where((c) => c.customerType == 'CREDIT')
+                        .length,
+                    icon: Icons.credit_score_outlined,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -2463,11 +2501,15 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                   shape: BoxShape.circle,
                                   border: selectedColor == hex
                                       ? Border.all(
-                                          color: Theme.of(context).colorScheme.primary,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
                                           width: 3,
                                         )
                                       : Border.all(
-                                          color: Theme.of(context).colorScheme.outlineVariant,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .outlineVariant,
                                           width: 1,
                                         ),
                                 ),
@@ -2475,7 +2517,9 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
                                     ? Icon(
                                         Icons.check,
                                         size: 16,
-                                        color: Theme.of(context).colorScheme.onPrimary,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onPrimary,
                                       )
                                     : null,
                               ),

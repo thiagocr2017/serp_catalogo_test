@@ -44,6 +44,18 @@ class CustomerProfilePage extends ConsumerWidget {
               .hasMatch(uri.path)) {
         return value;
       }
+      if (internal && RegExp(r'^/sales/orders/[^/?]+$').hasMatch(uri.path)) {
+        final nested = uri.queryParameters['returnTo'];
+        final nestedUri = nested == null ? null : Uri.tryParse(nested);
+        if (nested == null ||
+            nested == '/sales/orders' ||
+            (nestedUri?.path == '/sales/orders' &&
+                nestedUri!.queryParameters.keys.every(
+                  (key) => key == 'customerId' || key == 'customerName',
+                ))) {
+          return value;
+        }
+      }
       if (value == '/sales/quotes') return value;
     }
     return '/sales/customers';

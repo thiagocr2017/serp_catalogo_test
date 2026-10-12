@@ -31,7 +31,7 @@ class SupabaseOrderApi implements OrderApi {
     String? quoteId,
     required List<OrderLineInput> lines,
     required String warehouseId,
-    required String locationId,
+    required String? locationId,
   }) async {
     final order = await _source.createOrder(
       customerId: customerId,

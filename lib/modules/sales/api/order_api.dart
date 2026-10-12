@@ -17,7 +17,7 @@ abstract interface class OrderApi {
     String? quoteId,
     required List<OrderLineInput> lines,
     required String warehouseId,
-    required String locationId,
+    required String? locationId,
   });
   Future<SalesOrderDto> cancelOrder(String id);
 }
@@ -28,4 +28,8 @@ final orderApiProvider = Provider<OrderApi>(
 
 final ordersProvider = FutureProvider<List<SalesOrderDto>>(
   (ref) => ref.watch(orderApiProvider).getOrders(),
+);
+
+final orderByIdProvider = FutureProvider.family<SalesOrderDto?, String>(
+  (ref, id) => ref.watch(orderApiProvider).getOrderById(id),
 );

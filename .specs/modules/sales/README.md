@@ -7,6 +7,9 @@ El SDD historico vive en `sdd-historical.md`.
 
 ## Specs nuevas
 
+- `../../screens/customer-import/`: plantilla CSV, validacion previa y altas
+  masivas sin actualizar clientes existentes.
+
 - `../../screens/sales-commercial-operations/`: flujos de UI para cotizaciones,
   pedidos, facturas, devoluciones y consignaciones usando los comandos
   comerciales ya expuestos.

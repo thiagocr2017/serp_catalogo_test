@@ -5,6 +5,7 @@ import '../presentation/pages/customer_profile_page.dart';
 import '../presentation/pages/invoices_page.dart';
 import '../presentation/pages/sales_invoice_detail_page.dart';
 import '../presentation/pages/customers_page.dart';
+import '../presentation/pages/customer_import_page.dart';
 import '../presentation/pages/quotes_page.dart';
 import '../presentation/pages/quote_detail_page.dart';
 import '../presentation/pages/orders_page.dart';
@@ -13,6 +14,7 @@ import '../presentation/pages/consignments_page.dart';
 import '../presentation/pages/sales_document_form_page.dart';
 import '../presentation/pages/return_detail_page.dart';
 import '../presentation/pages/consignment_detail_page.dart';
+import '../presentation/pages/order_detail_page.dart';
 
 final List<RouteBase> salesRoutes = [
   GoRoute(
@@ -42,6 +44,10 @@ final List<RouteBase> salesRoutes = [
   GoRoute(
     path: '/sales/customers/new',
     builder: (context, state) => const CustomerFormPage(),
+  ),
+  GoRoute(
+    path: '/sales/customers/import',
+    builder: (context, state) => const CustomerImportPage(),
   ),
   GoRoute(
     path: '/sales/customers/:id',
@@ -90,6 +96,13 @@ final List<RouteBase> salesRoutes = [
     path: '/sales/orders/new',
     builder: (context, state) =>
         const SalesDocumentFormPage(kind: SalesDocumentKind.order),
+  ),
+  GoRoute(
+    path: '/sales/orders/:id',
+    builder: (context, state) => OrderDetailPage(
+      orderId: state.pathParameters['id']!,
+      returnTo: state.uri.queryParameters['returnTo'],
+    ),
   ),
   GoRoute(
     path: '/sales/returns',

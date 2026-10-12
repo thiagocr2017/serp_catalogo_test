@@ -7,12 +7,29 @@ import '../../../../core/identity/identity_context_provider.dart';
 import '../../../../core/utilities/phone_number.dart';
 import '../../../../shared/navigation/unsaved_changes_guard.dart';
 import '../../api/sales_api.dart';
+import '../../../../shared/utilities/search_query.dart';
+import '../../../../shared/widgets/document_list_controls.dart';
+import '../../../../shared/widgets/list_kpi_strip.dart';
 
-class AgentPage extends ConsumerWidget {
+class AgentPage extends ConsumerStatefulWidget {
   const AgentPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AgentPage> createState() => _AgentPageState();
+}
+
+class _AgentPageState extends ConsumerState<AgentPage> {
+  final _search = TextEditingController();
+  String _status = 'ALL';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final agents = ref.watch(salesAgentsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Agentes de ventas')),
@@ -38,42 +55,107 @@ class AgentPage extends ConsumerWidget {
                   ],
                 ),
               )
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 96),
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const Divider(),
-                itemBuilder: (context, index) {
-                  final agent = items[index];
-                  return ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.person)),
-                    title: Text(agent.name),
-                    subtitle: Text(
-                      displayPhone(agent.phone).isEmpty
-                          ? 'Sin teléfono'
-                          : displayPhone(agent.phone),
-                    ),
-                    trailing: Wrap(
-                      spacing: 4,
-                      children: [
-                        IconButton(
-                          tooltip: 'Editar agente',
-                          onPressed: () => _edit(context, ref, agent),
-                          icon: const Icon(Icons.edit_outlined),
-                        ),
-                        if (agent.isActive)
-                          IconButton(
-                            tooltip: 'Desactivar agente',
-                            onPressed: () => _deactivate(context, ref, agent),
-                            icon: const Icon(Icons.person_off_outlined),
-                          )
-                        else
-                          IconButton(
-                            tooltip: 'Activar agente',
-                            onPressed: () => _activate(context, ref, agent),
-                            icon: const Icon(Icons.person_add_alt_outlined),
+            : Builder(
+                builder: (context) {
+                  final query = effectiveSearchQuery(_search.text)
+                      .toLowerCase();
+                  final filtered = items.where((agent) {
+                    if (_status == 'ACTIVE' && !agent.isActive) return false;
+                    if (_status == 'INACTIVE' && agent.isActive) return false;
+                    return query.isEmpty ||
+                        [
+                          agent.name,
+                          agent.phone,
+                        ].join(' ').toLowerCase().contains(query);
+                  }).toList();
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 96),
+                    itemCount: filtered.isEmpty ? 2 : filtered.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: DocumentListControls(
+                            searchController: _search,
+                            searchLabel: 'Buscar agentes',
+                            searchHint: 'Nombre o teléfono',
+                            onSearchChanged: (_) => setState(() {}),
+                            statusValue: _status,
+                            statusOptions: const [
+                              (value: 'ACTIVE', label: 'Activos'),
+                              (value: 'INACTIVE', label: 'Inactivos'),
+                              (value: 'ALL', label: 'Todos'),
+                            ],
+                            onStatusChanged: (value) =>
+                                setState(() => _status = value),
+                            kpis: [
+                              ListKpi(
+                                label: 'Total',
+                                value: items.length,
+                                icon: Icons.badge_outlined,
+                              ),
+                              ListKpi(
+                                label: 'Activos',
+                                value: items.where((a) => a.isActive).length,
+                                icon: Icons.person_outline,
+                              ),
+                              ListKpi(
+                                label: 'Inactivos',
+                                value: items.where((a) => !a.isActive).length,
+                                icon: Icons.person_off_outlined,
+                              ),
+                            ],
+                            resultCount: filtered.length,
+                            totalCount: items.length,
+                            onClear: () => setState(() {
+                              _search.clear();
+                              _status = 'ALL';
+                            }),
                           ),
-                      ],
-                    ),
+                        );
+                      }
+                      if (filtered.isEmpty) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text('No hay agentes para esos criterios.'),
+                          ),
+                        );
+                      }
+                      final agent = filtered[index - 1];
+                      return ListTile(
+                        leading: const CircleAvatar(child: Icon(Icons.person)),
+                        title: Text(agent.name),
+                        subtitle: Text(
+                          displayPhone(agent.phone).isEmpty
+                              ? 'Sin teléfono'
+                              : displayPhone(agent.phone),
+                        ),
+                        trailing: Wrap(
+                          spacing: 4,
+                          children: [
+                            IconButton(
+                              tooltip: 'Editar agente',
+                              onPressed: () => _edit(context, ref, agent),
+                              icon: const Icon(Icons.edit_outlined),
+                            ),
+                            if (agent.isActive)
+                              IconButton(
+                                tooltip: 'Desactivar agente',
+                                onPressed: () =>
+                                    _deactivate(context, ref, agent),
+                                icon: const Icon(Icons.person_off_outlined),
+                              )
+                            else
+                              IconButton(
+                                tooltip: 'Activar agente',
+                                onPressed: () => _activate(context, ref, agent),
+                                icon: const Icon(Icons.person_add_alt_outlined),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
                   );
                 },
               ),

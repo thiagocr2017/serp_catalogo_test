@@ -37,7 +37,7 @@ class SupabaseOrderDataSource {
     String? quoteId,
     required List<OrderLineInput> lines,
     required String warehouseId,
-    required String locationId,
+    required String? locationId,
   }) async {
     final row = await _client.rpc<Map<String, dynamic>>(
       'create_order_with_reservation',

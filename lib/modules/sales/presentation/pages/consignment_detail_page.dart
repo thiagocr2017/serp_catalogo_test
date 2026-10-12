@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../api/consignment_api.dart';
 import '../../../../shared/widgets/status_chip.dart';
+import '../../api/consignment_api.dart';
+import '../widgets/sales_document_detail_widgets.dart';
 
 class ConsignmentDetailPage extends ConsumerWidget {
   const ConsignmentDetailPage({
@@ -15,8 +16,15 @@ class ConsignmentDetailPage extends ConsumerWidget {
   final String consignmentId;
   final String? returnTo;
 
-  String get _safeReturnTo =>
-      returnTo == '/sales/consignments' ? returnTo! : '/sales/consignments';
+  String get _safeReturnTo {
+    final value = returnTo;
+    if (value == '/sales/consignments' ||
+        (value != null &&
+            RegExp(r'^/sales/customers/[^/?]+$').hasMatch(value))) {
+      return value!;
+    }
+    return '/sales/consignments';
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,88 +49,103 @@ class ConsignmentDetailPage extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(item.consignmentNumber),
-                subtitle: Text('Enviada: ${item.createdAt ?? 'Sin fecha'}'),
-                trailing: StatusChip(
-                  label: switch (item.status) {
-                    ConsignmentStatus.draft => 'Borrador',
-                    ConsignmentStatus.sent => 'Enviada',
-                    ConsignmentStatus.partialReturn => 'Devolución parcial',
-                    ConsignmentStatus.returned => 'Devuelta',
-                    ConsignmentStatus.settled => 'Liquidada',
-                    ConsignmentStatus.cancelled => 'Cancelada',
-                  },
-                  tone: switch (item.status) {
-                    ConsignmentStatus.settled => StatusTone.success,
-                    ConsignmentStatus.cancelled => StatusTone.danger,
-                    ConsignmentStatus.returned => StatusTone.info,
-                    _ => StatusTone.neutral,
-                  },
-                ),
+              SalesDocumentHeader(
+                number: item.consignmentNumber,
+                numberStyle: Theme.of(context).textTheme.headlineSmall,
+                status: switch (item.status) {
+                  ConsignmentStatus.draft => 'Borrador',
+                  ConsignmentStatus.sent => 'Enviada',
+                  ConsignmentStatus.partialReturn => 'Devolución parcial',
+                  ConsignmentStatus.returned => 'Devuelta',
+                  ConsignmentStatus.settled => 'Liquidada',
+                  ConsignmentStatus.cancelled => 'Cancelada',
+                },
+                statusTone: switch (item.status) {
+                  ConsignmentStatus.settled => StatusTone.success,
+                  ConsignmentStatus.cancelled => StatusTone.danger,
+                  ConsignmentStatus.returned => StatusTone.info,
+                  _ => StatusTone.neutral,
+                },
+                facts: [
+                  if (item.createdAt != null) 'Creada ${_date(item.createdAt)}',
+                  if (item.confirmedAt != null)
+                    'Confirmada ${_date(item.confirmedAt)}',
+                ],
               ),
-              const Divider(),
-              if (item.customerId != null)
-                ListTile(
-                  leading: const Icon(Icons.person_outline),
-                  title: Text(item.customerName),
-                  subtitle: const Text('Cliente'),
-                  trailing: const Icon(Icons.open_in_new),
-                  onTap: () => context.go(
-                    '/sales/customers/${item.customerId}?returnTo=${Uri.encodeComponent('/sales/consignments/$consignmentId')}',
+              const SizedBox(height: 24),
+              Semantics(
+                header: true,
+                child: const SalesDocumentSectionTitle('Cliente'),
+              ),
+              Card(
+                margin: EdgeInsets.zero,
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.person_outline),
                   ),
-                )
-              else
-                ListTile(
-                  leading: const Icon(Icons.person_outline),
                   title: Text(item.customerName),
-                  subtitle: const Text('Cliente'),
-                ),
-              ListTile(
-                leading: const Icon(Icons.payments_outlined),
-                title: const Text('Importe de origen'),
-                trailing: Text(
-                  '${item.currencyCode} ${item.totalAmount.toStringAsFixed(2)}',
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.assignment_return_outlined),
-                title: const Text('Importe devuelto'),
-                trailing: Text(
-                  '${item.currencyCode} ${item.returnedAmount.toStringAsFixed(2)}',
-                ),
-              ),
-              if (item.notes?.trim().isNotEmpty == true)
-                ListTile(
-                  title: const Text('Notas'),
-                  subtitle: Text(item.notes!),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                'Productos consignados',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              for (final line in item.lines)
-                ListTile(
-                  title: Text(
-                    line.productName ?? line.productSku ?? line.productId,
-                  ),
                   subtitle: Text(
-                    '${line.productSku ?? ''} · ${line.quantity} enviados · '
-                    '${line.returnedQuantity} devueltos · '
-                    '${item.currencyCode} ${line.unitPrice.toStringAsFixed(2)} c/u',
+                    item.customerId == null
+                        ? 'Cliente registrado en el documento'
+                        : 'Abrir perfil del cliente',
                   ),
-                  trailing: Text(
-                    '${item.currencyCode} ${line.totalPrice.toStringAsFixed(2)}',
+                  trailing: item.customerId == null
+                      ? null
+                      : const Icon(Icons.open_in_new),
+                  onTap: item.customerId == null
+                      ? null
+                      : () => context.go(
+                          '/sales/customers/${item.customerId}?returnTo=${Uri.encodeQueryComponent('/sales/consignments/$consignmentId')}',
+                        ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const SalesDocumentSectionTitle('Productos consignados'),
+              if (item.lines.isEmpty)
+                const ListTile(title: Text('La consignación no tiene líneas.'))
+              else
+                for (final line in item.lines)
+                  SalesDocumentLineCard(
+                    productName:
+                        line.productName ?? line.productSku ?? line.productId,
+                    productSku: line.productSku,
+                    quantityLabel: 'Enviados: ${line.quantity}',
+                    unitPrice: line.unitPrice,
+                    currencyCode: item.currencyCode,
+                    total: line.totalPrice,
+                    additionalDetails:
+                        'Devueltos: ${line.returnedQuantity} · Pendientes de devolución: ${_pendingReturn(line.quantity, line.returnedQuantity)}',
+                  ),
+              const SizedBox(height: 12),
+              SalesDocumentTotalCard(
+                amount: item.totalAmount,
+                currencyCode: item.currencyCode,
+                label: 'Importe de origen',
+                additionalAmounts: {'Importe devuelto': item.returnedAmount},
+              ),
+              if (item.inventoryDocumentId != null) ...[
+                const SizedBox(height: 24),
+                const SalesDocumentSectionTitle('Inventario'),
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: ListTile(
+                    leading: const Icon(Icons.inventory_2_outlined),
+                    title: const Text('Documento relacionado'),
+                    subtitle: SelectableText(item.inventoryDocumentId!),
                   ),
                 ),
-              if (item.inventoryDocumentId != null)
-                ListTile(
-                  leading: const Icon(Icons.inventory_2_outlined),
-                  title: const Text('Documento de inventario'),
-                  subtitle: Text(item.inventoryDocumentId!),
+              ],
+              if (item.notes?.trim().isNotEmpty == true) ...[
+                const SizedBox(height: 24),
+                const SalesDocumentSectionTitle('Notas'),
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(item.notes!),
+                  ),
                 ),
+              ],
             ],
           );
         },
@@ -130,3 +153,9 @@ class ConsignmentDetailPage extends ConsumerWidget {
     );
   }
 }
+
+String _date(DateTime? value) => value == null
+    ? 'No disponible'
+    : '${value.day}/${value.month}/${value.year}';
+
+int _pendingReturn(int sent, int returned) => (sent - returned).clamp(0, sent);

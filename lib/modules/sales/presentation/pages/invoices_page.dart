@@ -4,12 +4,29 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/sales_invoice_api.dart';
 import '../../../../shared/widgets/status_chip.dart';
+import '../../../../shared/utilities/search_query.dart';
+import '../../../../shared/widgets/document_list_controls.dart';
+import '../../../../shared/widgets/list_kpi_strip.dart';
 
-class InvoicesPage extends ConsumerWidget {
+class InvoicesPage extends ConsumerStatefulWidget {
   const InvoicesPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<InvoicesPage> createState() => _InvoicesPageState();
+}
+
+class _InvoicesPageState extends ConsumerState<InvoicesPage> {
+  final _search = TextEditingController();
+  String _status = 'ALL';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final invoicesAsync = ref.watch(salesInvoicesProvider);
 
     return Scaffold(
@@ -46,11 +63,87 @@ class InvoicesPage extends ConsumerWidget {
               ),
             );
           }
+          final query = effectiveSearchQuery(_search.text).toLowerCase();
+          final filtered = invoices.where((invoice) {
+            if (_status != 'ALL' && invoice.status.name != _status) {
+              return false;
+            }
+            if (query.isEmpty) return true;
+            return [
+              invoice.invoiceNumber,
+              invoice.customerName,
+              invoice.status.name,
+              invoice.currencyCode,
+              invoice.notes ?? '',
+              ...invoice.lines.expand(
+                (line) => [line.productName ?? '', line.productSku ?? ''],
+              ),
+            ].join(' ').toLowerCase().contains(query);
+          }).toList();
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: invoices.length,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+            itemCount: filtered.isEmpty ? 2 : filtered.length + 1,
             itemBuilder: (context, index) {
-              final invoice = invoices[index];
+              if (index == 0) {
+                int count(SalesInvoiceStatus status) =>
+                    invoices.where((item) => item.status == status).length;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: DocumentListControls(
+                    searchController: _search,
+                    searchLabel: 'Buscar facturas',
+                    searchHint: 'Número, cliente, producto o SKU',
+                    onSearchChanged: (_) => setState(() {}),
+                    statusValue: _status,
+                    statusOptions: [
+                      (value: 'ALL', label: 'Todos los estados'),
+                      for (final status in SalesInvoiceStatus.values)
+                        (
+                          value: status.name,
+                          label: _invoiceStatusLabel(status),
+                        ),
+                    ],
+                    onStatusChanged: (value) => setState(() => _status = value),
+                    kpis: [
+                      ListKpi(
+                        label: 'Total',
+                        value: invoices.length,
+                        icon: Icons.receipt_long_outlined,
+                      ),
+                      ListKpi(
+                        label: 'Borradores',
+                        value: count(SalesInvoiceStatus.draft),
+                        icon: Icons.edit_note_outlined,
+                      ),
+                      ListKpi(
+                        label: 'Confirmadas',
+                        value: count(SalesInvoiceStatus.confirmed),
+                        icon: Icons.fact_check_outlined,
+                      ),
+                      ListKpi(
+                        label: 'Pagadas',
+                        value: count(SalesInvoiceStatus.paid),
+                        icon: Icons.payments_outlined,
+                      ),
+                    ],
+                    resultCount: filtered.length,
+                    totalCount: invoices.length,
+                    onClear: () => setState(() {
+                      _search.clear();
+                      _status = 'ALL';
+                    }),
+                  ),
+                );
+              }
+              if (filtered.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text('No hay facturas para esos criterios.'),
+                  ),
+                );
+              }
+              final invoice = filtered[index - 1];
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
@@ -143,6 +236,13 @@ class InvoicesPage extends ConsumerWidget {
       ),
     );
   }
+
+  String _invoiceStatusLabel(SalesInvoiceStatus status) => switch (status) {
+    SalesInvoiceStatus.draft => 'Borrador',
+    SalesInvoiceStatus.confirmed => 'Confirmada',
+    SalesInvoiceStatus.cancelled => 'Cancelada',
+    SalesInvoiceStatus.paid => 'Pagada',
+  };
 }
 
 class _CancelInvoiceDialog extends StatefulWidget {

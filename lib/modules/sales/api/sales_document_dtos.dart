@@ -85,6 +85,7 @@ class ReturnLineInput {
     required this.quantity,
     required this.unitPrice,
     this.condition = 'GOOD',
+    this.conditionNote,
     this.locationId,
     this.productSku,
     this.productName,
@@ -95,6 +96,7 @@ class ReturnLineInput {
   final int quantity;
   final double unitPrice;
   final String condition;
+  final String? conditionNote;
   final String? locationId;
   final String? productSku;
   final String? productName;
@@ -643,6 +645,7 @@ class SalesReturnLineDto {
     this.productSku,
     this.productName,
     this.condition = 'GOOD',
+    this.conditionNote,
     this.inventoryLocationId,
   });
 
@@ -656,6 +659,7 @@ class SalesReturnLineDto {
   final String? productSku;
   final String? productName;
   final String condition;
+  final String? conditionNote;
   final String? inventoryLocationId;
 
   @override
@@ -673,6 +677,7 @@ class SalesReturnLineDto {
           productSku == other.productSku &&
           productName == other.productName &&
           condition == other.condition &&
+          conditionNote == other.conditionNote &&
           inventoryLocationId == other.inventoryLocationId;
 
   @override
@@ -686,6 +691,7 @@ class SalesReturnLineDto {
     productSku,
     productName,
     condition,
+    conditionNote,
     inventoryLocationId,
   );
 }
