@@ -12,6 +12,22 @@ import 'package:serp/modules/product/domain/repositories/product_repository.dart
 import 'package:serp/modules/product/presentation/pages/product_list_page.dart';
 
 void main() {
+  testWidgets('la tabla ajusta la etiqueta de estado sin overflow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 760);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_app(_ProductListRepository()));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Acciones del producto'), findsOneWidget);
+    expect(find.text('Activo'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('desactivar desde la lista requiere confirmación y actualiza', (
     tester,
   ) async {

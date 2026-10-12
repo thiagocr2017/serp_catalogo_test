@@ -579,9 +579,11 @@ class _ProductTable extends StatelessWidget {
                           ),
                           onStatusChange: onStatusChange,
                         ),
-                        ProductStatusBadge(
-                          product: product,
-                          showStockStatus: false,
+                        Flexible(
+                          child: ProductStatusBadge(
+                            product: product,
+                            showStockStatus: false,
+                          ),
                         ),
                       ],
                     ),
