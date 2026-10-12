@@ -87,12 +87,14 @@ La auditoria de la base local conectada encontro:
 8. RPCs comerciales, incluida la creacion de clientes, tambien son ejecutables
    por `anon`. La RPC atomica de devolucion revisada requiere `authenticated`,
    lo que explica el rechazo de la E2E cuando la app no establece una sesion.
-9. `public.identification_type_create_commands` tiene RLS desactivado. Sin
-   embargo, la auditoria de ACL no encontro privilegios directos de lectura o
-   escritura para `anon`; sus RPCs de administracion si son ejecutables por
-   `anon`. Por tanto, el aviso de RLS debe corregirse, pero no se debe describir
-   como una tabla directamente legible/escribible por `anon` sin demostrar un
-   `GRANT` efectivo.
+9. `public.identification_type_create_commands` es una tabla privada de
+   idempotencia. La migracion `20261008120000_enable_rls_identification_type_commands.sql`
+   habilita RLS sin politicas de cliente y reafirma la revocacion de grants
+   directos para `PUBLIC`, `anon` y `authenticated`. La prueba pgTAP verifica
+   RLS, ausencia de politicas y ausencia de acceso directo. Las RPC que la usan
+   siguen siendo ejecutables por `anon` hasta completar la migracion de Auth;
+   ese permiso indirecto es un riesgo separado y no queda resuelto por RLS de
+   la tabla.
 
 ## Avance aplicado
 
@@ -190,9 +192,8 @@ Antes de implementar, volver a consultar `information_schema`,
   explicitamente. Revocar `PUBLIC` y `anon` donde no sean necesarios.
 - [ ] Para cada lectura, definir RLS de minimo privilegio y verificar que una
   sesion no pueda leer datos fuera de su alcance.
-- [ ] Habilitar RLS en `identification_type_create_commands`; mantener sin
-  politicas de acceso directo si solo la RPC propietaria debe usarla, salvo que
-  un contrato justifique una politica distinta.
+- [x] Habilitar RLS en `identification_type_create_commands`, sin politicas de
+      acceso directo; la tabla solo se usa desde RPC `SECURITY DEFINER`.
 - [ ] Mantener `SECURITY DEFINER` solo cuando sea necesario, con propietario,
   `search_path` seguro, validacion de argumentos y grants revisados.
 - [ ] Registrar actor con `auth.uid()`; conservar datos del dispositivo solo

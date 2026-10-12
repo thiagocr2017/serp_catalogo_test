@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(27);
 
 -- Contrato de las RPC de gestion (decision 23)
 select has_table(
@@ -41,6 +41,31 @@ select ok(
     'INSERT'
   ),
   'authenticated no escribe la tabla de comandos'
+);
+select ok(
+  (select relrowsecurity
+     from pg_class
+    where oid = 'public.identification_type_create_commands'::regclass),
+  'RLS esta habilitado en la tabla interna de comandos'
+);
+select ok(
+  not has_table_privilege(
+    'anon', 'public.identification_type_create_commands', 'SELECT,INSERT,UPDATE,DELETE'
+  ),
+  'anon no tiene acceso directo a la tabla de comandos'
+);
+select ok(
+  not has_table_privilege(
+    'authenticated', 'public.identification_type_create_commands', 'SELECT,INSERT,UPDATE,DELETE'
+  ),
+  'authenticated no tiene acceso directo a la tabla de comandos'
+);
+select is(
+  (select count(*)::integer
+     from pg_policy
+    where polrelid = 'public.identification_type_create_commands'::regclass),
+  0,
+  'la tabla interna no tiene politicas de acceso cliente'
 );
 
 -- Alta
