@@ -15,6 +15,7 @@ import '../../../sales/sales_module.dart';
 import '../../di/product_providers.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_query.dart';
+import '../../../../shared/utilities/search_query.dart';
 import '../../services/catalog_pdf_service.dart';
 import '../controllers/product_list_controller.dart';
 
@@ -1256,7 +1257,7 @@ class _CatalogPdfPageState extends ConsumerState<CatalogPdfPage> {
   }
 
   bool _matches(String value, String query) {
-    final term = query.trim().toLowerCase();
+    final term = effectiveSearchQuery(query).toLowerCase();
     return term.isEmpty || value.toLowerCase().contains(term);
   }
 

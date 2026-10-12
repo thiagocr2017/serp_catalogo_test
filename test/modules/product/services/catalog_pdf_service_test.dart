@@ -1,8 +1,41 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as image;
 import 'package:serp/modules/product/domain/entities/product.dart';
 import 'package:serp/modules/product/services/catalog_pdf_service.dart';
 
 void main() {
+  test('optimizes oversized PDF images without losing transparency', () {
+    final source = image.Image(width: 640, height: 480, numChannels: 4);
+    for (var y = 0; y < source.height; y++) {
+      for (var x = 0; x < source.width; x++) {
+        source.setPixelRgba(x, y, x % 256, y % 256, (x + y) % 256, 180);
+      }
+    }
+    final sourceBytes = Uint8List.fromList(image.encodePng(source));
+
+    final optimized = optimizeCatalogImageForPdf(
+      sourceBytes,
+      maxDimension: 160,
+    );
+    final decoded = image.decodeImage(optimized)!;
+
+    expect(decoded.width, 160);
+    expect(decoded.height, 120);
+    expect(decoded.hasAlpha, isTrue);
+    expect(optimized.length, lessThan(sourceBytes.length));
+  });
+
+  test('does not re-encode an already-small JPEG', () {
+    final bytes = Uint8List.fromList(
+      image.encodeJpg(image.Image(width: 80, height: 60), quality: 80),
+    );
+
+    expect(optimizeCatalogImageForPdf(bytes, maxDimension: 800), same(bytes));
+  });
+
   test('catalog excludes inactive and out-of-stock products', () {
     Product product(String id, {required bool active, required int stock}) =>
         Product(
@@ -31,6 +64,72 @@ void main() {
 
     expect(eligible.map((product) => product.id), ['active']);
   });
+
+  test(
+    'reuses cached product image bytes when preview is regenerated',
+    () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      var requests = 0;
+      final imageBytes = image.encodePng(image.Image(width: 2, height: 2));
+      server.listen((request) async {
+        requests++;
+        request.response.headers.contentType = ContentType('image', 'png');
+        request.response.add(imageBytes);
+        await request.response.close();
+      });
+
+      final product = Product(
+        id: 'cached-image-product',
+        sku: 'CACHE-1',
+        name: 'Producto con imagen',
+        description: '',
+        categoryId: 'category-id',
+        unitPriceInCents: 1000,
+        minimumOrderQuantity: 1,
+        packagingPresentationId: 'presentation-id',
+        cbmPerMoq: 0,
+        factoryCostInCents: 500,
+        currentStock: 4,
+        reorderPoint: 1,
+        isActive: true,
+        imageUrl: 'http://${server.address.address}:${server.port}/product.png',
+        createdAt: DateTime.utc(2026),
+      );
+      const options = CatalogPdfOptions(
+        companyName: 'SERP',
+        paymentMethods: 'Transferencia',
+        agentName: 'Agente',
+        agentPhone: '+506 8888 8888',
+        cardsPerPage: 2,
+      );
+      final service = CatalogPdfService();
+
+      await service.generate([product], options);
+      await service.generate([product], options);
+      await service.generate([
+        Product(
+          id: product.id,
+          sku: product.sku,
+          name: product.name,
+          description: product.description,
+          categoryId: product.categoryId,
+          unitPriceInCents: product.unitPriceInCents,
+          minimumOrderQuantity: product.minimumOrderQuantity,
+          packagingPresentationId: product.packagingPresentationId,
+          cbmPerMoq: product.cbmPerMoq,
+          factoryCostInCents: product.factoryCostInCents,
+          currentStock: product.currentStock,
+          reorderPoint: product.reorderPoint,
+          isActive: product.isActive,
+          imageUrl: '${product.imageUrl}?v=2',
+          createdAt: product.createdAt,
+        ),
+      ], options);
+
+      expect(requests, 2);
+    },
+  );
 
   test('generates a local PDF with category sections', () async {
     final product = Product(

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:image/image.dart' as image;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -11,6 +12,34 @@ enum CatalogImageFit { contain, cover, fitWidth }
 List<Product> eligibleCatalogProducts(Iterable<Product> products) => products
     .where((product) => product.isActive && !product.isOutOfStock)
     .toList();
+
+Uint8List optimizeCatalogImageForPdf(
+  Uint8List bytes, {
+  required int maxDimension,
+  int quality = 78,
+}) {
+  final decoded = image.decodeImage(bytes);
+  if (decoded == null) return bytes;
+
+  final longestSide = decoded.width > decoded.height
+      ? decoded.width
+      : decoded.height;
+  final shouldResize = longestSide > maxDimension;
+  final isJpeg = bytes.length > 2 && bytes[0] == 0xff && bytes[1] == 0xd8;
+  if (!shouldResize && isJpeg) return bytes;
+
+  final resized = shouldResize
+      ? image.copyResize(
+          decoded,
+          width: decoded.width >= decoded.height ? maxDimension : null,
+          height: decoded.height > decoded.width ? maxDimension : null,
+        )
+      : decoded;
+  if (resized.hasAlpha) {
+    return Uint8List.fromList(image.encodePng(resized, level: 6));
+  }
+  return Uint8List.fromList(image.encodeJpg(resized, quality: quality));
+}
 
 class CatalogPdfOptions {
   const CatalogPdfOptions({
@@ -62,6 +91,10 @@ class CatalogPdfOptions {
 typedef PdfFontLoader = Future<ByteData> Function(String assetPath);
 
 class CatalogPdfService {
+  static const _imageCacheLimit = 128;
+  static final Map<String, Uint8List> _imageBytesCache = {};
+  static final _imageDownloads = <String, Future<Uint8List>>{};
+
   static const _unicodeFontAssets = [
     'assets/fonts/Roboto-Regular.ttf',
     'assets/fonts/Roboto-Bold.ttf',
@@ -115,11 +148,27 @@ class CatalogPdfService {
       options.promotionDescriptionColor,
     );
     final images = <String, pw.ImageProvider>{};
+    final imageMaxDimension = switch (options.cardsPerPage) {
+      0 => 800,
+      1 => 1200,
+      2 => 1300,
+      4 => 1000,
+      _ => 700,
+    };
     for (final product in products) {
       final url = product.imageUrl;
       if (url == null || url.isEmpty) continue;
       try {
-        images[product.id] = pw.MemoryImage(await _download(url));
+        final maxDimension = (imageMaxDimension * product.imageScale)
+            .round()
+            .clamp(imageMaxDimension, 1600)
+            .toInt();
+        images[product.id] = pw.MemoryImage(
+          optimizeCatalogImageForPdf(
+            await _download(url),
+            maxDimension: maxDimension,
+          ),
+        );
       } catch (_) {
         // El catálogo sigue siendo utilizable si una imagen remota no responde.
       }
@@ -151,7 +200,12 @@ class CatalogPdfService {
                     width: 300,
                     height: 190,
                     child: pw.Image(
-                      pw.MemoryImage(options.logoBytes!),
+                      pw.MemoryImage(
+                        optimizeCatalogImageForPdf(
+                          options.logoBytes!,
+                          maxDimension: 900,
+                        ),
+                      ),
                       fit: pw.BoxFit.contain,
                     ),
                   ),
@@ -456,6 +510,29 @@ class CatalogPdfService {
   }
 
   Future<Uint8List> _download(String url) async {
+    final cached = _imageBytesCache.remove(url);
+    if (cached != null) {
+      _imageBytesCache[url] = cached;
+      return cached;
+    }
+    final inFlight = _imageDownloads[url];
+    if (inFlight != null) return inFlight;
+
+    final download = _downloadUncached(url);
+    _imageDownloads[url] = download;
+    try {
+      final bytes = await download;
+      _imageBytesCache[url] = bytes;
+      while (_imageBytesCache.length > _imageCacheLimit) {
+        _imageBytesCache.remove(_imageBytesCache.keys.first);
+      }
+      return bytes;
+    } finally {
+      _imageDownloads.remove(url);
+    }
+  }
+
+  Future<Uint8List> _downloadUncached(String url) async {
     final client = HttpClient();
     try {
       final request = await client.getUrl(Uri.parse(url));
