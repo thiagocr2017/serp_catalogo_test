@@ -122,6 +122,8 @@ refactorizaciones complejas y pantallas/formularios.
 - `screens/customer-management/`: Rediseño y gestión integral de Clientes (lista, formulario y perfil).
 - `screens/customer-form/`: Formulario específico de alta y edición de cliente.
 - `screens/customer-list/`: Catálogo y lista de clientes.
+- `screens/customer-import/`: Importación masiva de clientes desde CSV.
+- `screens/document-lines-grid/`: Captura de renglones para documentos comerciales.
 - `screens/inventory-history/`: histórico de movimientos y búsqueda contextual.
 - `screens/promotion-list/`: lista y búsqueda de promociones.
 - `screens/customer-profile/`: Perfil 360°, alertas y pestañas de documentos.
