@@ -89,7 +89,7 @@ RecordPaymentApplicationCommand {
   amountApplied
   currencyCode
   exchangeRate   // tipo de cambio historico, nunca recalculado
-  usdEquivalent
+  referenceCurrencyEquivalent
 }
 
 SalesApiForPayments {
@@ -163,7 +163,7 @@ Alternativa descartada: que Ventas orqueste.
 | Anular una factura ya pagada | El dinero aplicado se convierte en credito del cliente. No se reasigna ni se devuelve automaticamente |
 | La aplicacion supera el saldo vigente | Rechazado. El consumidor no puede forzarlo |
 | Dos equipos aplican a la vez sobre la misma factura | PostgreSQL bloquea las filas, recalcula el saldo y usa el saldo nuevo. El excedente confirmado se convierte en credito |
-| Pago en moneda distinta | Se conservan moneda original, importe original, tipo de cambio historico y equivalente en USD. El tipo de cambio nunca se recalcula |
+| Pago en moneda distinta | Solo Pagos conserva moneda original, importe original, tipo de cambio historico y equivalente en la moneda de referencia configurada. El tipo de cambio nunca se recalcula |
 | Reintento con la misma `commandId` | Devuelve el resultado previo. No duplica aplicaciones |
 | Error intermedio | Reversion completa: ni cobro ni aplicacion |
 
@@ -212,7 +212,7 @@ La devolucion tiene una frontera adicional, especificada en
 
 ## Tareas
 
-- [ ] Anadir `currencyCode`, `exchangeRate`, `usdEquivalent` y `commandId` a
+- [ ] Anadir `currencyCode`, `exchangeRate`, `referenceCurrencyEquivalent` y `commandId` a
       `payment_applications`.
 - [ ] Decidir si `payment_applications.invoice_id`, `payments.customer_id` y
       `customer_credit_entries.customer_id` llevan clave foranea. Restriccion:

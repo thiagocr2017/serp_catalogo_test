@@ -23,7 +23,8 @@ Implementado y operativo:
 - gastos pagados desde una cuenta monetaria;
 - traslados de dinero entre cuentas, como par atómico salida/entrada;
 - reembolsos parciales o totales de un pago;
-- moneda original, tipo de cambio e equivalente en USD por componente.
+- moneda original, tipo de cambio y equivalente en USD por componente (contrato
+  persistente vigente; su alineacion con la moneda configurable queda pendiente).
 
 Las escrituras se ejecutan mediante las RPC `SECURITY DEFINER` del módulo
 (`create_payment`, `confirm_payment`, `cancel_payment`, `create_payment_method`,
@@ -100,11 +101,13 @@ Un pago puede combinar varios componentes. Cada componente conserva:
 - moneda original;
 - importe original;
 - tipo de cambio utilizado;
-- equivalente en USD;
+- equivalente en USD, segun el contrato persistente vigente;
 - referencia bancaria, autorización, cheque o depósito, cuando exista.
 
-Ejemplo: una factura de USD 1,000 puede pagarse con una transferencia de
-USD 300 y efectivo equivalente a USD 700 recibido en colones.
+La regla de producto define como moneda de referencia la configurada en
+Configuracion. El esquema y la API actuales aun nombran y guardan el equivalente
+como USD; alinearlos con cualquier moneda de referencia es una migracion
+pendiente y no debe confundirse con una conversion disponible en Ventas.
 
 ### 4.3 Aplicaciones
 
@@ -182,16 +185,22 @@ dinero.
 
 ## 6. Monedas y tipo de cambio
 
-USD será la moneda funcional utilizada para comparar y aplicar importes. Se
-podrá recibir dinero en otras monedas, inicialmente colones costarricenses.
+La regla funcional define como moneda de referencia la configurada en
+Configuración. Pagos es el unico modulo autorizado a capturar tipo de cambio,
+exclusivamente al recibir dinero en otra moneda, para registrar el importe
+recibido y su equivalente en la moneda de referencia. El modelo persistente
+actual aun utiliza `usd_equivalent`; migrarlo para soportar la moneda
+configurable es trabajo pendiente. Otras pantallas no deben ofrecer tipo de
+cambio.
 
 Cada componente en moneda diferente debe conservar:
 
 ```text
-moneda original
-importe original
+moneda original recibida
+importe original recibido
 tipo de cambio acordado por la empresa
-equivalente en USD
+equivalente en la moneda de referencia configurada (actualmente persistido como
+`usd_equivalent`)
 fecha y hora del cálculo
 ```
 

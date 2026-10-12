@@ -74,6 +74,8 @@ refactorizaciones complejas y pantallas/formularios.
   Definido y no implementado. Obligatorio antes de crear facturas persistentes
   con aplicaciones de pago.
 - `architecture/list-patterns.md`: listas indice, contextuales y de composicion.
+- `architecture/search-interaction.md`: busqueda desde tres caracteres,
+  restauracion al borrar y debounce remoto compartidos.
 - `architecture/theme-governance.md`: fuente unica de tema, tokens y patrones
   visuales compartidos.
 - La skill `.opencode/skills/ux-ui-screen-design/SKILL.md` apunta a estos
@@ -120,6 +122,8 @@ refactorizaciones complejas y pantallas/formularios.
 - `screens/customer-management/`: Rediseño y gestión integral de Clientes (lista, formulario y perfil).
 - `screens/customer-form/`: Formulario específico de alta y edición de cliente.
 - `screens/customer-list/`: Catálogo y lista de clientes.
+- `screens/inventory-history/`: histórico de movimientos y búsqueda contextual.
+- `screens/promotion-list/`: lista y búsqueda de promociones.
 - `screens/customer-profile/`: Perfil 360°, alertas y pestañas de documentos.
 - `screens/customer-management/`: Requisitos integrales y criterios de
   coordinación entre lista, formulario y perfil.
@@ -135,6 +139,7 @@ refactorizaciones complejas y pantallas/formularios.
 - `screens/sales-commercial-operations/`: Operaciones de documentos comerciales de venta.
 - `screens/sales-quote-form/`: Alta y operación rápida de cotizaciones.
 - `screens/sales-quote-detail/`: detalle, estados y retorno contextual de cotizaciones.
+- `screens/sales-document-details/`: jerarquía visual, datos y navegación de detalles de documentos de venta.
 - `screens/sales-return-form/`: captura y liquidación de devoluciones con
   contrato transaccional DB/RPC; incluye E2E de rechazo anónimo y de devolución
   exitosa autenticada. La anulación compensatoria permanece fuera de alcance.
