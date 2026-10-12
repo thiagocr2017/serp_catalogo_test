@@ -45,6 +45,14 @@ permanecen en esta spec.
   `app_theme.dart` y las pruebas visuales/widget existentes. Una pantalla no
   debe divergir salvo necesidad documentada o solicitud explicita de cambio
   global.
+- La paleta oscura oficial usa superficies carbón con matiz oliva y selección
+  gris salvia, con texto suavizado de alto contraste. Los tonos cálidos son
+  neutrales de superficie/interacción; los colores semánticos de éxito,
+  advertencia, información y error conservan sus roles y contrastes propios.
+- La paleta clara oficial usa una base monocromática arena Sahara con controles
+  taupe y varios niveles de superficie de la misma familia. Texto, selección y
+  contornos deben mantener el contraste cubierto por `app_theme_test.dart`;
+  los colores semánticos conservan sus roles sin teñir la paleta base.
 
 ## Contrato para contribuciones
 

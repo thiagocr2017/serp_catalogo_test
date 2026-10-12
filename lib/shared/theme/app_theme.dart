@@ -18,7 +18,7 @@ abstract final class AppTheme {
       brightness: brightness,
     );
     final isDark = brightness == Brightness.dark;
-    final scheme = isDark ? _darkScheme(base) : base;
+    final scheme = isDark ? _darkScheme(base) : _lightScheme(base);
     return ThemeData(
       brightness: brightness,
       colorScheme: scheme,
@@ -124,20 +124,53 @@ abstract final class AppTheme {
     );
   }
 
-  /// Paleta oscura afinada para escritorio:
-  /// superficies negro-azuladas con pasos de elevación claros, contornos
-  /// visibles y texto de alto contraste.
+  /// Paleta clara arena Sahara con controles taupe y superficies cálidas.
+  static ColorScheme _lightScheme(ColorScheme base) => base.copyWith(
+    primary: const Color(0xFF665C49),
+    onPrimary: const Color(0xFFFFFCF6),
+    primaryContainer: const Color(0xFFE3D7C0),
+    onPrimaryContainer: const Color(0xFF2F2A21),
+    secondary: const Color(0xFF766B57),
+    onSecondary: const Color(0xFFFFFCF6),
+    secondaryContainer: const Color(0xFFE6DCC8),
+    onSecondaryContainer: const Color(0xFF332E24),
+    tertiary: const Color(0xFF74684F),
+    onTertiary: const Color(0xFFFFFCF6),
+    surface: const Color(0xFFF3EDDF),
+    surfaceDim: const Color(0xFFE4DAC7),
+    surfaceContainerLowest: const Color(0xFFFFFCF6),
+    surfaceContainerLow: const Color(0xFFF8F3E8),
+    surfaceContainer: const Color(0xFFF1EADB),
+    surfaceContainerHigh: const Color(0xFFEAE1D0),
+    surfaceContainerHighest: const Color(0xFFDED3BE),
+    onSurface: const Color(0xFF29271F),
+    onSurfaceVariant: const Color(0xFF514B3F),
+    outline: const Color(0xFF756C5B),
+    outlineVariant: const Color(0xFFB4A78E),
+  );
+
+  /// Paleta oscura carbón-oliva con superficies cálidas y selección gris salvia.
   static ColorScheme _darkScheme(ColorScheme base) => base.copyWith(
-    surface: const Color(0xFF111318),
-    surfaceDim: const Color(0xFF0D0F13),
-    surfaceContainerLowest: const Color(0xFF0B0D11),
-    surfaceContainerLow: const Color(0xFF171A20),
-    surfaceContainer: const Color(0xFF1C1F26),
-    surfaceContainerHigh: const Color(0xFF22252D),
-    surfaceContainerHighest: const Color(0xFF2A2E37),
-    onSurface: const Color(0xFFE9EAF0),
-    onSurfaceVariant: const Color(0xFFB7BAC6),
-    outline: const Color(0xFF8C90A0),
-    outlineVariant: const Color(0xFF434753),
+    primary: const Color(0xFFACADA2),
+    onPrimary: const Color(0xFF24251F),
+    primaryContainer: const Color(0xFF45463F),
+    onPrimaryContainer: const Color(0xFFE5E6DF),
+    secondary: const Color(0xFF999A8F),
+    onSecondary: const Color(0xFF24251F),
+    secondaryContainer: const Color(0xFF41423B),
+    onSecondaryContainer: const Color(0xFFEBECE4),
+    tertiary: const Color(0xFFB8B9AE),
+    onTertiary: const Color(0xFF24251F),
+    surface: const Color(0xFF252620),
+    surfaceDim: const Color(0xFF20211D),
+    surfaceContainerLowest: const Color(0xFF20211D),
+    surfaceContainerLow: const Color(0xFF2B2C26),
+    surfaceContainer: const Color(0xFF30312B),
+    surfaceContainerHigh: const Color(0xFF383932),
+    surfaceContainerHighest: const Color(0xFF41423B),
+    onSurface: const Color(0xFFE1E2DC),
+    onSurfaceVariant: const Color(0xFFB9BAB2),
+    outline: const Color(0xFF92938A),
+    outlineVariant: const Color(0xFF55564E),
   );
 }
