@@ -17,6 +17,27 @@ import 'package:serp/modules/sales/api/sales_routes.dart';
 import 'package:serp/modules/sales/presentation/pages/sales_document_form_page.dart';
 
 void main() {
+  testWidgets(
+    'F2 enfoca búsqueda de producto desde otro campo del formulario',
+    (tester) async {
+      await tester.pumpWidget(
+        _app(_QuoteApi(), initialLocation: '/sales/quotes/new'),
+      );
+      await tester.pumpAndSettle();
+
+      final customerSearch = find.widgetWithText(TextField, 'Buscar cliente *');
+      final productSearch = find.widgetWithText(TextField, 'Buscar producto');
+      await tester.tap(customerSearch);
+      await tester.sendKeyEvent(LogicalKeyboardKey.f2);
+      await tester.pump();
+
+      final productFocus = tester.widget<TextField>(productSearch).focusNode;
+      expect(productFocus?.hasFocus, isTrue);
+      expect(FocusManager.instance.primaryFocus, same(productFocus));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('clientes y productos sugieren desde el tercer caracter', (
     tester,
   ) async {

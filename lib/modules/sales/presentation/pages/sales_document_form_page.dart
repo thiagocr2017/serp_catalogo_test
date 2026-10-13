@@ -909,7 +909,18 @@ class _SalesDocumentFormPageState extends ConsumerState<SalesDocumentFormPage> {
               });
             }
           }
-          return _form(context, loaded);
+          return Focus(
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent &&
+                  event.logicalKey == LogicalKeyboardKey.f2 &&
+                  widget.kind != SalesDocumentKind.returnItem) {
+                _focusProductSearch();
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: _form(context, loaded),
+          );
         },
       ),
     ),
