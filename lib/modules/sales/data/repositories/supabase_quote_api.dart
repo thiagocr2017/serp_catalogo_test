@@ -63,6 +63,10 @@ class SupabaseQuoteApi implements QuoteApi {
   }
 
   @override
+  Future<String> createDraftInvoiceFromQuote(String quoteId) =>
+      _source.createDraftInvoiceFromQuote(quoteId);
+
+  @override
   Future<SalesQuoteDto> updateQuote({
     required String id,
     required String customerId,

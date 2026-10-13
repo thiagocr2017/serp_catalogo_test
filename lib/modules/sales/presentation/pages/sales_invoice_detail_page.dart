@@ -21,10 +21,22 @@ class SalesInvoiceDetailPage extends ConsumerWidget {
     final path = returnTo;
     if (path == '/sales/invoices' ||
         (path != null && RegExp(r'^/sales/customers/[^/?]+$').hasMatch(path)) ||
-        (path != null && RegExp(r'^/sales/returns/[^/?]+$').hasMatch(path))) {
+        (path != null && RegExp(r'^/sales/returns/[^/?]+$').hasMatch(path)) ||
+        (path != null && _isQuoteReturn(path))) {
       return path!;
     }
     return '/sales/invoices';
+  }
+
+  bool _isQuoteReturn(String value) {
+    final uri = Uri.tryParse(value);
+    if (uri == null || !RegExp(r'^/sales/quotes/[^/?]+$').hasMatch(uri.path)) {
+      return false;
+    }
+    final nested = uri.queryParameters['returnTo'];
+    return nested == null ||
+        nested == '/sales/quotes' ||
+        RegExp(r'^/sales/customers/[^/?]+$').hasMatch(nested);
   }
 
   @override
@@ -109,6 +121,26 @@ class _InvoiceDetailContent extends StatelessWidget {
           documentId: invoice.id,
           ref: ref,
         ),
+        if (invoice.sourceQuoteId != null) ...[
+          const SizedBox(height: 24),
+          const SalesDocumentSectionTitle('Cotización de origen'),
+          Card(
+            margin: EdgeInsets.zero,
+            child: ListTile(
+              leading: const Icon(Icons.request_quote_outlined),
+              title: const Text('Abrir cotización'),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => context.go(
+                Uri(
+                  path: '/sales/quotes/${invoice.sourceQuoteId}',
+                  queryParameters: {
+                    'returnTo': '/sales/invoices/${invoice.id}',
+                  },
+                ).toString(),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         const SalesDocumentSectionTitle('Productos facturados'),
         if (invoice.lines.isEmpty)

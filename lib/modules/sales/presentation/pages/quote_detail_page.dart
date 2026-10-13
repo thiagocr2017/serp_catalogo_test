@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../api/sales_invoice_api.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../api/customer_summary_dtos.dart';
 import '../../api/quote_api.dart';
@@ -15,6 +16,9 @@ class QuoteDetailPage extends ConsumerWidget {
 
   String _safeReturn(String? value) {
     if (value == '/sales/quotes') return value!;
+    if (value != null && RegExp(r'^/sales/invoices/[^/?]+$').hasMatch(value)) {
+      return value;
+    }
     if (value != null && RegExp(r'^/sales/customers/[^/]+$').hasMatch(value)) {
       return value;
     }
@@ -112,6 +116,9 @@ class _QuoteDetailContent extends StatelessWidget {
       if (quote.customerId != null) {
         ref.invalidate(customerCommercialSummaryProvider(quote.customerId!));
       }
+      if (status == QuoteStatus.accepted && context.mounted) {
+        await _createDraftInvoice(context);
+      }
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -119,6 +126,78 @@ class _QuoteDetailContent extends StatelessWidget {
         );
       }
     }
+  }
+
+  Future<void> _createDraftInvoice(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cotización aceptada'),
+        content: const Text(
+          'Puede continuar creando una factura borrador. No se descontará inventario hasta confirmar la factura.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Más tarde'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.receipt_long_outlined),
+            label: const Text('Crear factura borrador'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      final invoiceId = await ref
+          .read(quoteApiProvider)
+          .createDraftInvoiceFromQuote(quote.id);
+      if (!context.mounted) return;
+      ref.invalidate(quotesProvider);
+      ref.invalidate(quoteByIdProvider(quote.id));
+      ref.invalidate(salesInvoicesProvider);
+      if (quote.customerId != null) {
+        ref.invalidate(customerCommercialSummaryProvider(quote.customerId!));
+      }
+      final quoteRoute = Uri(
+        path: '/sales/quotes/${quote.id}',
+        queryParameters: {
+          if (returnTo != '/sales/quotes') 'returnTo': returnTo,
+        },
+      ).toString();
+      context.go(
+        Uri(
+          path: '/sales/invoices/$invoiceId',
+          queryParameters: {'returnTo': quoteRoute},
+        ).toString(),
+      );
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo crear la factura borrador: $error'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _openConvertedInvoice(BuildContext context) {
+    final invoiceId = quote.convertedInvoiceId;
+    if (invoiceId == null) return;
+    final quoteRoute = Uri(
+      path: '/sales/quotes/${quote.id}',
+      queryParameters: {if (returnTo != '/sales/quotes') 'returnTo': returnTo},
+    ).toString();
+    context.go(
+      Uri(
+        path: '/sales/invoices/$invoiceId',
+        queryParameters: {'returnTo': quoteRoute},
+      ).toString(),
+    );
   }
 
   @override
@@ -216,7 +295,10 @@ class _QuoteDetailContent extends StatelessWidget {
           ),
         ],
         if (quote.status == QuoteStatus.draft ||
-            quote.status == QuoteStatus.sent) ...[
+            quote.status == QuoteStatus.sent ||
+            quote.status == QuoteStatus.accepted ||
+            (quote.status == QuoteStatus.converted &&
+                quote.convertedInvoiceId != null)) ...[
           const SizedBox(height: 24),
           const SalesDocumentSectionTitle('Acciones'),
           Wrap(
@@ -229,16 +311,32 @@ class _QuoteDetailContent extends StatelessWidget {
                   icon: const Icon(Icons.send_outlined),
                   label: const Text('Marcar enviada'),
                 ),
-              OutlinedButton.icon(
-                onPressed: () => _changeStatus(context, QuoteStatus.accepted),
-                icon: const Icon(Icons.check),
-                label: const Text('Aceptar'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => _changeStatus(context, QuoteStatus.rejected),
-                icon: const Icon(Icons.close),
-                label: const Text('Rechazar'),
-              ),
+              if (quote.status == QuoteStatus.draft ||
+                  quote.status == QuoteStatus.sent) ...[
+                OutlinedButton.icon(
+                  onPressed: () => _changeStatus(context, QuoteStatus.accepted),
+                  icon: const Icon(Icons.check),
+                  label: const Text('Aceptar'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _changeStatus(context, QuoteStatus.rejected),
+                  icon: const Icon(Icons.close),
+                  label: const Text('Rechazar'),
+                ),
+              ],
+              if (quote.status == QuoteStatus.accepted)
+                FilledButton.icon(
+                  onPressed: () => _createDraftInvoice(context),
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  label: const Text('Crear factura borrador'),
+                ),
+              if (quote.status == QuoteStatus.converted &&
+                  quote.convertedInvoiceId != null)
+                FilledButton.icon(
+                  onPressed: () => _openConvertedInvoice(context),
+                  icon: const Icon(Icons.open_in_new),
+                  label: const Text('Abrir factura borrador'),
+                ),
             ],
           ),
         ],

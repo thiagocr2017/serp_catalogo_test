@@ -13,6 +13,7 @@ class SalesQuote {
     this.validUntil,
     this.notes,
     this.agentId,
+    this.convertedInvoiceId,
     this.createdAt,
     this.updatedAt,
     this.lines = const [],
@@ -29,6 +30,7 @@ class SalesQuote {
   final DateTime? validUntil;
   final String? notes;
   final String? agentId;
+  final String? convertedInvoiceId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final List<SalesQuoteLine> lines;

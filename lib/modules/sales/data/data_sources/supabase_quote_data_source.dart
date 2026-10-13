@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/device/device_identity.dart';
 import '../../domain/entities/sales_quote.dart';
@@ -89,6 +90,19 @@ class SupabaseQuoteDataSource {
     return _quote(row);
   }
 
+  Future<String> createDraftInvoiceFromQuote(String quoteId) async {
+    return _client.rpc<String>(
+      'create_draft_invoice_from_quote',
+      params: {
+        'p_command_id': const Uuid().v4(),
+        'p_quote_id': quoteId,
+        'p_actor_name': _device.actorName,
+        'p_device_name': _device.name,
+        'p_device_identifier': _device.identifier,
+      },
+    );
+  }
+
   Future<SalesQuote> updateQuote({
     required String id,
     required String customerId,
@@ -150,6 +164,7 @@ class SupabaseQuoteDataSource {
         : DateTime.parse(row['valid_until'] as String),
     notes: row['notes'] as String?,
     agentId: row['agent_id'] as String?,
+    convertedInvoiceId: row['converted_invoice_id'] as String?,
     createdAt: row['created_at'] == null
         ? null
         : DateTime.parse(row['created_at'] as String),

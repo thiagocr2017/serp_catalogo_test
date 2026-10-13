@@ -123,6 +123,10 @@ class _QuotesApi implements QuoteApi {
   Future<SalesQuoteDto?> getQuoteById(String id) async => null;
 
   @override
+  Future<String> createDraftInvoiceFromQuote(String quoteId) async =>
+      'invoice-1';
+
+  @override
   Future<SalesQuoteDto> createQuote({
     required String customerId,
     required String customerName,

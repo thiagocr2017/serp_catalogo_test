@@ -1144,6 +1144,10 @@ class _QuoteApi implements QuoteApi {
       quotes.where((quote) => quote.id == id).firstOrNull;
 
   @override
+  Future<String> createDraftInvoiceFromQuote(String quoteId) =>
+      throw UnimplementedError();
+
+  @override
   Future<SalesQuoteDto> createQuote({
     required String customerId,
     required String customerName,

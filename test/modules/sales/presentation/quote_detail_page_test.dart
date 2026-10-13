@@ -6,6 +6,64 @@ import 'package:serp/modules/sales/api/quote_api.dart';
 import 'package:serp/modules/sales/presentation/pages/quote_detail_page.dart';
 
 void main() {
+  testWidgets('aceptar permite posponer o crear factura borrador', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = _QuoteApi();
+    final router = GoRouter(
+      initialLocation: '/sales/quotes/quote-1',
+      routes: [
+        GoRoute(
+          path: '/sales/quotes/:id',
+          builder: (context, state) => QuoteDetailPage(
+            quoteId: state.pathParameters['id']!,
+            returnTo: state.uri.queryParameters['returnTo'],
+          ),
+        ),
+        GoRoute(
+          path: '/sales/invoices/:id',
+          builder: (context, state) =>
+              Scaffold(body: Text('Factura ${state.pathParameters['id']}')),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [quoteApiProvider.overrideWithValue(api)],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Aceptar'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Aceptar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Crear factura borrador'), findsWidgets);
+    expect(api.draftInvoiceCount, 0);
+
+    await tester.tap(find.text('Más tarde'));
+    await tester.pumpAndSettle();
+    expect(find.text('Aceptada'), findsOneWidget);
+    expect(find.text('Crear factura borrador'), findsOneWidget);
+
+    await tester.tap(find.text('Crear factura borrador'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Crear factura borrador').last,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Factura invoice-1'), findsOneWidget);
+    expect(api.draftInvoiceCount, 1);
+  });
+
   testWidgets('detalle muestra cliente, presentacion, totales y edicion', (
     tester,
   ) async {
@@ -62,12 +120,15 @@ void main() {
 }
 
 class _QuoteApi implements QuoteApi {
+  SalesQuoteDto currentQuote = _quote;
+  int draftInvoiceCount = 0;
+
   @override
-  Future<List<SalesQuoteDto>> getQuotes() async => [_quote];
+  Future<List<SalesQuoteDto>> getQuotes() async => [currentQuote];
 
   @override
   Future<SalesQuoteDto?> getQuoteById(String id) async =>
-      id == _quote.id ? _quote : null;
+      id == currentQuote.id ? currentQuote : null;
 
   @override
   Future<SalesQuoteDto> createQuote({
@@ -82,10 +143,21 @@ class _QuoteApi implements QuoteApi {
   }) async => _quote;
 
   @override
-  Future<SalesQuoteDto> updateQuoteStatus(
-    String id,
-    QuoteStatus status,
-  ) async => _quote;
+  Future<String> createDraftInvoiceFromQuote(String quoteId) async {
+    draftInvoiceCount++;
+    currentQuote = _copyQuote(
+      currentQuote,
+      status: QuoteStatus.converted,
+      convertedInvoiceId: 'invoice-1',
+    );
+    return 'invoice-1';
+  }
+
+  @override
+  Future<SalesQuoteDto> updateQuoteStatus(String id, QuoteStatus status) async {
+    currentQuote = _copyQuote(currentQuote, status: status);
+    return currentQuote;
+  }
 
   @override
   Future<SalesQuoteDto> updateQuote({
@@ -98,6 +170,28 @@ class _QuoteApi implements QuoteApi {
     required List<QuoteLineInput> lines,
   }) async => _quote;
 }
+
+SalesQuoteDto _copyQuote(
+  SalesQuoteDto quote, {
+  required QuoteStatus status,
+  String? convertedInvoiceId,
+}) => SalesQuoteDto(
+  id: quote.id,
+  quoteNumber: quote.quoteNumber,
+  customerId: quote.customerId,
+  customerName: quote.customerName,
+  status: status,
+  totalAmount: quote.totalAmount,
+  currencyCode: quote.currencyCode,
+  exchangeRate: quote.exchangeRate,
+  validUntil: quote.validUntil,
+  notes: quote.notes,
+  agentId: quote.agentId,
+  convertedInvoiceId: convertedInvoiceId ?? quote.convertedInvoiceId,
+  lines: quote.lines,
+  createdAt: quote.createdAt,
+  updatedAt: quote.updatedAt,
+);
 
 final _quote = SalesQuoteDto(
   id: 'quote-1',

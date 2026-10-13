@@ -18,6 +18,7 @@ abstract interface class QuoteApi {
     required List<QuoteLineInput> lines,
   });
   Future<SalesQuoteDto> updateQuoteStatus(String id, QuoteStatus status);
+  Future<String> createDraftInvoiceFromQuote(String quoteId);
   Future<SalesQuoteDto> updateQuote({
     required String id,
     required String customerId,

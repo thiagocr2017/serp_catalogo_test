@@ -133,6 +133,7 @@ class SalesInvoiceDto {
     required this.totalAmount,
     required this.currencyCode,
     this.customerId,
+    this.sourceQuoteId,
     this.exchangeRate = 1.0,
     this.notes,
     this.inventoryDocumentId,
@@ -153,6 +154,7 @@ class SalesInvoiceDto {
   final double totalAmount;
   final String currencyCode;
   final String? customerId;
+  final String? sourceQuoteId;
   final double exchangeRate;
   final String? notes;
   final String? inventoryDocumentId;
@@ -177,6 +179,7 @@ class SalesInvoiceDto {
           totalAmount == other.totalAmount &&
           currencyCode == other.currencyCode &&
           customerId == other.customerId &&
+          sourceQuoteId == other.sourceQuoteId &&
           exchangeRate == other.exchangeRate &&
           notes == other.notes &&
           inventoryDocumentId == other.inventoryDocumentId &&
@@ -195,6 +198,7 @@ class SalesInvoiceDto {
     totalAmount,
     currencyCode,
     customerId,
+    sourceQuoteId,
     exchangeRate,
     notes,
     inventoryDocumentId,
@@ -277,6 +281,7 @@ class SalesQuoteDto {
     this.validUntil,
     this.notes,
     this.agentId,
+    this.convertedInvoiceId,
     this.lines = const [],
     this.createdAt,
     this.updatedAt,
@@ -293,6 +298,7 @@ class SalesQuoteDto {
   final DateTime? validUntil;
   final String? notes;
   final String? agentId;
+  final String? convertedInvoiceId;
   final List<SalesQuoteLineDto> lines;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -313,6 +319,7 @@ class SalesQuoteDto {
           validUntil == other.validUntil &&
           notes == other.notes &&
           agentId == other.agentId &&
+          convertedInvoiceId == other.convertedInvoiceId &&
           listEquals(lines, other.lines) &&
           createdAt == other.createdAt &&
           updatedAt == other.updatedAt;
@@ -330,6 +337,7 @@ class SalesQuoteDto {
     validUntil,
     notes,
     agentId,
+    convertedInvoiceId,
     Object.hashAll(lines),
     createdAt,
     updatedAt,

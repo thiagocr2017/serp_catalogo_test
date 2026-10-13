@@ -9,6 +9,7 @@ class SalesInvoice {
     required this.totalAmount,
     required this.currencyCode,
     this.customerId,
+    this.sourceQuoteId,
     this.exchangeRate = 1.0,
     this.notes,
     this.inventoryDocumentId,
@@ -26,6 +27,7 @@ class SalesInvoice {
   final double totalAmount;
   final String currencyCode;
   final String? customerId;
+  final String? sourceQuoteId;
   final double exchangeRate;
   final String? notes;
   final String? inventoryDocumentId;

@@ -103,6 +103,7 @@ class SupabaseSalesInvoiceDataSource {
       totalAmount: (row['total_amount'] as num).toDouble(),
       currencyCode: row['currency_code'] as String,
       customerId: row['customer_id'] as String?,
+      sourceQuoteId: row['source_quote_id'] as String?,
       exchangeRate: (row['exchange_rate'] as num?)?.toDouble() ?? 1.0,
       notes: row['notes'] as String?,
       inventoryDocumentId: row['inventory_document_id'] as String?,
